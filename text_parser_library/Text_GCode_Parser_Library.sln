@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34902.65
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Text_GCode_Parser_Library", "Text_GCode_Parser_Library.csproj", "{8D261015-6C62-4C1D-9F00-99447D34E71B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TextParserNUnitTests", "..\TextParserNUnitTests\TextParserNUnitTests.csproj", "{17FF86C5-55F2-4526-AF74-606AA9A3D85D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8D261015-6C62-4C1D-9F00-99447D34E71B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8D261015-6C62-4C1D-9F00-99447D34E71B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8D261015-6C62-4C1D-9F00-99447D34E71B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8D261015-6C62-4C1D-9F00-99447D34E71B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{17FF86C5-55F2-4526-AF74-606AA9A3D85D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{17FF86C5-55F2-4526-AF74-606AA9A3D85D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{17FF86C5-55F2-4526-AF74-606AA9A3D85D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{17FF86C5-55F2-4526-AF74-606AA9A3D85D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {88B7A431-B382-4B49-A4C0-D805577C100B}
+	EndGlobalSection
+EndGlobal
