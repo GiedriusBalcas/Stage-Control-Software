@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace text_parser_library
 {
-    public abstract class CustomCommand
+    public abstract class CustomFunction
     {
 
         private readonly Dictionary<string, object> _properties = new Dictionary<string, object>();

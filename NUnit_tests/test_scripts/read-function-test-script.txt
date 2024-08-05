@@ -1,0 +1,6 @@
+﻿
+a= 2;
+Read("C:\Users\giedr\OneDrive\Desktop\importsnt\Csharp\Standa Stage Control Environment\Text Parsing\TextParserNUnitTests\test_scripts\write-function-test-script.txt");
+
+a = a +d;
+write("value of a: ", a, "supposed to be 7." );

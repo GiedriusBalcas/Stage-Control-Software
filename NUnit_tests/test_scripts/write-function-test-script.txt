@@ -1,0 +1,9 @@
+﻿write("labas");
+write("labas");
+write("labas");
+write("labas");
+write("ate");
+write("labas");
+write("labas");
+
+d = 5;

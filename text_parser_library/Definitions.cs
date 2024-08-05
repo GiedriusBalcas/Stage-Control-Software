@@ -14,11 +14,11 @@ namespace text_parser_library
         // variables.
         // functions.
         private Dictionary<string, object?> _variables;
-        private Dictionary<string, CustomCommand> _commands;
+        private Dictionary<string, CustomFunction> _commands;
         public Definitions()
         {
             _variables = new Dictionary<string, object>();
-            _commands = new Dictionary<string, CustomCommand>();
+            _commands = new Dictionary<string, CustomFunction>();
         }
 
         // Variable management
@@ -33,7 +33,7 @@ namespace text_parser_library
         }
 
         // Function management
-        public void AddFunction(string name, CustomCommand command)
+        public void AddFunction(string name, CustomFunction command)
         {
             _commands[name] = command;
         }

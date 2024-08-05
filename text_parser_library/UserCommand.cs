@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace text_parser_library
 {
-    internal class UserCommand : CustomCommand
+    internal class UserCommand : CustomFunction
     {
         private readonly List<string> _parameters;
         private readonly GrammarSyntaxParser.BlockContext _body;
