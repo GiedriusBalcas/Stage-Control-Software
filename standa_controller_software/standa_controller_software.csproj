@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="command-manager\command-definitions\" />
+    <ProjectReference Include="..\text_parser_library\text_parser_library.csproj" />
   </ItemGroup>
 
 </Project>

@@ -14,6 +14,7 @@ namespace standa_controller_software.command_manager
         private readonly ControllerManager controllerManager;
         private ConcurrentQueue<Command[]> commandQueue = new ConcurrentQueue<Command[]>();
         private ConcurrentQueue<string> log = new ConcurrentQueue<string>();
+        private bool _allowed = true;
 
         public CommandManager(ControllerManager manager)
         {
@@ -27,12 +28,13 @@ namespace standa_controller_software.command_manager
 
         public void Start()
         {
-            Task.Run(() => ProcessCommands());
+            _allowed = true;
+            Task.Run(() => ProcessQueue());
         }
 
-        private async Task ProcessCommands()
+        private async Task ProcessQueue()
         {
-            while (true)
+            while (commandQueue.Count > 0 && _allowed)
             {
                 if (commandQueue.TryDequeue(out Command[] commands))
                 {
@@ -89,6 +91,48 @@ namespace standa_controller_software.command_manager
             {
                 Console.WriteLine(logEntry);
             }
+        }
+
+        public async Task ExecuteSingleCommandLine(Command[] commands)
+        {
+            var parallelTasks = new List<Task>();
+
+            var groupedCommands = commands.GroupBy(c => c.TargetController);
+            foreach (var group in groupedCommands)
+            {
+                var controllerName = group.Key;
+                var controller = controllerManager.Controllers[controllerName];
+                var semaphore = controllerManager.ControllerLocks[controllerName];
+
+                var task = semaphore.WaitAsync().ContinueWith(async _ =>
+                {
+                    try
+                    {
+                        foreach (var command in group)
+                        {
+                            await controller.ExecuteCommandAsync(command, semaphore, log);
+                        }
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                });
+
+                parallelTasks.Add(task.Unwrap());
+            }
+
+            await Task.WhenAll(parallelTasks);
+        }
+
+        public void StopDequeuing()
+        {
+            _allowed = false;
+        }
+
+        public void ClearQueue()
+        {
+            commandQueue.Clear();
         }
 
         //public void DisplayControllerStates()
