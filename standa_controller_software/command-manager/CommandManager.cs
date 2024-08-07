@@ -1,11 +1,6 @@
-﻿using standa_controller_software.device_manager.devices;
-using standa_controller_software.device_manager;
-using System;
+﻿using standa_controller_software.device_manager;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace standa_controller_software.command_manager
 {
@@ -30,6 +25,7 @@ namespace standa_controller_software.command_manager
         {
             _allowed = true;
             Task.Run(() => ProcessQueue());
+            //await ProcessQueue();
         }
 
         private async Task ProcessQueue()
@@ -70,6 +66,8 @@ namespace standa_controller_software.command_manager
 
                 await Task.Delay(10); // Adjust delay as needed
             }
+
+            var kaka = "final";
         }
 
         public async Task UpdateStatesAsync()
@@ -133,6 +131,33 @@ namespace standa_controller_software.command_manager
         public void ClearQueue()
         {
             commandQueue.Clear();
+        }
+
+        public string GetCommandQueue()
+        {
+            var csvStringBuilder = new StringBuilder();
+            var queueSnapshot = commandQueue.ToArray();
+
+            foreach (var commandArray in queueSnapshot)
+            {
+                for (int i = 0; i < commandArray.Length; i++)
+                {
+                    var command = commandArray[i];
+                    csvStringBuilder.Append($"{command.TargetController},{command.TargetDevice},{command.Action},{string.Join(" ", command.Parameters)}");
+
+                    if (i < commandArray.Length - 1)
+                    {
+                        csvStringBuilder.Append(" & ");
+                    }
+                    else
+                    {
+                        csvStringBuilder.Append(" ;");
+                    }
+                }
+                csvStringBuilder.AppendLine();
+            }
+
+            return csvStringBuilder.ToString();
         }
 
         //public void DisplayControllerStates()

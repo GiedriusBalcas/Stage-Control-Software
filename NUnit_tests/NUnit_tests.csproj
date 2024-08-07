@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\standa_controller_software\standa_controller_software.csproj" />
     <ProjectReference Include="..\text_parser_library\text_parser_library.csproj" />
   </ItemGroup>
 

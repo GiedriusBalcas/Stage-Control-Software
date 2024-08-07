@@ -21,7 +21,7 @@ namespace text_parser_library
             return _properties.TryGetValue(name, out value);
         }
 
-        public abstract object Execute(params object[] args);
+        public abstract object? Execute(params object[] args);
     }
 }
 

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace standa_controller_software.device_manager.devices
 {
-    internal class LinearPositionerDevice : IPositionerDevice
+    public class LinearPositionerDevice : IPositionerDevice
     {
         private int _position =0;
         private string _deviceID;

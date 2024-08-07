@@ -1,1 +1,6 @@
-﻿MoveA("x", 30);
+﻿moveA("x", 10);
+moveA("y", 20);
+moveA("z", 100);
+moveA("x", 0);
+moveA("y", 0);
+moveA("z", 0);

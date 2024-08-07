@@ -9,19 +9,25 @@ using System.Threading.Tasks;
 
 namespace standa_controller_software.device_manager.controllers
 {
-    public class VirtualPositionerController : IController
+    public class VirtualPositionerController : IPositionerController
     {
         public Dictionary<string, IPositionerDevice> Devices { get; private set; } = new Dictionary<string, IPositionerDevice>();
-        public string Name { get; private set; }
+
+        public string Name { get; set; }
+
         private ConcurrentDictionary<string, CancellationTokenSource> deviceCancellationTokens = new ConcurrentDictionary<string, CancellationTokenSource>();
 
         public VirtualPositionerController(string name)
         {
             Name = name;
+        }
 
-            // Initialize devices
-            Devices.Add("X", new LinearPositionerDevice("X"));
-            Devices.Add("Y", new LinearPositionerDevice("Y"));
+        public void AddDevice(IDevice device)
+        {
+            if (device is IPositionerDevice positioningDevice)
+                Devices.Add(positioningDevice.DeviceId, positioningDevice);
+            else
+                throw new Exception($"Unable to add device: {device.DeviceId}. Controller {this.Name} only accepts positioning devices.");
         }
 
         public async Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
@@ -30,9 +36,10 @@ namespace standa_controller_software.device_manager.controllers
             {
                 log.Enqueue($"{DateTime.Now}: Executing {command.Action} command on device {device.DeviceId}");
 
-                if (command.Action == "MoveA")
+                if (command.Action == "MoveAbsolute")
                 {
-                    int targetPosition = int.Parse((string)command.Parameters[0]);
+                    //int targetPosition = int.Parse((string)command.Parameters[0]);
+                    int targetPosition = Convert.ToInt32(command.Parameters[0]);
                     var tokenSource = new CancellationTokenSource();
 
                     if (deviceCancellationTokens.ContainsKey(device.DeviceId))
@@ -60,11 +67,11 @@ namespace standa_controller_software.device_manager.controllers
         {
             int speed = 100;  // Units per second
             int distance = Math.Abs(targetPosition - device.Position);
-            int duration = distance * 10;  // Simulate duration in milliseconds
+            float duration = distance / speed * 1000;  // Simulate duration in milliseconds
 
             try
             {
-                for (int i = 0; i < duration / 100; i++)
+                for (int i = 0; i < duration; i+= 100)
                 {
                     await Task.Delay(100, token);  // Check for cancellation every 100 ms
                     if (token.IsCancellationRequested)
@@ -88,6 +95,11 @@ namespace standa_controller_software.device_manager.controllers
                 log.Enqueue($"{DateTime.Now}: Updated state for device {device.DeviceId}, Position: {device.Position}");
             }
             await Task.Delay(50);
+        }
+
+        public List<IDevice> GetDevices()
+        {
+            return Devices.Values.Cast<IDevice>().ToList();
         }
     }
 }
