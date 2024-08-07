@@ -33,7 +33,7 @@ namespace standa_controller_software.device_manager
             var correctTypeControllers = Controllers.Values.OfType<TController>();
 
             var selectedController = correctTypeControllers
-                .FirstOrDefault(controller => controller.GetDevices().Any(dev => dev.DeviceId == deviceName));
+                .FirstOrDefault(controller => controller.GetDevices().Any(dev => dev.Name == deviceName));
 
             if (selectedController == null)
             {
@@ -41,6 +41,14 @@ namespace standa_controller_software.device_manager
             }
 
             return (TController)selectedController;
+        }
+
+        public TDevice? GetDevice<TDevice>(string name) where TDevice : class, IDevice
+        {
+            return Controllers.Values
+                .SelectMany(controller => controller.GetDevices())
+                .OfType<TDevice>() // Filter by the specified device type
+                .FirstOrDefault(device => device.Name == name);
         }
     }
 }

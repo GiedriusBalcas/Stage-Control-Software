@@ -53,16 +53,21 @@ namespace NUnit_tests
             Console.WriteLine("Before Starting:");
             Console.WriteLine(_commandManager.GetCommandQueue());
 
+            _commandManager.UpdateStatesAsync();
             _commandManager.Start();
+
 
             var currentQueue = _commandManager.GetCommandQueue();
             while (currentQueue != string.Empty)
             {
-                Thread.Sleep(1000);
+                Thread.Sleep(100);
                 currentQueue = _commandManager.GetCommandQueue();
-            }
 
-            //Thread.Sleep(10000);
+                var posX = _controllerManager.GetDevice<IPositionerDevice>("x")?.Position;
+                var posY = _controllerManager.GetDevice<IPositionerDevice>("y")?.Position;
+                var posZ = _controllerManager.GetDevice<IPositionerDevice>("z")?.Position;
+                Console.WriteLine($"x: {posX} \t y: {posY} \t z: {posZ}");
+            }
 
             Console.WriteLine("After Starting:");
             Console.WriteLine(_commandManager.GetCommandQueue());

@@ -8,6 +8,6 @@ namespace standa_controller_software.device_manager.devices
 {
     public interface IDevice
     {
-        string DeviceId { get; }
+        string Name { get; }
     }
 }

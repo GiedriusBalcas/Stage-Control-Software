@@ -8,14 +8,15 @@ namespace standa_controller_software.device_manager.devices
 {
     public class LinearPositionerDevice : IPositionerDevice
     {
-        private int _position =0;
+        private float _position =0f;
+        private float _speed =0f;
         private string _deviceID;
 
-        public string DeviceId => _deviceID;
+        public string Name => _deviceID;
 
 
-        public int Position { get => _position; set => _position = value; }
-
+        public float Position { get => _position; set => _position = value; }
+        public float Speed { get => _speed; set => _speed = value; }
 
         public LinearPositionerDevice(string deviceID)
         {

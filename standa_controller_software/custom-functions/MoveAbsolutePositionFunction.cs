@@ -30,7 +30,7 @@ namespace standa_controller_software.custom_functions
                     ([
                         new Command() {
                         Action = "MoveAbsolute",
-                        Await = true,
+                        Await = i == devNames.Length-1,
                         Parameters = [positions[i]],
                         TargetController = controller.Name,
                         TargetDevice = devNames[i].ToString()

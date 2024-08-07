@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace standa_controller_software.device_manager.controllers
 {
-    internal interface IPositionerController : IController
+    public interface IPositionerController : IController
     {
         Dictionary<string, IPositionerDevice> Devices { get; }
     }
