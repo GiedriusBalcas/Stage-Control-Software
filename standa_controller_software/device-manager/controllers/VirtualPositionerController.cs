@@ -76,7 +76,7 @@ namespace standa_controller_software.device_manager.controllers
         {
             if (Devices.TryGetValue(command.TargetDevice, out IPositionerDevice device))
             {
-                log.Enqueue($"{DateTime.Now}: Executing {command.Action} command on device {device.Name}");
+                log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {command.Action} command on device {device.Name}");
 
                 var tokenSource = new CancellationTokenSource();
 
@@ -102,11 +102,11 @@ namespace standa_controller_software.device_manager.controllers
                     throw new InvalidOperationException("Invalid action");
                 }
 
-                log.Enqueue($"{DateTime.Now}: Completed {command.Action} command on device {device.Name}, New Position: {device.Position}");
+                log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Completed {command.Action} command on device {device.Name}, New Position: {device.Position}");
             }
             else
             {
-                log.Enqueue($"{DateTime.Now}: Device {command.TargetDevice} not found in controller {command.TargetController}");
+                log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Device {command.TargetDevice} not found in controller {command.TargetController}");
             }
         }
 
@@ -201,7 +201,7 @@ namespace standa_controller_software.device_manager.controllers
             {
                 positioner.Value.Position = _deviceInfo[positioner.Key].CurrentPosition;
                 positioner.Value.Speed = _deviceInfo[positioner.Key].CurrentSpeed;
-                log.Enqueue($"{DateTime.Now}: Updated state for device {positioner.Value.Name}, Position: {positioner.Value.Position}");
+                log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, Position: {positioner.Value.Position}");
             }
             await Task.Delay(10);
         }

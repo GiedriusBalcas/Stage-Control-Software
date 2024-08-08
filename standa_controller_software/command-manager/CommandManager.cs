@@ -31,7 +31,7 @@ namespace standa_controller_software.command_manager
             private set
             {
                 _currentState = value;
-                log.Enqueue($"{DateTime.Now}: State changed to {_currentState}");
+                log.Enqueue($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}: State changed to {_currentState}");
             }
         }
 
