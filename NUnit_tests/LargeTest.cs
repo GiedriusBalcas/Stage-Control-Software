@@ -52,13 +52,13 @@ namespace NUnit_tests
 
             Console.WriteLine("Before Starting:");
             Console.WriteLine(_commandManager.GetCommandQueue());
-
-            _commandManager.UpdateStatesAsync();
+            
+            Task.Run(() => _commandManager.UpdateStatesAsync());
             _commandManager.Start();
 
 
             var currentQueue = _commandManager.GetCommandQueue();
-            while (currentQueue != string.Empty)
+            while (_commandManager.CurrentState == CommandManagerState.Processing)
             {
                 Thread.Sleep(100);
                 currentQueue = _commandManager.GetCommandQueue();

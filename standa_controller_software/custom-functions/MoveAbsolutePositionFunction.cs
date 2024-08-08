@@ -22,21 +22,25 @@ namespace standa_controller_software.custom_functions
             if (!TryParseArguments(args, out char[] devNames, out float[] positions))
                 throw new ArgumentException("Argument pasrsing was unsuccesfull. Wrong types.");
 
+            Command[] commands = new Command[devNames.Length]; 
+
             for (int i = 0; i< devNames.Length; i++) {
 
                 var controller = _controllerManager.GetDeviceController<IPositionerController>(devNames[i].ToString());
 
-                _commandManager.EnqueueCommands
-                    ([
-                        new Command() {
+                commands[i] =
+                    new Command()
+                    {
                         Action = "MoveAbsolute",
-                        Await = i == devNames.Length-1,
+                        Await = i == devNames.Length - 1,
                         Parameters = [positions[i]],
                         TargetController = controller.Name,
                         TargetDevice = devNames[i].ToString()
-                        }
-                    ]) ;
+                    };
             }
+
+            _commandManager.EnqueueCommands(commands);
+
             return null;
         }
 

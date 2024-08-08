@@ -3,11 +3,9 @@ using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 
 namespace standa_controller_software.device_manager.controllers
 {
@@ -60,7 +58,7 @@ namespace standa_controller_software.device_manager.controllers
         {
             Name = name;
             methodMap["MoveAbsolute"] = MoveAbsoluteCall;
-            methodMap["UpdateStates"] = UpdateStatesCall;
+            //methodMap["UpdateStates"] = UpdateStatesCall;
         }
 
         public void AddDevice(IDevice device)
@@ -94,23 +92,15 @@ namespace standa_controller_software.device_manager.controllers
 
                 if (methodMap.TryGetValue(command.Action, out var method))
                 {
-                    if(command.Await)
+                    if (command.Await)
                         await method(command, device, tokenSource.Token);
                     else
-                        method(command, device, tokenSource.Token);
+                        _ = method(command, device, tokenSource.Token); // Start method without awaiting
                 }
                 else
                 {
                     throw new InvalidOperationException("Invalid action");
                 }
-
-                //if (command.Action == "MoveAbsolute")
-                //{
-                //    //int targetPosition = int.Parse((string)command.Parameters[0]);
-                //    float targetPosition = (float)(command.Parameters[0]);
-
-                //    await UpdateCommandMoveA(device.Name, targetPosition, tokenSource.Token);
-                //}
 
                 log.Enqueue($"{DateTime.Now}: Completed {command.Action} command on device {device.Name}, New Position: {device.Position}");
             }
@@ -126,121 +116,74 @@ namespace standa_controller_software.device_manager.controllers
 
             await UpdateCommandMoveA(device.Name, targetPosition, cancellationToken);
         }
-        private async Task UpdateStatesCall(Command command, IPositionerDevice device, CancellationToken cancellationToken)
-        {
-            foreach (var positioner in Devices)
-            {
-                positioner.Value.Position = _deviceInfo[positioner.Key].CurrentPosition;
-                positioner.Value.Speed = _deviceInfo[positioner.Key].CurrentSpeed;
-            }
-            await Task.Delay(50);
-        }
+
         private async Task UpdateCommandMoveA(string name, float targetPosition, CancellationToken cancellationToken)
         {
-            int updateInterval = 2;
+            int updateInterval = 10;
             var distanceToStop = () => 0.5f * _deviceInfo[name].Deceleration * Math.Pow((Math.Abs(_deviceInfo[name].CurrentSpeed) / _deviceInfo[name].Deceleration), 2);
             var directionToTarget = () => Math.Sign(targetPosition - _deviceInfo[name].CurrentPosition);
             var distanceToTarget = () => Math.Abs(targetPosition - _deviceInfo[name].CurrentPosition);
             var pointDifference = () => targetPosition - _deviceInfo[name].CurrentPosition;
-
-            //Mimicking the MTF8 transloation stage.
-            //Returns when velocity is zero and reached position.
 
             if (!float.IsFinite(targetPosition))
                 throw new Exception("Non finite target position value provided");
 
             _deviceInfo[name].MoveStatus = 1;
 
-            
-            var movementPerInterval = () => (float)updateInterval / 1000 * _deviceInfo[name].CurrentSpeed; // Simulate movement speed, adjust as needed.                                                               //movementPerInterval = Math.Min(movementPerInterval, 10);
-            var accelerationPerInterval = () => (float)updateInterval / 1000 * _deviceInfo[name].Acceleration; // Simulate movement speed, adjust as needed.                                                               //movementPerInterval = Math.Min(movementPerInterval, 10);
-            var decelerationPerInterval = () => (float)updateInterval / 1000 * _deviceInfo[name].Deceleration; // Simulate movement speed, adjust as needed.                                                               //movementPerInterval = Math.Min(movementPerInterval, 10);
+            var movementPerInterval = () => (float)updateInterval / 1000 * _deviceInfo[name].CurrentSpeed;
+            var accelerationPerInterval = () => (float)updateInterval / 1000 * _deviceInfo[name].Acceleration;
+            var decelerationPerInterval = () => (float)updateInterval / 1000 * _deviceInfo[name].Deceleration;
 
+            var kpointDifference = pointDifference();
+            var kmovementperinterval = movementPerInterval();
+            var kdecelerationPerInterval = decelerationPerInterval();
 
-            // Axis should move until it reaches the targetpoint with velocity of 0. UpdatePositionAsync is responsible for quiting earlier.
-            //0.1um is given as a rounding error accumulator.
-            while (pointDifference() > movementPerInterval()
-                || (Math.Abs(_deviceInfo[name].CurrentSpeed) > decelerationPerInterval()))
+            var kkk = 0;
+
+            while (Math.Abs(pointDifference()) > Math.Abs(movementPerInterval()) || (Math.Abs(_deviceInfo[name].CurrentSpeed) > decelerationPerInterval()))
             {
+
+                kpointDifference = pointDifference();
+                kmovementperinterval = movementPerInterval();
+                kdecelerationPerInterval = decelerationPerInterval();
+
                 cancellationToken.ThrowIfCancellationRequested();
 
                 float updatedSpeedValue;
 
-                // if axis is moving towards the target point. Or is at a stop.
+
+                // check if moving to the target direction || not moving
                 if (directionToTarget() == Math.Sign(_deviceInfo[name].CurrentSpeed) || _deviceInfo[name].CurrentSpeed == 0)
                 {
-
-                    // Check for whether the distance to the target is less than one needed for a complete stop.
-                    if (pointDifference() - movementPerInterval() < distanceToStop())
+                    // 
+                    if (Math.Abs( pointDifference() - movementPerInterval() ) < distanceToStop())
                     {
-                        if (Math.Abs(_deviceInfo[name].CurrentSpeed)< decelerationPerInterval())
-                            updatedSpeedValue = 0;
-                        else
-                            updatedSpeedValue = _deviceInfo[name].CurrentSpeed - decelerationPerInterval() * Math.Sign(_deviceInfo[name].CurrentSpeed);
+                        updatedSpeedValue = Math.Abs(_deviceInfo[name].CurrentSpeed) < decelerationPerInterval()
+                            ? 0
+                            : _deviceInfo[name].CurrentSpeed - decelerationPerInterval() * Math.Sign(_deviceInfo[name].CurrentSpeed);
                     }
                     else
                     {
-                        // Let's check whether it needs to accelerate or decelerate.
                         if (Math.Abs(_deviceInfo[name].CurrentSpeed) < _deviceInfo[name].Speed)
-                        {
-                            if (Math.Abs( _deviceInfo[name].Speed - Math.Abs(_deviceInfo[name].CurrentSpeed) ) < accelerationPerInterval())
-                                updatedSpeedValue = _deviceInfo[name].Speed * Math.Sign(_deviceInfo[name].Speed);
-                            else
-                                updatedSpeedValue = _deviceInfo[name].CurrentSpeed + accelerationPerInterval() * Math.Sign(_deviceInfo[name].Speed);
-                        }
+                            updatedSpeedValue = _deviceInfo[name].CurrentSpeed + accelerationPerInterval() * Math.Sign(pointDifference());
                         else
-                        {
-                            if (Math.Abs(_deviceInfo[name].Speed - Math.Abs(_deviceInfo[name].CurrentSpeed)) < decelerationPerInterval())
-                                updatedSpeedValue = _deviceInfo[name].Speed * Math.Sign(_deviceInfo[name].Speed);
-                            else
-                                updatedSpeedValue = _deviceInfo[name].CurrentSpeed - decelerationPerInterval() * Math.Sign(_deviceInfo[name].Speed);
-                        }
+                            updatedSpeedValue = _deviceInfo[name].CurrentSpeed - decelerationPerInterval() * Math.Sign(pointDifference());
                     }
                 }
-
-                // else if the axis is moving to the opposite direction than target point.
-                // will always be the case of deceleration.
-                // will have to cover the case of overshooting the target point though in position update.
-
-                // to-do: after changing direction axis should accelerate. Right now I just look at the deceleration for the updated speed value.
                 else
                 {
-                    // Lets avoid the jiggle around the target point right here.
-                    if (Math.Abs( _deviceInfo[name].CurrentSpeed - decelerationPerInterval() * Math.Sign(_deviceInfo[name].CurrentSpeed) ) > distanceToTarget())
-                        break;
-                    
-                    if ( decelerationPerInterval() - Math.Abs(_deviceInfo[name].CurrentSpeed) > _deviceInfo[name].Speed)
-                        updatedSpeedValue = _deviceInfo[name].Speed * directionToTarget();
-                    else
-                        updatedSpeedValue = _deviceInfo[name].CurrentSpeed - decelerationPerInterval() * Math.Sign(_deviceInfo[name].CurrentSpeed);
+                    updatedSpeedValue = Math.Abs(_deviceInfo[name].CurrentSpeed) - decelerationPerInterval() * Math.Sign(_deviceInfo[name].CurrentSpeed) > distanceToTarget()
+                        ? 0
+                        : _deviceInfo[name].CurrentSpeed - decelerationPerInterval() * Math.Sign(_deviceInfo[name].CurrentSpeed);
                 }
-                
+
                 _deviceInfo[name].CurrentSpeed = updatedSpeedValue;
 
-
-                // Need to check wherther acceleration per step will be more than decelerationPerStep po pajudejimo.
-
-
-
-                float updatedPositionValue;
-                //should account for when moving towards opposite direction.
-                // Eg.-> movmentPerInterval <0, target = 100, currentpos = 0.
-
-                if (Math.Sign(pointDifference()) != Math.Sign(movementPerInterval()))
-                {
-                    updatedPositionValue = _deviceInfo[name].CurrentPosition + movementPerInterval();
-                }
-                else
-                {
-                    if (distanceToTarget() < Math.Abs(movementPerInterval()))
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        updatedPositionValue = _deviceInfo[name].CurrentPosition + movementPerInterval();
-                    }
-                }
+                float updatedPositionValue = Math.Sign(pointDifference()) != Math.Sign(movementPerInterval())
+                    ? _deviceInfo[name].CurrentPosition + movementPerInterval()
+                    : distanceToTarget() < Math.Abs(movementPerInterval())
+                        ? targetPosition
+                        : _deviceInfo[name].CurrentPosition + movementPerInterval();
 
                 _deviceInfo[name].CurrentPosition = float.IsFinite(updatedPositionValue) ? updatedPositionValue : 0;
 
@@ -259,9 +202,8 @@ namespace standa_controller_software.device_manager.controllers
                 positioner.Value.Position = _deviceInfo[positioner.Key].CurrentPosition;
                 positioner.Value.Speed = _deviceInfo[positioner.Key].CurrentSpeed;
                 log.Enqueue($"{DateTime.Now}: Updated state for device {positioner.Value.Name}, Position: {positioner.Value.Position}");
-
             }
-            await Task.Delay(50);
+            await Task.Delay(10);
         }
 
         public List<IDevice> GetDevices()
