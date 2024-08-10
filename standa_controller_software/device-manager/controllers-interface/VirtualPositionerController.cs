@@ -4,12 +4,14 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
-namespace standa_controller_software.device_manager.controllers
+namespace standa_controller_software.device_manager.controller_interfaces
 {
-    public class VirtualPositionerController : IPositionerController
+    public class VirtualPositionerController : BasePositionerController
     {
         //----------Virtual axes private data---------------
         private class DeviceInformation
@@ -39,82 +41,61 @@ namespace standa_controller_software.device_manager.controllers
             public float MaxSpeed { get; set; } = 1000;
             public uint MoveStatus { get; set; } = 0;
         }
-        private Dictionary<string, DeviceInformation> _deviceInfo = new Dictionary<string, DeviceInformation>();
+        private ConcurrentDictionary<string, DeviceInformation> _deviceInfo = new ConcurrentDictionary<string, DeviceInformation>();
         // name | id
         private Dictionary<string, string> _deviceIDs;
         //---------------------------------------------------
 
 
-        public string Name { get; set; }
-        public Dictionary<string, IPositionerDevice> Devices { get; private set; } = new Dictionary<string, IPositionerDevice>();
-
-        private ConcurrentDictionary<string, CancellationTokenSource> deviceCancellationTokens = new ConcurrentDictionary<string, CancellationTokenSource>();
-
-        private Dictionary<string, Func<Command, IPositionerDevice, CancellationToken, Task>> methodMap = new Dictionary<string, Func<Command, IPositionerDevice, CancellationToken, Task>>();
-
-
-
-        public VirtualPositionerController(string name)
+        public VirtualPositionerController(string name) : base(name)
         {
-            Name = name;
-            methodMap["MoveAbsolute"] = MoveAbsoluteCall;
-            //methodMap["UpdateStates"] = UpdateStatesCall;
         }
 
-        public void AddDevice(IDevice device)
+        public override void AddDevice(IDevice device)
         {
+            base.AddDevice(device);
+
             if (device is IPositionerDevice positioningDevice)
             {
-                Devices.Add(positioningDevice.Name, positioningDevice);
-                _deviceInfo.Add(positioningDevice.Name, new DeviceInformation());
-            }
-            else
-                throw new Exception($"Unable to add device: {device.Name}. Controller {this.Name} only accepts positioning devices.");
-        }
-
-        public async Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
-        {
-            if (Devices.TryGetValue(command.TargetDevice, out IPositionerDevice device))
-            {
-                log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {command.Action} command on device {device.Name}");
-
-                var tokenSource = new CancellationTokenSource();
-
-                if (deviceCancellationTokens.ContainsKey(device.Name))
-                {
-                    deviceCancellationTokens[device.Name].Cancel();
-                    deviceCancellationTokens[device.Name] = tokenSource;
-                }
-                else
-                {
-                    deviceCancellationTokens.TryAdd(device.Name, tokenSource);
-                }
-
-                if (methodMap.TryGetValue(command.Action, out var method))
-                {
-                    if (command.Await)
-                        await method(command, device, tokenSource.Token);
-                    else
-                        _ = method(command, device, tokenSource.Token); // Start method without awaiting
-                }
-                else
-                {
-                    throw new InvalidOperationException("Invalid action");
-                }
-
-                log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Completed {command.Action} command on device {device.Name}, New Position: {device.Position}");
-            }
-            else
-            {
-                log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Device {command.TargetDevice} not found in controller {command.TargetController}");
+                _deviceInfo.TryAdd(positioningDevice.Name, new DeviceInformation());
             }
         }
 
-        private async Task MoveAbsoluteCall(Command command, IPositionerDevice device, CancellationToken cancellationToken)
+        protected override async Task MoveAbsolute(Command command, IPositionerDevice device, CancellationToken cancellationToken)
         {
             float targetPosition = (float)(command.Parameters[0]);
 
-            await UpdateCommandMoveA(device.Name, targetPosition, cancellationToken);
+            UpdateCommandMoveA(device.Name, targetPosition, cancellationToken);
+        }
+
+        protected override async Task UpdateMoveSettings(Command command, IPositionerDevice device, CancellationToken cancellationToken)
+        {
+            float speedValue = (float)(command.Parameters[0]);
+            float accelValue = (float)(command.Parameters[1]);
+            float decelValue = (float)(command.Parameters[2]);
+
+            await UpdateMovementSettings(device.Name, speedValue, accelValue, decelValue, cancellationToken);
+        }
+
+        private async Task UpdateMovementSettings(string name, float speedValue, float accelValue, float decelValue, CancellationToken cancellationToken)
+        {
+            await Task.Delay(10);
+            _deviceInfo[name].Speed = speedValue;
+            _deviceInfo[name].Acceleration = accelValue;
+            _deviceInfo[name].Deceleration = decelValue;
+        }
+
+        protected override async Task WaitUntilStop(Command command, IPositionerDevice device, CancellationToken cancellationToken)
+        {
+            await UpdateWaitUntilStop(device.Name, cancellationToken);
+        }
+
+        private async Task UpdateWaitUntilStop(string name, CancellationToken cancellationToken)
+        {
+            while (_deviceInfo[name].CurrentSpeed != 0)
+            {
+                await Task.Delay(100, cancellationToken);
+            }
         }
 
         private async Task UpdateCommandMoveA(string name, float targetPosition, CancellationToken cancellationToken)
@@ -134,24 +115,12 @@ namespace standa_controller_software.device_manager.controllers
             var accelerationPerInterval = () => (float)updateInterval / 1000 * _deviceInfo[name].Acceleration;
             var decelerationPerInterval = () => (float)updateInterval / 1000 * _deviceInfo[name].Deceleration;
 
-            var kpointDifference = pointDifference();
-            var kmovementperinterval = movementPerInterval();
-            var kdecelerationPerInterval = decelerationPerInterval();
-
-            var kkk = 0;
-
             while (Math.Abs(pointDifference()) > Math.Abs(movementPerInterval()) || (Math.Abs(_deviceInfo[name].CurrentSpeed) > decelerationPerInterval()))
             {
-
-                kpointDifference = pointDifference();
-                kmovementperinterval = movementPerInterval();
-                kdecelerationPerInterval = decelerationPerInterval();
 
                 cancellationToken.ThrowIfCancellationRequested();
 
                 float updatedSpeedValue;
-
-
                 // check if moving to the target direction || not moving
                 if (directionToTarget() == Math.Sign(_deviceInfo[name].CurrentSpeed) || _deviceInfo[name].CurrentSpeed == 0)
                 {
@@ -164,10 +133,9 @@ namespace standa_controller_software.device_manager.controllers
                     }
                     else
                     {
-                        if (Math.Abs(_deviceInfo[name].CurrentSpeed) < _deviceInfo[name].Speed)
-                            updatedSpeedValue = _deviceInfo[name].CurrentSpeed + accelerationPerInterval() * Math.Sign(pointDifference());
-                        else
-                            updatedSpeedValue = _deviceInfo[name].CurrentSpeed - decelerationPerInterval() * Math.Sign(pointDifference());
+                        updatedSpeedValue = Math.Abs(_deviceInfo[name].CurrentSpeed) < _deviceInfo[name].Speed 
+                            ? _deviceInfo[name].CurrentSpeed + accelerationPerInterval() * Math.Sign(pointDifference()) 
+                            : _deviceInfo[name].CurrentSpeed - decelerationPerInterval() * Math.Sign(pointDifference());
                     }
                 }
                 else
@@ -187,7 +155,7 @@ namespace standa_controller_software.device_manager.controllers
 
                 _deviceInfo[name].CurrentPosition = float.IsFinite(updatedPositionValue) ? updatedPositionValue : 0;
 
-                await Task.Delay(updateInterval, cancellationToken);
+                await Task.Delay(updateInterval-1, cancellationToken);
             }
 
             _deviceInfo[name].CurrentPosition = targetPosition;
@@ -195,7 +163,7 @@ namespace standa_controller_software.device_manager.controllers
             _deviceInfo[name].MoveStatus = 0;
         }
 
-        public async Task UpdateStateAsync(ConcurrentQueue<string> log)
+        public override async Task UpdateStateAsync(ConcurrentQueue<string> log)
         {
             foreach (var positioner in Devices)
             {
@@ -206,9 +174,16 @@ namespace standa_controller_software.device_manager.controllers
             await Task.Delay(10);
         }
 
-        public List<IDevice> GetDevices()
+        public override IController GetCopy()
         {
-            return Devices.Values.Cast<IDevice>().ToList();
+            var controller = new VirtualPositionerController(Name);
+            foreach (var device in Devices)
+            {
+                controller.AddDevice(device.Value.GetCopy());
+            }
+
+            return controller;
         }
+
     }
 }

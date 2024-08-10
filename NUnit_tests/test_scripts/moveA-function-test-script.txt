@@ -1,4 +1,4 @@
-﻿moveA("xyz", 20,20,20);
+﻿moveA("xyz", 50,50,50);
 moveA("x", 0);
 moveA("y", 0);
 moveA("z", 0);

@@ -15,7 +15,7 @@ namespace NUnit_tests
             string filePath = Path.Combine(TestContext.CurrentContext.TestDirectory, "test_scripts", "variable-test-script.txt");
             string fileContent = File.ReadAllText(filePath);
 
-            var parser = new ParserWrapper();
+            var parser = new TextInterpreterWrapper();
             parser.ReadInput(fileContent);
             var library = parser.Visitor.GetCurrentLibrary();
             library.TryGetVariable("c", out var value);
@@ -34,7 +34,7 @@ namespace NUnit_tests
             string filePath = Path.Combine(TestContext.CurrentContext.TestDirectory, "test_scripts", "global-variable-test-script.txt");
             string fileContent = File.ReadAllText(filePath);
 
-            var parserWrapper = new ParserWrapper();
+            var parserWrapper = new TextInterpreterWrapper();
             parserWrapper.DefinitionLibrary.AddVariable("PI", (float)Math.PI);
 
             try
@@ -65,7 +65,7 @@ namespace NUnit_tests
             string filePath = Path.Combine(TestContext.CurrentContext.TestDirectory, "test_scripts", "function-test-script.txt");
             string fileContent = File.ReadAllText(filePath);
 
-            var parserWrapper = new ParserWrapper();
+            var parserWrapper = new TextInterpreterWrapper();
             try
             {
                 parserWrapper.ReadInput(fileContent);
@@ -94,7 +94,7 @@ namespace NUnit_tests
             string filePath = Path.Combine(TestContext.CurrentContext.TestDirectory, "test_scripts", "write-function-test-script.txt");
             string fileContent = File.ReadAllText(filePath);
 
-            var parserWrapper = new ParserWrapper();
+            var parserWrapper = new TextInterpreterWrapper();
             var writeFunc = new ConsoleLogFunction();
             parserWrapper.DefinitionLibrary.AddFunction("write", writeFunc);
 
@@ -122,7 +122,7 @@ namespace NUnit_tests
             string filePath = Path.Combine(TestContext.CurrentContext.TestDirectory, "test_scripts", "read-function-test-script.txt");
             string fileContent = File.ReadAllText(filePath);
 
-            var parserWrapper = new ParserWrapper();
+            var parserWrapper = new TextInterpreterWrapper();
             var writeFunc = new ConsoleLogFunction();
             parserWrapper.DefinitionLibrary.AddFunction("write", writeFunc);
 
@@ -146,7 +146,7 @@ namespace NUnit_tests
             string filePath = Path.Combine(TestContext.CurrentContext.TestDirectory, "test_scripts", "moveA-function-test-script.txt");
             string fileContent = File.ReadAllText(filePath);
 
-            var parserWrapper = new ParserWrapper();
+            var parserWrapper = new TextInterpreterWrapper();
             var writeFunc = new ConsoleLogFunction();
             parserWrapper.DefinitionLibrary.AddFunction("write", writeFunc);
 

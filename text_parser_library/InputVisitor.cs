@@ -349,7 +349,18 @@ namespace text_parser_library
 
             var args = context.expression().Select(e => Visit(e)).ToArray();
 
-            var result = _definitionsLibrary.ExecuteFunction(name, args);
+            object? result = null;
+
+            try
+            {
+                result = _definitionsLibrary.ExecuteFunction(name, args);
+
+            }catch (Exception ex)
+            {
+                State.AddMessage($"Exception thrown in {name} command: {ex.Message}");
+                State.SetState(ParserState.States.Error);
+                throw new Exception();
+            }
 
             return result;
         }

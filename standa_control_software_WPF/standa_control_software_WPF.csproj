@@ -8,4 +8,9 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Folder Include="views\" />
+    <Folder Include="view-models\" />
+  </ItemGroup>
+
 </Project>

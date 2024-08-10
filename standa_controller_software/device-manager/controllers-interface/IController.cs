@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace standa_controller_software.device_manager.controllers
+namespace standa_controller_software.device_manager.controller_interfaces
 {
     public interface IController
     {
@@ -16,6 +16,7 @@ namespace standa_controller_software.device_manager.controllers
         Task UpdateStateAsync(ConcurrentQueue<string> log);
         void AddDevice(IDevice device);
         List<IDevice> GetDevices();
+        IController GetCopy();
 
     }
 }

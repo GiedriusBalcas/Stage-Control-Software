@@ -1,4 +1,5 @@
-﻿using System;
+﻿using standa_controller_software.device_manager.controller_interfaces;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,19 +9,23 @@ namespace standa_controller_software.device_manager.devices
 {
     public class LinearPositionerDevice : IPositionerDevice
     {
-        private float _position =0f;
-        private float _speed =0f;
-        private string _deviceID;
+        public string Name { get; }
+        public float Position { get; set; }
+        public float Speed { get; set; }
+        public float MaxSpeed { get; set; }
+        public float MaxAcceleration { get; set; }
+        public float MaxDeceleration { get; set; }
+        public float Acceleration { get; set; }
+        public float Deceleration { get; set; }
 
-        public string Name => _deviceID;
-
-
-        public float Position { get => _position; set => _position = value; }
-        public float Speed { get => _speed; set => _speed = value; }
-
-        public LinearPositionerDevice(string deviceID)
+        public LinearPositionerDevice(string name)
         {
-            this._deviceID = deviceID;
+            Name = name;
+        }
+
+        public IDevice GetCopy()
+        {
+            return new LinearPositionerDevice(this.Name) { Position = this.Position, Speed = this.Speed, Acceleration = this.Acceleration, Deceleration = this.Deceleration, MaxAcceleration = this.MaxAcceleration, MaxDeceleration = this.MaxDeceleration, MaxSpeed = this.MaxSpeed};
         }
     }
 }

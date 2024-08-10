@@ -1,0 +1,13 @@
+﻿
+
+radius = 20;
+dtheta = PI/5;
+dh = 10;
+
+for(i = 0; i < 10; i++)
+{
+	posx = sin( dtheta*i );
+	posy = cos( dtheta*i );
+	posz = dh * i;
+	moveA("xyz", posx, posy, posz);
+}

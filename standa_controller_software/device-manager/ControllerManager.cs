@@ -1,15 +1,16 @@
-﻿using standa_controller_software.device_manager.controllers;
+﻿using standa_controller_software.device_manager.controller_interfaces;
 using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Linq.Expressions;
+using System.Threading;
 
 namespace standa_controller_software.device_manager
 {
     public class ControllerManager
     {
+        public ToolInformation ToolInformation { get; set; }
         public Dictionary<string, IController> Controllers { get; private set; } = new Dictionary<string, IController>();
         public Dictionary<string, SemaphoreSlim> ControllerLocks { get; private set; } = new Dictionary<string, SemaphoreSlim>();
 
@@ -19,12 +20,11 @@ namespace standa_controller_software.device_manager
 
         public void AddController(IController controller)
         {
-            //check if controllers name is unique
+            // Check if controller's name is unique
             if (Controllers.ContainsKey(controller.Name))
-                throw new Exception($"Exception thrown when trying to add controller with non unique name {controller.Name}");
-            
-            Controllers.Add(controller.Name, controller);
+                throw new Exception($"Exception thrown when trying to add controller with non-unique name {controller.Name}");
 
+            Controllers.Add(controller.Name, controller);
             ControllerLocks.Add(controller.Name, new SemaphoreSlim(1, 1));
         }
 
@@ -43,12 +43,79 @@ namespace standa_controller_software.device_manager
             return (TController)selectedController;
         }
 
-        public TDevice? GetDevice<TDevice>(string name) where TDevice : class, IDevice
+        public bool TryGetDevice<TDevice>(string name, out TDevice? device) where TDevice : class, IDevice
         {
-            return Controllers.Values
+            device = Controllers.Values
                 .SelectMany(controller => controller.GetDevices())
                 .OfType<TDevice>() // Filter by the specified device type
                 .FirstOrDefault(device => device.Name == name);
+
+            return device is not null;
+        }
+
+        public List<TDevice> GetDevices<TDevice>() where TDevice : class, IDevice
+        {
+            return Controllers.Values
+                .SelectMany(controller => controller.GetDevices())
+                .OfType<TDevice>()
+                .ToList(); // Filter by the specified device type 
+        }
+
+        public ControllerManager CreateACopy(Dictionary<Type, Type> typeConversionDictionary = null)
+        {
+            var controllerManager = new ControllerManager
+            {
+                ToolInformation = this.ToolInformation // Assuming ToolInformation can be shared or deep-copied as needed
+            };
+
+            foreach (var controllerEntry in Controllers)
+            {
+                var originalController = controllerEntry.Value;
+                var originalType = originalController.GetType();
+                Type newType = originalType;
+
+                // Check if there's a replacement type in the dictionary
+                if (typeConversionDictionary != null && typeConversionDictionary.TryGetValue(originalType, out var replacementType))
+                {
+                    newType = replacementType;
+                }
+
+                // Create a new instance of the replacement type or the original type
+                IController newController;
+                if (newType != originalType)
+                {
+                    // Assume a constructor that takes the original controller as a parameter
+                    newController = Activator.CreateInstance(newType, controllerEntry.Value.Name) as IController;
+                    var devices = controllerEntry.Value.GetDevices();
+                    foreach (var device in devices)
+                    {
+                        var deviceCopy = device.GetCopy();
+                        newController.AddDevice(deviceCopy);
+                    }
+                }
+                else
+                {
+                    // If no replacement, clone the original controller
+                    newController = originalController.GetCopy(); // Assuming IController has a Clone method
+                }
+
+                if (newController is not null)
+                {
+                    // Add all the devices. DOES THE SAME INSIDE CONTROLLER.
+                    //foreach (var device in controllerEntry.Value.GetDevices())
+                    //{
+                    //    var deviceCopy = device.GetCopy();
+                    //    newController.AddDevice(deviceCopy);
+                    //}
+
+                    // Add the new controller to the new manager
+                    controllerManager.AddController(newController);
+                }
+                else
+                    throw new NullReferenceException($"Null encountered when trying to make a copy of a controller {controllerEntry.Value.Name}");
+            }
+
+            return controllerManager;
         }
     }
 }

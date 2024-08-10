@@ -1,5 +1,5 @@
 ﻿using standa_controller_software.device_manager;
-using standa_controller_software.device_manager.controllers;
+using standa_controller_software.device_manager.controller_interfaces;
 using System.Collections.Concurrent;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,20 +9,20 @@ namespace standa_controller_software.command_manager
     public enum CommandManagerState
     {
         Processing,
-        Nothing
+        Waiting
     }
 
     public class CommandManager
     {
-        private readonly ControllerManager controllerManager;
-        private ConcurrentQueue<Command[]> commandQueue = new ConcurrentQueue<Command[]>();
-        private ConcurrentQueue<string> log = new ConcurrentQueue<string>();
+        private readonly ControllerManager _controllerManager;
+        private ConcurrentQueue<Command[]> _commandQueue = new ConcurrentQueue<Command[]>();
+        private ConcurrentQueue<string> _log = new ConcurrentQueue<string>();
         private bool _running = true;
-        private CommandManagerState _currentState = CommandManagerState.Nothing;
+        private CommandManagerState _currentState = CommandManagerState.Waiting;
 
         public CommandManager(ControllerManager manager)
         {
-            this.controllerManager = manager;
+            this._controllerManager = manager;
         }
 
         public CommandManagerState CurrentState
@@ -31,13 +31,13 @@ namespace standa_controller_software.command_manager
             private set
             {
                 _currentState = value;
-                log.Enqueue($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}: State changed to {_currentState}");
+                _log.Enqueue($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}: State changed to {_currentState}");
             }
         }
 
         public void EnqueueCommands(Command[] commands)
         {
-            commandQueue.Enqueue(commands);
+            _commandQueue.Enqueue(commands);
         }
 
         public void Start()
@@ -46,48 +46,70 @@ namespace standa_controller_software.command_manager
             CurrentState = CommandManagerState.Processing;
             Task.Run(() => ProcessQueue());
         }
-
         private async Task ProcessQueue()
         {
             while (_running)
             {
-                if (commandQueue.TryDequeue(out Command[] commands))
+                if (_commandQueue.TryDequeue(out Command[] commands))
                 {
-                    await ExecuteCommandLine(commands);
+                    // Execute the command line
+                    var commandLineTask = ExecuteCommandLine(commands);
+
+                    // Check if any command in the line has Await = true
+                    if (commands.Any(c => c.Await))
+                    {
+                        // Wait for the command line to complete before continuing
+                        await commandLineTask;
+                    }
                 }
                 else
                 {
-                    CurrentState = CommandManagerState.Nothing;
+                    CurrentState = CommandManagerState.Waiting;
                     _running = false;
                 }
+
                 await Task.Delay(10); // Adjust delay as needed
             }
         }
 
-        private async Task ExecuteCommandLine(Command[] commands)
+        private Task ExecuteCommandLine(Command[] commands)
         {
             var tasks = new List<Task>();
 
+            // Group commands by their target controller
             var groupedCommands = commands.GroupBy(c => c.TargetController);
+
+            // Dictionary to track the last task for each controller
+            var controllerTasks = new Dictionary<string, Task>();
+
             foreach (var group in groupedCommands)
             {
                 var controllerName = group.Key;
-                var controller = controllerManager.Controllers[controllerName];
-                var semaphore = controllerManager.ControllerLocks[controllerName];
+                var controller = _controllerManager.Controllers[controllerName];
+                var semaphore = _controllerManager.ControllerLocks[controllerName];
 
                 foreach (var command in group)
                 {
-                    var task = ExecuteCommand(controller, semaphore, command);
-                    tasks.Add(task);
-
-                    if (command.Await)
+                    // Check if there is a previous task for the same controller
+                    if (controllerTasks.TryGetValue(controllerName, out var lastTask))
                     {
-                        await task;
+                        // Chain the command execution after the last task
+                        var task = lastTask.ContinueWith(_ => ExecuteCommand(controller, semaphore, command)).Unwrap();
+                        controllerTasks[controllerName] = task;
+                        tasks.Add(task);
+                    }
+                    else
+                    {
+                        // No previous task, execute immediately
+                        var task = ExecuteCommand(controller, semaphore, command);
+                        controllerTasks[controllerName] = task;
+                        tasks.Add(task);
                     }
                 }
             }
 
-            await Task.WhenAll(tasks);
+            // Return a task that completes when all commands in this line are done
+            return Task.WhenAll(tasks);
         }
 
         private async Task ExecuteCommand(IController controller, SemaphoreSlim semaphore, Command command)
@@ -95,11 +117,7 @@ namespace standa_controller_software.command_manager
             await semaphore.WaitAsync();
             try
             {
-                var task = controller.ExecuteCommandAsync(command, semaphore, log);
-                if (command.Await)
-                {
-                    await task;
-                }
+                await controller.ExecuteCommandAsync(command, semaphore, _log);
             }
             finally
             {
@@ -107,14 +125,15 @@ namespace standa_controller_software.command_manager
             }
         }
 
+
         public async Task UpdateStatesAsync()
         {
             while (_running)
             {
-                foreach (var controllerPair in controllerManager.Controllers)
+                foreach (var controllerPair in _controllerManager.Controllers)
                 {
                     var controller = controllerPair.Value;
-                    await controller.UpdateStateAsync(log);
+                    await controller.UpdateStateAsync(_log);
                 }
                 await Task.Delay(50); // More frequent updates
             }
@@ -122,7 +141,7 @@ namespace standa_controller_software.command_manager
 
         public void PrintLog()
         {
-            while (log.TryDequeue(out string logEntry))
+            while (_log.TryDequeue(out string logEntry))
             {
                 Console.WriteLine(logEntry);
             }
@@ -136,19 +155,19 @@ namespace standa_controller_software.command_manager
         public void StopDequeuing()
         {
             _running = false;
-            CurrentState = CommandManagerState.Nothing;
+            CurrentState = CommandManagerState.Waiting;
         }
 
         public void ClearQueue()
         {
-            commandQueue.Clear();
-            CurrentState = CommandManagerState.Nothing;
+            _commandQueue.Clear();
+            CurrentState = CommandManagerState.Waiting;
         }
 
         public string GetCommandQueue()
         {
             var csvStringBuilder = new StringBuilder();
-            var queueSnapshot = commandQueue.ToArray();
+            var queueSnapshot = _commandQueue.ToArray();
 
             foreach (var commandArray in queueSnapshot)
             {
@@ -170,6 +189,14 @@ namespace standa_controller_software.command_manager
             }
 
             return csvStringBuilder.ToString();
+        }
+
+        public void SendCommandQueueCopy(CommandManager commandManager) 
+        {
+            foreach (var commandLine in _commandQueue)
+            {
+                commandManager.EnqueueCommands(commandLine);
+            }
         }
     }
 }

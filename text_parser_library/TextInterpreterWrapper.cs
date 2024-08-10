@@ -8,13 +8,15 @@ using System.Threading.Tasks;
 
 namespace text_parser_library
 {
-    public class ParserWrapper
+    public class TextInterpreterWrapper
     {
         public InputVisitor Visitor { get; set; } = new InputVisitor(new ParserState(), new Definitions());
         public Definitions DefinitionLibrary { get; set; } = new Definitions();
         public ParserState State { get; set; } = new ParserState();
         public void ReadInput(string input)
         {
+            try
+            {
             var inputStream = new AntlrInputStream(input);
             var lexer = new GrammarSyntaxLexer(inputStream);
             var tokenStream = new CommonTokenStream(lexer);
@@ -22,6 +24,11 @@ namespace text_parser_library
             var _tree = parser.program();
             Visitor = new InputVisitor(State, DefinitionLibrary);
             Visitor.Visit(_tree);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(Visitor.State.Message);
+            }
         }
 
 

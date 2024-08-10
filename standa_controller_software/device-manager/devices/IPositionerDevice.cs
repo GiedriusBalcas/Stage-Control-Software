@@ -10,5 +10,10 @@ namespace standa_controller_software.device_manager.devices
     {
         float Position { get; set; }
         float Speed { get; set; }
+        float MaxSpeed { get; set; }
+        float MaxAcceleration { get; set; }
+        float MaxDeceleration { get; set; }
+        float Acceleration { get; set; }
+        float Deceleration { get; set; }
     }
 }
