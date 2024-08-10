@@ -3,3 +3,7 @@ moveA("x", 0);
 moveA("y", 0);
 moveA("z", 0);
 
+// Ko noriu
+// MoveA("xyz",10,10,10);
+// waitForStop("xyz");
+// 

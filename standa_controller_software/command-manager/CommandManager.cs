@@ -1,8 +1,7 @@
-﻿using standa_controller_software.device_manager;
-using standa_controller_software.device_manager.controller_interfaces;
+﻿using standa_controller_software.device_manager.controller_interfaces;
+using standa_controller_software.device_manager;
 using System.Collections.Concurrent;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace standa_controller_software.command_manager
 {
@@ -76,33 +75,33 @@ namespace standa_controller_software.command_manager
         {
             var tasks = new List<Task>();
 
-            // Group commands by their target controller
-            var groupedCommands = commands.GroupBy(c => c.TargetController);
+            // Group commands by their target device
+            var groupedCommands = commands.GroupBy(c => c.TargetDevice);
 
-            // Dictionary to track the last task for each controller
-            var controllerTasks = new Dictionary<string, Task>();
+            // Dictionary to track the last task for each device
+            var deviceTasks = new Dictionary<string, Task>();
 
             foreach (var group in groupedCommands)
             {
-                var controllerName = group.Key;
-                var controller = _controllerManager.Controllers[controllerName];
-                var semaphore = _controllerManager.ControllerLocks[controllerName];
+                var deviceName = group.Key;
+                var controller = _controllerManager.GetDeviceController<BasePositionerController>(deviceName);
+                var semaphore = _controllerManager.ControllerLocks[controller.Name];
 
                 foreach (var command in group)
                 {
-                    // Check if there is a previous task for the same controller
-                    if (controllerTasks.TryGetValue(controllerName, out var lastTask))
+                    // Check if there is a previous task for the same device
+                    if (deviceTasks.TryGetValue(deviceName, out var lastTask))
                     {
-                        // Chain the command execution after the last task
+                        // Chain the command execution after the last task for the same device
                         var task = lastTask.ContinueWith(_ => ExecuteCommand(controller, semaphore, command)).Unwrap();
-                        controllerTasks[controllerName] = task;
+                        deviceTasks[deviceName] = task;
                         tasks.Add(task);
                     }
                     else
                     {
                         // No previous task, execute immediately
                         var task = ExecuteCommand(controller, semaphore, command);
-                        controllerTasks[controllerName] = task;
+                        deviceTasks[deviceName] = task;
                         tasks.Add(task);
                     }
                 }
@@ -124,6 +123,7 @@ namespace standa_controller_software.command_manager
                 semaphore.Release();
             }
         }
+
 
 
         public async Task UpdateStatesAsync()
@@ -191,7 +191,7 @@ namespace standa_controller_software.command_manager
             return csvStringBuilder.ToString();
         }
 
-        public void SendCommandQueueCopy(CommandManager commandManager) 
+        public void SendCommandQueueCopy(CommandManager commandManager)
         {
             foreach (var commandLine in _commandQueue)
             {
