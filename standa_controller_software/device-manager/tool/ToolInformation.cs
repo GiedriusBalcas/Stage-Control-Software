@@ -11,7 +11,7 @@ namespace standa_controller_software.device_manager
     public class ToolInformation
     {
         private readonly Func<Dictionary<string, float>, Vector3> _positionCalcFunctions;
-        private readonly IShutter _shutterDevice;
+        private readonly IShutterDevice _shutterDevice;
         private List<IPositionerDevice> _positionerDevices = new List<IPositionerDevice>();
         private Vector3 _position;
 
@@ -40,7 +40,7 @@ namespace standa_controller_software.device_manager
             }
         }
 
-        public ToolInformation(IEnumerable<IPositionerDevice> positioners, IShutter shutterDevice, Func<Dictionary<string, float>, Vector3> positionCalculationFunctions)
+        public ToolInformation(IEnumerable<IPositionerDevice> positioners, IShutterDevice shutterDevice, Func<Dictionary<string, float>, Vector3> positionCalculationFunctions)
         {
             _positionCalcFunctions = positionCalculationFunctions;
             foreach (var positioner in positioners)

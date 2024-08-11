@@ -8,6 +8,7 @@ using System.Windows.Input;
 using text_parser_library;
 using NUnit.Framework.Internal.Commands;
 using System.Numerics;
+using standa_controller_software.device_manager.devices.shutter;
 
 namespace NUnit_tests
 {
@@ -62,7 +63,7 @@ namespace NUnit_tests
                     Z = positions.ContainsKey("z") ? positions["z"] : 0
                 };
             };
-            var toolInfo = new ToolInformation(_controllerManager.GetDevices<IPositionerDevice>(), new IShutter(), toolPositionFunctionX);
+            var toolInfo = new ToolInformation(_controllerManager.GetDevices<IPositionerDevice>(), new ShutterDevice_Virtual("s"), toolPositionFunctionX);
             _controllerManager.ToolInformation = toolInfo;
 
             var rules = new Dictionary<Type, Type>{ { typeof(BasePositionerController), typeof(PositionerController_Virtual) } };
@@ -74,10 +75,12 @@ namespace NUnit_tests
             _definitions = new Definitions();
             _definitions.AddFunction("moveA", new MoveAbsolutePositionFunction(_commandManager, controllerManagerForReading));
             _definitions.AddVariable("PI", (float)Math.PI);
-            
+
             // Set-up text interpreter
-            _textInterpreter = new TextInterpreterWrapper();
-            _textInterpreter.DefinitionLibrary = _definitions;
+            _textInterpreter = new TextInterpreterWrapper
+            {
+                DefinitionLibrary = _definitions
+            };
         }
 
         [Test]
