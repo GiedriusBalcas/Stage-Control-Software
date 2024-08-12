@@ -35,6 +35,9 @@
     <None Update="test_scripts\global-variable-test-script.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="test_scripts\cube-moveA-function-test-script.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="test_scripts\spiral-moveA-function-test-script.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

@@ -41,12 +41,12 @@ namespace NUnit_tests
             // First, set-up controller manager. This acts as the one got from the system configuration.
             _controllerManager = new ControllerManager();
 
-            var controller = new VirtualPositionerController("FirstController");
-            var deviceX = new LinearPositionerDevice("x") { Acceleration = 1000, Deceleration = 1000, MaxAcceleration = 2000, MaxDeceleration = 4000, MaxSpeed = 200, Position = 0, Speed = 200 };
-            var deviceY = new LinearPositionerDevice("y") { Acceleration = 1000, Deceleration = 1000, MaxAcceleration = 2000, MaxDeceleration = 4000, MaxSpeed = 200, Position = 0, Speed = 200 }; ;
-            var deviceZ = new LinearPositionerDevice("z") { Acceleration = 1000, Deceleration = 1000, MaxAcceleration = 2000, MaxDeceleration = 4000, MaxSpeed = 200, Position = 0, Speed = 200 }; ;
+            var controller = new PositionerController_Virtual("FirstController");
+            var deviceX = new LinearPositionerDevice("x") { Acceleration = 10000000, Deceleration = 10000000, MaxAcceleration = 20000000, MaxDeceleration = 4000000000, MaxSpeed = 20000000, Position = 0, Speed = 2000000 };
+            var deviceY = new LinearPositionerDevice("y") { Acceleration = 100000, Deceleration = 1000, MaxAcceleration = 2000, MaxDeceleration = 400000, MaxSpeed = 2000, Position = 0, Speed = 2000 }; ;
+            var deviceZ = new LinearPositionerDevice("z") { Acceleration = 100000, Deceleration = 1000, MaxAcceleration = 2000, MaxDeceleration = 400000, MaxSpeed = 2000, Position = 0, Speed = 2000 }; ;
 
-            var controller2 = new VirtualPositionerController("SecondController");
+            var controller2 = new PositionerController_Virtual("SecondController");
             controller.AddDevice(deviceX);
             controller.AddDevice(deviceY);
             controller2.AddDevice(deviceZ);
@@ -91,7 +91,7 @@ namespace NUnit_tests
                 DefinitionLibrary = _definitions
             };
 
-            string filePath = Path.Combine(TestContext.CurrentContext.TestDirectory, "test_scripts", "moveA-function-test-script.txt");
+            string filePath = Path.Combine(TestContext.CurrentContext.TestDirectory, "test_scripts", "cube-moveA-function-test-script.txt");
             string fileContent = File.ReadAllText(filePath);
 
 

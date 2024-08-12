@@ -79,7 +79,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
 
         private async Task UpdateMovementSettings(string name, float speedValue, float accelValue, float decelValue, CancellationToken cancellationToken)
         {
-            await Task.Delay(10);
+            await Task.Delay(1);
             _deviceInfo[name].Speed = speedValue;
             _deviceInfo[name].Acceleration = accelValue;
             _deviceInfo[name].Deceleration = decelValue;
@@ -94,13 +94,13 @@ namespace standa_controller_software.device_manager.controller_interfaces
         {
             while (_deviceInfo[name].CurrentSpeed != 0)
             {
-                await Task.Delay(100, cancellationToken);
+                await Task.Delay(5, cancellationToken);
             }
         }
 
         private async Task UpdateCommandMoveA(string name, float targetPosition, CancellationToken cancellationToken)
         {
-            int updateInterval = 10;
+            int updateInterval = 5;
             var distanceToStop = () => 0.5f * _deviceInfo[name].Deceleration * Math.Pow((Math.Abs(_deviceInfo[name].CurrentSpeed) / _deviceInfo[name].Deceleration), 2);
             var directionToTarget = () => Math.Sign(targetPosition - _deviceInfo[name].CurrentPosition);
             var distanceToTarget = () => Math.Abs(targetPosition - _deviceInfo[name].CurrentPosition);
@@ -109,7 +109,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
             if (!float.IsFinite(targetPosition))
                 throw new Exception("Non finite target position value provided");
 
-            _deviceInfo[name].MoveStatus = 1;
+            _deviceInfo[name].MoveStatus = 10;
 
             var movementPerInterval = () => (float)updateInterval / 1000 * _deviceInfo[name].CurrentSpeed;
             var accelerationPerInterval = () => (float)updateInterval / 1000 * _deviceInfo[name].Acceleration;
@@ -170,7 +170,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
 
                 _deviceInfo[name].CurrentPosition = float.IsFinite(updatedPositionValue) ? updatedPositionValue : 0;
 
-                await Task.Delay(updateInterval-1, cancellationToken);
+                await Task.Delay(updateInterval, cancellationToken);
             }
 
             _deviceInfo[name].CurrentPosition = targetPosition;
@@ -186,7 +186,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
                 positioner.Value.Speed = _deviceInfo[positioner.Key].CurrentSpeed;
                 log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, Position: {positioner.Value.Position}");
             }
-            await Task.Delay(10);
+            await Task.Delay(1);
         }
 
         public override IController GetCopy()

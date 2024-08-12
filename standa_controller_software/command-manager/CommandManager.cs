@@ -67,7 +67,7 @@ namespace standa_controller_software.command_manager
                     _running = false;
                 }
 
-                await Task.Delay(10); // Adjust delay as needed
+                //await Task.Delay(10); // Adjust delay as needed
             }
         }
 
@@ -84,7 +84,7 @@ namespace standa_controller_software.command_manager
             foreach (var group in groupedCommands)
             {
                 var deviceName = group.Key;
-                var controller = _controllerManager.GetDeviceController<BasePositionerController>(deviceName);
+                var controller = _controllerManager.GetDeviceController<IController>(deviceName);
                 var semaphore = _controllerManager.ControllerLocks[controller.Name];
 
                 foreach (var command in group)
@@ -135,7 +135,7 @@ namespace standa_controller_software.command_manager
                     var controller = controllerPair.Value;
                     await controller.UpdateStateAsync(_log);
                 }
-                await Task.Delay(50); // More frequent updates
+                await Task.Delay(5); // More frequent updates
             }
         }
 

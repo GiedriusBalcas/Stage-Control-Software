@@ -18,6 +18,8 @@ namespace standa_controller_software.device_manager
         public event Action<Vector3>? PositionChanged;
         public event Action? EngagedStateChanged;
 
+        public string Name { get => _shutterDevice.Name;}
+
         public Vector3 Position
         {
             get => _position;
@@ -32,7 +34,7 @@ namespace standa_controller_software.device_manager
 
         public bool IsOn
         {
-            get { return _isOn; }
+            get { return _shutterDevice.IsOn; }
             private set
             {
                 _isOn = value;

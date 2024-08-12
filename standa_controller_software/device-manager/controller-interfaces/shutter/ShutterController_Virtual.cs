@@ -59,6 +59,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         {
             var state = (bool)command.Parameters[0];
             _deviceInfo[device.Name]._isOn = state;
+            device.IsOn = state;
             await Task.Delay(10, token);
         }
     }

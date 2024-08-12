@@ -11,10 +11,11 @@ namespace opentk_painter_library
         private Shader _shader;
         private UniformMatrix4 _viewUniform;
         private UniformMatrix4 _projectionUniform;
+        private Action _preDrawAction;
 
         public OrbitalCamera Camera;
         public List<IRenderCollection> RenderCollections;
-        public RenderLayer(string vertexShaderSource, string fragmentShaderSource)
+        public RenderLayer(string vertexShaderSource, string fragmentShaderSource, Action preDrawAction = null)
         {
             RenderCollections = new List<IRenderCollection>();
             Camera = new OrbitalCamera(1, 45);
@@ -23,6 +24,8 @@ namespace opentk_painter_library
             _projectionUniform = new UniformMatrix4("projection", Camera.GetProjectionMatrix());
 
             _shader = new Shader([_viewUniform, _projectionUniform], vertexShaderSource, fragmentShaderSource);
+
+            _preDrawAction = preDrawAction;
         }
 
         public void UpdateUniforms()
@@ -80,6 +83,7 @@ namespace opentk_painter_library
 
         public void DrawLayer()
         {
+            _preDrawAction?.Invoke();
 
             GL.Enable(EnableCap.DepthTest);
             _shader.Use();

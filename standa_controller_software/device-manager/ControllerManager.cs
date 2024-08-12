@@ -127,7 +127,10 @@ namespace standa_controller_software.device_manager
                 }
             }
 
-            var toolInfo = new ToolInformation(controllerManager.GetDevices<IPositionerDevice>(), new ShutterDevice_Virtual("s"), this.ToolInformation.PositionCalcFunctions);
+
+            ToolInformation toolInfo = new ToolInformation(controllerManager.GetDevices<IPositionerDevice>(), new ShutterDevice_Virtual("undefined"), this.ToolInformation.PositionCalcFunctions);
+            if (controllerManager.TryGetDevice<IShutterDevice>(this.ToolInformation.Name, out IShutterDevice shutterDevice))
+                toolInfo = new ToolInformation(controllerManager.GetDevices<IPositionerDevice>(), shutterDevice, this.ToolInformation.PositionCalcFunctions);
             controllerManager.ToolInformation = toolInfo;
 
             return controllerManager;

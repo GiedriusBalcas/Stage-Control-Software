@@ -84,6 +84,10 @@ namespace standa_controller_software.custom_functions.definitions
             {
                 isEngaged = integer == 1 ? false : true;
             }
+            else if (arguments[1] is bool boolien) // Handle int to float conversion
+            {
+                isEngaged = boolien;
+            }
             else
             {
                 // Try to parse as float from string or other convertible types

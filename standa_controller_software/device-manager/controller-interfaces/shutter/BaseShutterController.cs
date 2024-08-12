@@ -20,7 +20,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
         protected BaseShutterController(string name)
         {
             Name = name;
-            _methodMap["ChangeState"] = ChangeState;
+            _methodMap[CommandDefinitionsLibrary.ChangeShutterState.ToString()] = ChangeState;
             Devices = new Dictionary<string, IShutterDevice>();
             //methodMap["UpdateStates"] = UpdateStatesCall;
         }

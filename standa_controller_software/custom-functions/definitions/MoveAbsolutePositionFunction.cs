@@ -27,7 +27,7 @@ namespace standa_controller_software.custom_functions
             Command[] commandsMovementParameters = new Command[devNames.Length];
             Command[] commandsMovement = new Command[devNames.Length];
             Command[] commandsWaitForStop = new Command[devNames.Length];
-            var trajectorySpeed = 100f;
+            var trajectorySpeed = 100000f;
 
 
             CustomFunctionHelper.GetLineKinParameters(devNames, positions, trajectorySpeed, _controllerManager, out float[] speedValuesOut, out float[] accelValuesOut, out float[] decelValuesOut, out float allocatedTime);

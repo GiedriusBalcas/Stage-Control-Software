@@ -61,8 +61,10 @@ namespace standa_controller_software.custom_functions.helpers
                 var currentPosition = positioner.Position;
                 var targetPosition = endPositions[i];
                 var direction = Math.Sign(targetPosition - currentPosition);
-                speedfactors[i] = Math.Abs(speedValues[i] * direction - positioner.Speed);
-                stopfactors[i] = 1;
+                //speedfactors[i] = Math.Abs(speedValues[i] * direction - positioner.CurrentSpeed);
+                speedfactors[i] = Math.Abs(speedValues[i] * direction);
+
+                stopfactors[i] = Math.Abs(speedValues[i]); ;
 
             }
             for (int i = 0; i < devNames.Length; i++)
@@ -77,11 +79,18 @@ namespace standa_controller_software.custom_functions.helpers
                 int minDecelIdx = Array.IndexOf(intermediateValueAccel, intermediateValueAccel.Min());
                 accelValues[i] = maxAccelValues[minAccelIdx] / speedfactors[minAccelIdx] * speedfactors[i];
                 decelValues[i] = maxDecelValues[minDecelIdx] / stopfactors[minDecelIdx] * stopfactors[i];
-                if (speedfactors[minAccelIdx] == 0)
+                if (speedfactors[minAccelIdx] == 0 || speedfactors[minAccelIdx] is float.NaN)
                 {
                     accelValues[i] = maxAccelValues[minAccelIdx];
                     decelValues[i] = maxDecelValues[minDecelIdx];
                 }
+
+                //accelValues[i] = speedfactors[i] == 0
+                //    ? 10000
+                //    : maxAccelValues[i] / speedfactors[i];
+                //decelValues[i] = stopfactors[i] == 0
+                //    ? 10000
+                //    : maxDecelValues[i] / stopfactors[i];
             }
 
             speedValuesOut = speedValues;

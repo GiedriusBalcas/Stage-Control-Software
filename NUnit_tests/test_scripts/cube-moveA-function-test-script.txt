@@ -1,0 +1,27 @@
+﻿width = 500;
+length = 150;
+height = 100;
+
+
+for( k=1; k<10; k++)
+{
+	for( i=1; i<10; i++)
+	{
+		direction = (-1)^i;
+		if(direction == 1)
+		{
+			shutter("s", 0);
+		}
+		else
+		{
+			shutter("s", 1);
+
+		}
+
+		xas = i*width/10 - width/2;
+		yas = direction*length/2;
+		zas = height/10*k;
+		moveA("xyz", xas, yas, zas);
+		
+	}
+}
