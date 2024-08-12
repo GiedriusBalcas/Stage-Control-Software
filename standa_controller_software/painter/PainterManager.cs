@@ -70,104 +70,7 @@ namespace standa_controller_software.painter
             return new RenderLayer(vertexShaderSource, fragmentShaderSource);
         }
 
-        public void UpdateCommandLayerCollection()
-        {
-            //  THIS AINT WORKING.
-
-            //_commandLayer.DisposeBuffers();
-            //_commandLayer.DisposeShaderProgram();
-            //_commandLayer.ClearCollections();
-
-            //_commandLayer.AddObjectCollection(_lineCollection);
-
-            //_commandLayer.InitializeCollections();
-            //_commandLayer.InitializeShaders();
-
-        }
-
-        //public void RenderLayers()
-        //{
-        //    foreach (var layer in _renderLayers)
-        //    {
-        //        layer.DrawLayer();
-        //    }
-        //}
-
-        //internal void UpdateCameraOrbitAngle(float dx, float dy)
-        //{
-        //    var sensitivity = .5f;
-        //    _camera.Yaw += dx * sensitivity;
-        //    _camera.Pitch += dy * sensitivity;
-
-        //    _refCamera.Yaw = _camera.Yaw;
-        //    _refCamera.Pitch = _camera.Pitch;
-
-        //    UpdateUniforms();
-        //}
-
-        //internal void UpdateCameraRefence(float dx, float dy)
-        //{
-        //    var sensitivity = 0.9f;
-        //    _camera.ReferencePosition += _camera.Up * sensitivity * dy * _camera.Distance;
-        //    _camera.ReferencePosition += _camera.Right * sensitivity * dx * _camera.Distance;
-        //    UpdateUniforms();
-        //}
-
-        //internal void UpdateCameraDistance(float dr)
-        //{
-        //    var sensitivity = 1f;
-        //    _camera.Distance -= dr * sensitivity;
-        //    UpdateUniforms();
-        //}
-
-        //internal void UpdateCameraSettings(float aspectRatio, float fovy)
-        //{
-        //    _camera.FovY = fovy;
-        //    _camera.AspectRatio = aspectRatio;
-
-        //    _refCamera.AspectRatio = aspectRatio;
-        //    UpdateUniforms();
-        //}
-
-        internal void ExecuteCameraViewXY()
-        {
-            _camera.Pitch = 90;
-            _camera.Yaw = 90;
-
-            _refCamera.Pitch = 90;
-            _refCamera.Yaw = 90;
-        }
-
-        internal void ExecuteCameraViewXZ()
-        {
-            _camera.Pitch = 0;
-            _camera.Yaw = 90;
-
-            _refCamera.Pitch = 0;
-            _refCamera.Yaw = 90;
-        }
-
-        internal void ExecuteCameraViewYZ()
-        {
-            _camera.Pitch = 0;
-            _camera.Yaw = 0;
-
-            _refCamera.Pitch = 0;
-            _refCamera.Yaw = 0;
-        }
-
-        internal void SnapObjectToFit()
-        {
-            var positions = new List<Vector3>();
-
-            positions.AddRange(_commandLayer.GetCollectionsVerteces()
-                .Select(vertex => new System.Numerics.Vector3(vertex.X, vertex.Y, vertex.Z))
-                );
-            
-            _camera.FitObject(positions);
-        }
-
-        public async Task PaintCommands()
+        public LineObjectCollection PaintCommands()
         {
             var rules = new Dictionary<Type, Type> { { typeof(BasePositionerController), typeof(PositionerController_Virtual) } };
             var controllerManager_virtual = _controllerManager.CreateACopy(rules);
@@ -175,19 +78,21 @@ namespace standa_controller_software.painter
 
             var commandLines = _commandManager.GetCommandQueueList();
             //var controllerManager = 
+            var renderObjects = new LineObjectCollection();
 
             foreach (var commandLine in commandLines)
             {
-                controllerManager_virtual.ToolInformation.RecalculateToolPosition();
-                var startPositions = controllerManager_virtual.ToolInformation.Position;
+                var startPositions = controllerManager_virtual.ToolInformation.CalculateToolPositionUpdate();
 
-                await commandManager_virtual.ExecuteCommandLine(commandLine);
+                commandManager_virtual.ExecuteCommandLine(commandLine).GetAwaiter().GetResult();
 
-                controllerManager_virtual.ToolInformation.RecalculateToolPosition();
-                var endPositions = controllerManager_virtual.ToolInformation.Position;
+                var endPositions = controllerManager_virtual.ToolInformation.CalculateToolPositionUpdate();
 
-                //drawLine(startPosition, endPosition);
+                if(endPositions != startPositions)
+                    renderObjects.AddLine(startPositions, endPositions, LineColor);
             }
+
+            return renderObjects;
         }
     }
 }

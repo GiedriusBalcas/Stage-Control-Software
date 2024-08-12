@@ -63,10 +63,8 @@ namespace standa_controller_software.custom_functions
                         TargetController = controller.Name,
                         TargetDevice = devNames[i].ToString()
                     };
-
-                if (_controllerManager.TryGetDevice<IPositionerDevice>(devNames[i].ToString(), out IPositionerDevice device))
-                    device.Position = positions[i];
             }
+
 
             for (int i = 0; i < devNames.Length; i++)
             {
@@ -88,6 +86,11 @@ namespace standa_controller_software.custom_functions
             _commandManager.EnqueueCommandLine(commandsMovementParameters);
             _commandManager.EnqueueCommandLine(commandsMovement);
             _commandManager.EnqueueCommandLine(commandsWaitForStop);
+
+            _commandManager.ExecuteCommandLine(commandsMovementParameters);
+            _commandManager.ExecuteCommandLine(commandsMovement);
+            _commandManager.ExecuteCommandLine(commandsWaitForStop);
+
 
             return null;
         }

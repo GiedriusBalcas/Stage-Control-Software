@@ -1,4 +1,6 @@
 ﻿moveA("xyz", 10,50,50);
+moveA("xyz", 60,60,60);
+moveA("xyz", 40,50,40);
 moveA("x", 0);
 moveA("y", 0);
 moveA("z", 0);

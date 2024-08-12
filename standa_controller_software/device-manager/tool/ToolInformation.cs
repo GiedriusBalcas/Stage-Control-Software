@@ -10,7 +10,7 @@ namespace standa_controller_software.device_manager
 {
     public class ToolInformation
     {
-        private readonly Func<Dictionary<string, float>, Vector3> _positionCalcFunctions;
+        public Func<Dictionary<string, float>, Vector3> PositionCalcFunctions {  get; private set; }
         private readonly IShutterDevice _shutterDevice;
         private List<IPositionerDevice> _positionerDevices = new List<IPositionerDevice>();
         private Vector3 _position;
@@ -42,7 +42,7 @@ namespace standa_controller_software.device_manager
 
         public ToolInformation(IEnumerable<IPositionerDevice> positioners, IShutterDevice shutterDevice, Func<Dictionary<string, float>, Vector3> positionCalculationFunctions)
         {
-            _positionCalcFunctions = positionCalculationFunctions;
+            PositionCalcFunctions = positionCalculationFunctions;
             foreach (var positioner in positioners)
             {
                 _positionerDevices.Add(positioner);
@@ -73,20 +73,21 @@ namespace standa_controller_software.device_manager
             var devicePositions = new Dictionary<string, float>();
             _positionerDevices.ForEach(device => devicePositions[device.Name] = device.Position);
 
-            Position = _positionCalcFunctions(devicePositions);
+            Position = PositionCalcFunctions(devicePositions);
         }
 
-        public Vector3 CalculateToolPositionUpdate(Dictionary<string, float> newPositions)
+        public Vector3 CalculateToolPositionUpdate(Dictionary<string, float> newPositions = null)
         {
             var devicePositions = new Dictionary<string, float>();
             _positionerDevices.ForEach(device => devicePositions[device.Name] = device.Position);
 
-            foreach (var entry in newPositions)
-            {
-                devicePositions[entry.Key] = entry.Value;
+            if(newPositions is not null) { 
+                foreach (var entry in newPositions)
+                {
+                    devicePositions[entry.Key] = entry.Value;
+                }
             }
-
-            var positionResult = _positionCalcFunctions(devicePositions);
+            var positionResult = PositionCalcFunctions(devicePositions);
 
             return positionResult;
         }
@@ -99,7 +100,7 @@ namespace standa_controller_software.device_manager
                 devicePositions[entry.Key] = entry.Value;
             }
 
-            var positionResult = _positionCalcFunctions(devicePositions);
+            var positionResult = PositionCalcFunctions(devicePositions);
 
             return positionResult;
         }

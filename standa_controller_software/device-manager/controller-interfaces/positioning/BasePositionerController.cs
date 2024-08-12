@@ -82,7 +82,12 @@ namespace standa_controller_software.device_manager.controller_interfaces
 
         public abstract Task UpdateStateAsync(ConcurrentQueue<string> log);
 
-        protected abstract Task MoveAbsolute(Command command, IPositionerDevice device, CancellationToken cancellationToken);
+        protected virtual Task MoveAbsolute(Command command, IPositionerDevice device, CancellationToken cancellationToken) 
+        {
+            device.Position = (float)command.Parameters[0];
+
+            return Task.CompletedTask;
+        }
         protected abstract Task UpdateMoveSettings(Command command, IPositionerDevice device, CancellationToken cancellationToken);
         protected abstract Task WaitUntilStop(Command command, IPositionerDevice device, CancellationToken cancellationToken);
 

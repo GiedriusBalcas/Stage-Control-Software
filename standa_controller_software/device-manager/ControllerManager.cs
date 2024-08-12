@@ -1,5 +1,6 @@
 ﻿using standa_controller_software.device_manager.controller_interfaces;
 using standa_controller_software.device_manager.devices;
+using standa_controller_software.device_manager.devices.shutter;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -74,10 +75,7 @@ namespace standa_controller_software.device_manager
 
         public ControllerManager CreateACopy(Dictionary<Type, Type> typeConversionDictionary = null)
         {
-            var controllerManager = new ControllerManager
-            {
-                ToolInformation = this.ToolInformation // Assuming ToolInformation can be shared or deep-copied as needed
-            };
+            var controllerManager = new ControllerManager();
 
             foreach (var controllerEntry in Controllers)
             {
@@ -85,18 +83,26 @@ namespace standa_controller_software.device_manager
                 var originalType = originalController.GetType();
                 Type newType = originalType;
 
-                // Check if there's a replacement type in the dictionary
-                if (typeConversionDictionary != null && typeConversionDictionary.TryGetValue(originalType, out var replacementType))
+                // Check if there's a replacement type in the dictionary for the exact type or any of its base types
+                if (typeConversionDictionary != null)
                 {
-                    newType = replacementType;
+                    foreach (var kvp in typeConversionDictionary)
+                    {
+                        if (kvp.Key.IsAssignableFrom(originalType))
+                        {
+                            newType = kvp.Value;
+                            break;
+                        }
+                    }
                 }
 
                 // Create a new instance of the replacement type or the original type
                 IController newController;
                 if (newType != originalType)
                 {
-                    // Assume a constructor that takes the original controller as a parameter
+                    // Assume a constructor that takes the original controller's name as a parameter
                     newController = Activator.CreateInstance(newType, controllerEntry.Value.Name) as IController;
+
                     var devices = controllerEntry.Value.GetDevices();
                     foreach (var device in devices)
                     {
@@ -112,19 +118,17 @@ namespace standa_controller_software.device_manager
 
                 if (newController is not null)
                 {
-                    // Add all the devices. DOES THE SAME INSIDE CONTROLLER.
-                    //foreach (var device in controllerEntry.Value.GetDevices())
-                    //{
-                    //    var deviceCopy = device.GetCopy();
-                    //    newController.AddDevice(deviceCopy);
-                    //}
-
                     // Add the new controller to the new manager
                     controllerManager.AddController(newController);
                 }
                 else
-                    throw new NullReferenceException($"Null encountered when trying to make a copy of a controller {controllerEntry.Value.Name}");
+                {
+                    throw new NullReferenceException($"Null encountered when trying to make a copy of controller {controllerEntry.Value.Name}");
+                }
             }
+
+            var toolInfo = new ToolInformation(controllerManager.GetDevices<IPositionerDevice>(), new ShutterDevice_Virtual("s"), this.ToolInformation.PositionCalcFunctions);
+            controllerManager.ToolInformation = toolInfo;
 
             return controllerManager;
         }

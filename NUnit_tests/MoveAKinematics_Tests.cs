@@ -82,7 +82,7 @@ namespace NUnit_tests
             var commandManager_virtual = new CommandManager(controllerManager_virtual);
             
             _definitions = new Definitions();
-            _definitions.AddFunction("moveA", new MoveAbsolutePositionFunction(_commandManager, controllerManager_virtual));
+            _definitions.AddFunction("moveA", new MoveAbsolutePositionFunction(commandManager_virtual, controllerManager_virtual));
             _definitions.AddVariable("PI", (float)Math.PI);
 
             // Set-up text interpreter
@@ -109,10 +109,15 @@ namespace NUnit_tests
 
             Console.WriteLine("Before Starting:");
 
-            var queuelog = _commandManager.GetCommandQueueAsString();
+            var queuelog = commandManager_virtual.GetCommandQueueAsString();
 
-            Console.WriteLine(_commandManager.GetCommandQueueAsString());
-            
+            Console.WriteLine(commandManager_virtual.GetCommandQueueAsString());
+
+
+            foreach (var commandLine in commandManager_virtual.GetCommandQueueList())
+            {
+                _commandManager.EnqueueCommandLine(commandLine);
+            }
             Task.Run(() => _commandManager.UpdateStatesAsync());
             _commandManager.Start();
 
