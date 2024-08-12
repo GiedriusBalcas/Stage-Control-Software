@@ -66,14 +66,23 @@ namespace NUnit_tests
             var toolInfo = new ToolInformation(_controllerManager.GetDevices<IPositionerDevice>(), new ShutterDevice_Virtual("s"), toolPositionFunctionX);
             _controllerManager.ToolInformation = toolInfo;
 
-            var rules = new Dictionary<Type, Type>{ { typeof(BasePositionerController), typeof(PositionerController_Virtual) } };
-            var controllerManagerForReading = _controllerManager.CreateACopy(rules);
+
 
             // Set-up command manager and definitions
             _commandManager = new CommandManager(_controllerManager);
 
+            
+        }
+
+        [Test]
+        public void XYPositioningTest_Test()
+        {
+            var rules = new Dictionary<Type, Type> { { typeof(BasePositionerController), typeof(PositionerController_Virtual) } };
+            var controllerManager_virtual = _controllerManager.CreateACopy(rules);
+            var commandManager_virtual = new CommandManager(controllerManager_virtual);
+            
             _definitions = new Definitions();
-            _definitions.AddFunction("moveA", new MoveAbsolutePositionFunction(_commandManager, controllerManagerForReading));
+            _definitions.AddFunction("moveA", new MoveAbsolutePositionFunction(_commandManager, controllerManager_virtual));
             _definitions.AddVariable("PI", (float)Math.PI);
 
             // Set-up text interpreter
@@ -81,11 +90,7 @@ namespace NUnit_tests
             {
                 DefinitionLibrary = _definitions
             };
-        }
 
-        [Test]
-        public void XYPositioningTest_Test()
-        {
             string filePath = Path.Combine(TestContext.CurrentContext.TestDirectory, "test_scripts", "moveA-function-test-script.txt");
             string fileContent = File.ReadAllText(filePath);
 
@@ -104,19 +109,19 @@ namespace NUnit_tests
 
             Console.WriteLine("Before Starting:");
 
-            var queuelog = _commandManager.GetCommandQueue();
+            var queuelog = _commandManager.GetCommandQueueAsString();
 
-            Console.WriteLine(_commandManager.GetCommandQueue());
+            Console.WriteLine(_commandManager.GetCommandQueueAsString());
             
             Task.Run(() => _commandManager.UpdateStatesAsync());
             _commandManager.Start();
 
 
-            var currentQueue = _commandManager.GetCommandQueue();
+            var currentQueue = _commandManager.GetCommandQueueAsString();
             while (_commandManager.CurrentState == CommandManagerState.Processing)
             {
                 Thread.Sleep(100);
-                currentQueue = _commandManager.GetCommandQueue();
+                currentQueue = _commandManager.GetCommandQueueAsString();
 
                 var posX = _controllerManager.TryGetDevice<IPositionerDevice>("x", out IPositionerDevice deviceX)? deviceX.Position : 0;
                 var posY = _controllerManager.TryGetDevice<IPositionerDevice>("y", out IPositionerDevice deviceY)? deviceY.Position : 0;
@@ -125,7 +130,7 @@ namespace NUnit_tests
             }
 
             Console.WriteLine("After Starting:");
-            Console.WriteLine(_commandManager.GetCommandQueue());
+            Console.WriteLine(_commandManager.GetCommandQueueAsString());
 
             Console.WriteLine("Log:");
 

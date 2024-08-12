@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\openTK_painter\opentk_painter_library.csproj" />
     <ProjectReference Include="..\text_parser_library\text_parser_library.csproj" />
   </ItemGroup>
 

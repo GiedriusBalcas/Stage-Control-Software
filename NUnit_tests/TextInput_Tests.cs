@@ -2,7 +2,7 @@ using text_parser_library;
 
 namespace NUnit_tests
 {
-    public class Tests
+    public class TextInput_Tests
     {
         [SetUp]
         public void Setup()

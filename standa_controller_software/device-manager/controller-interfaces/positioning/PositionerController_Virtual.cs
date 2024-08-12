@@ -41,8 +41,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
             public uint MoveStatus { get; set; } = 0;
         }
         private ConcurrentDictionary<string, DeviceInformation> _deviceInfo = new ConcurrentDictionary<string, DeviceInformation>();
-        // name | id
-        private Dictionary<string, string> _deviceIDs;
+        
         //---------------------------------------------------
 
 

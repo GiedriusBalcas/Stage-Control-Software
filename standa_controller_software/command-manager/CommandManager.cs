@@ -71,7 +71,7 @@ namespace standa_controller_software.command_manager
             }
         }
 
-        private Task ExecuteCommandLine(Command[] commands)
+        public Task ExecuteCommandLine(Command[] commands)
         {
             var tasks = new List<Task>();
 
@@ -147,11 +147,6 @@ namespace standa_controller_software.command_manager
             }
         }
 
-        public async Task ExecuteSingleCommandLine(Command[] commands)
-        {
-            await ExecuteCommandLine(commands);
-        }
-
         public void StopDequeuing()
         {
             _running = false;
@@ -164,7 +159,7 @@ namespace standa_controller_software.command_manager
             CurrentState = CommandManagerState.Waiting;
         }
 
-        public string GetCommandQueue()
+        public string GetCommandQueueAsString()
         {
             var csvStringBuilder = new StringBuilder();
             var queueSnapshot = _commandQueue.ToArray();
@@ -191,12 +186,10 @@ namespace standa_controller_software.command_manager
             return csvStringBuilder.ToString();
         }
 
-        public void SendCommandQueueCopy(CommandManager commandManager)
+        public IEnumerable<Command[]> GetCommandQueueList()
         {
-            foreach (var commandLine in _commandQueue)
-            {
-                commandManager.EnqueueCommandLine(commandLine);
-            }
+            return [.. _commandQueue];
         }
+
     }
 }
