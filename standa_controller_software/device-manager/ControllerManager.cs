@@ -43,7 +43,7 @@ namespace standa_controller_software.device_manager
             return (TController)selectedController;
         }
 
-        public bool TryGetDevice<TDevice>(string name, out TDevice? device) where TDevice : class, IDevice
+        public bool TryGetDevice<TDevice>(string name, out TDevice device) where TDevice : class, IDevice
         {
             device = Controllers.Values
                 .SelectMany(controller => controller.GetDevices())
@@ -51,6 +51,17 @@ namespace standa_controller_software.device_manager
                 .FirstOrDefault(device => device.Name == name);
 
             return device is not null;
+        }
+
+        public bool TryGetDeviceController<TController>(string name, out TController selectedController) where TController : class, IController
+        {
+            var correctTypeControllers = Controllers.Values.OfType<TController>();
+
+            selectedController = correctTypeControllers
+                .FirstOrDefault(controller => controller.GetDevices().Any(dev => dev.Name == name));
+
+
+            return selectedController != null;
         }
 
         public List<TDevice> GetDevices<TDevice>() where TDevice : class, IDevice

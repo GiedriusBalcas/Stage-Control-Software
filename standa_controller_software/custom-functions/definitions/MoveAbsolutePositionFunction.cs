@@ -85,9 +85,9 @@ namespace standa_controller_software.custom_functions
                     };
             }
 
-            _commandManager.EnqueueCommands(commandsMovementParameters);
-            _commandManager.EnqueueCommands(commandsMovement);
-            _commandManager.EnqueueCommands(commandsWaitForStop);
+            _commandManager.EnqueueCommandLine(commandsMovementParameters);
+            _commandManager.EnqueueCommandLine(commandsMovement);
+            _commandManager.EnqueueCommandLine(commandsWaitForStop);
 
             return null;
         }

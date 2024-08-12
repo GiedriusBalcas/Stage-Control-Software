@@ -34,7 +34,7 @@ namespace standa_controller_software.command_manager
             }
         }
 
-        public void EnqueueCommands(Command[] commands)
+        public void EnqueueCommandLine(Command[] commands)
         {
             _commandQueue.Enqueue(commands);
         }
@@ -195,7 +195,7 @@ namespace standa_controller_software.command_manager
         {
             foreach (var commandLine in _commandQueue)
             {
-                commandManager.EnqueueCommands(commandLine);
+                commandManager.EnqueueCommandLine(commandLine);
             }
         }
     }

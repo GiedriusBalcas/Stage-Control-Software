@@ -124,20 +124,35 @@ namespace standa_controller_software.device_manager.controller_interfaces
                 // check if moving to the target direction || not moving
                 if (directionToTarget() == Math.Sign(_deviceInfo[name].CurrentSpeed) || _deviceInfo[name].CurrentSpeed == 0)
                 {
-                    // 
-                    if (Math.Abs( pointDifference() - movementPerInterval() ) < distanceToStop())
+                    // check if we are in the range of stopping
+                    if (Math.Abs(pointDifference() - movementPerInterval()) < distanceToStop())
                     {
-                        updatedSpeedValue = Math.Abs(_deviceInfo[name].CurrentSpeed) < decelerationPerInterval()
-                            ? 0
-                            : _deviceInfo[name].CurrentSpeed - decelerationPerInterval() * Math.Sign(_deviceInfo[name].CurrentSpeed);
+
+                        if (Math.Abs(_deviceInfo[name].CurrentSpeed) < decelerationPerInterval())
+                        {
+                            updatedSpeedValue = 0;
+                            break;
+                        }
+                        // slowing down and approaching the target point.
+                        else
+                            updatedSpeedValue = _deviceInfo[name].CurrentSpeed - decelerationPerInterval() * Math.Sign(_deviceInfo[name].CurrentSpeed);
                     }
+                    // we are good to go, no need to decelerate to a stop.
+                    // we might still be going too fast though.
                     else
                     {
-                        updatedSpeedValue = Math.Abs(_deviceInfo[name].CurrentSpeed) < _deviceInfo[name].Speed 
-                            ? _deviceInfo[name].CurrentSpeed + accelerationPerInterval() * Math.Sign(pointDifference()) 
-                            : _deviceInfo[name].CurrentSpeed - decelerationPerInterval() * Math.Sign(pointDifference());
+                        if (_deviceInfo[name].CurrentSpeed > _deviceInfo[name].Speed)
+                            updatedSpeedValue = _deviceInfo[name].CurrentSpeed - decelerationPerInterval() * Math.Sign(pointDifference());
+                        else if (_deviceInfo[name].CurrentSpeed < _deviceInfo[name].Speed)
+                            updatedSpeedValue = _deviceInfo[name].CurrentSpeed + accelerationPerInterval() * Math.Sign(pointDifference()) > _deviceInfo[name].Speed
+                                ? _deviceInfo[name].Speed
+                                : _deviceInfo[name].CurrentSpeed + accelerationPerInterval() * Math.Sign(pointDifference());
+                        else
+                            updatedSpeedValue = _deviceInfo[name].Speed;
+
                     }
                 }
+                // moving to the wrong direction.
                 else
                 {
                     updatedSpeedValue = Math.Abs(_deviceInfo[name].CurrentSpeed) - decelerationPerInterval() * Math.Sign(_deviceInfo[name].CurrentSpeed) > distanceToTarget()
@@ -155,7 +170,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
 
                 _deviceInfo[name].CurrentPosition = float.IsFinite(updatedPositionValue) ? updatedPositionValue : 0;
 
-                await Task.Delay(updateInterval, cancellationToken);
+                await Task.Delay(updateInterval - 1, cancellationToken);
             }
 
             _deviceInfo[name].CurrentPosition = targetPosition;
