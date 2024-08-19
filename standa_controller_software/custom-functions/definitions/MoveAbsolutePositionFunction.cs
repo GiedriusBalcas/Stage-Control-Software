@@ -27,11 +27,14 @@ namespace standa_controller_software.custom_functions
             Command[] commandsMovementParameters = new Command[devNames.Length];
             Command[] commandsMovement = new Command[devNames.Length];
             Command[] commandsWaitForStop = new Command[devNames.Length];
-            var trajectorySpeed = 100000f;
+            var trajectorySpeed = 1000f;
 
 
-            CustomFunctionHelper.GetLineKinParameters(devNames, positions, trajectorySpeed, _controllerManager, out float[] speedValuesOut, out float[] accelValuesOut, out float[] decelValuesOut, out float allocatedTime);
+            //CustomFunctionHelper.GetLineKinParameters(devNames, positions, trajectorySpeed, _controllerManager, out float[] speedValuesOut, out float[] accelValuesOut, out float[] decelValuesOut, out float allocatedTime);
 
+            if (!CustomFunctionHelper.TryGetLineKinParameters(devNames, positions, trajectorySpeed, _controllerManager, out float[] speedValuesOut, out float[] accelValuesOut, out float[] decelValuesOut, out float allocatedTime))
+                return null;
+            
             for (int i = 0; i < devNames.Length; i++)
             {
                 if (float.IsNaN(speedValuesOut[i]) || float.IsNaN(accelValuesOut[i]) || float.IsNaN(decelValuesOut[i]))
@@ -58,7 +61,7 @@ namespace standa_controller_software.custom_functions
                     {
                         Action = "MoveAbsolute",
                         //Await = i == devNames.Length - 1,
-                        Await = true,
+                        Await = false,
                         Parameters = [positions[i]],
                         TargetController = controller.Name,
                         TargetDevice = devNames[i].ToString()

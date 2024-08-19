@@ -92,7 +92,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
 
         private async Task UpdateWaitUntilStop(string name, CancellationToken cancellationToken)
         {
-            while (_deviceInfo[name].CurrentSpeed != 0)
+            while (_deviceInfo[name].MoveStatus != 0)
             {
                 await Task.Delay(5, cancellationToken);
             }
@@ -109,7 +109,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
             if (!float.IsFinite(targetPosition))
                 throw new Exception("Non finite target position value provided");
 
-            _deviceInfo[name].MoveStatus = 10;
+            _deviceInfo[name].MoveStatus = 1;
 
             var movementPerInterval = () => (float)updateInterval / 1000 * _deviceInfo[name].CurrentSpeed;
             var accelerationPerInterval = () => (float)updateInterval / 1000 * _deviceInfo[name].Acceleration;
@@ -125,7 +125,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
                 if (directionToTarget() == Math.Sign(_deviceInfo[name].CurrentSpeed) || _deviceInfo[name].CurrentSpeed == 0)
                 {
                     // check if we are in the range of stopping
-                    if (Math.Abs( pointDifference() - movementPerInterval() ) < distanceToStop())
+                    if (Math.Abs( pointDifference()) < distanceToStop())
                     {
 
                         if (Math.Abs(_deviceInfo[name].CurrentSpeed) < decelerationPerInterval())
@@ -138,17 +138,23 @@ namespace standa_controller_software.device_manager.controller_interfaces
                             updatedSpeedValue = _deviceInfo[name].CurrentSpeed - decelerationPerInterval() * Math.Sign(_deviceInfo[name].CurrentSpeed);
                     }
                     // we are good to go, no need to decelerate to a stop.
+                    // moving to the target direction.
                     // we might still be going too fast though.
                     else
                     {
-                        if (_deviceInfo[name].CurrentSpeed > _deviceInfo[name].Speed)
-                            updatedSpeedValue = _deviceInfo[name].CurrentSpeed - decelerationPerInterval() * Math.Sign(pointDifference());
-                        else if (_deviceInfo[name].CurrentSpeed < _deviceInfo[name].Speed)
-                            updatedSpeedValue = _deviceInfo[name].CurrentSpeed + accelerationPerInterval() * Math.Sign(pointDifference()) > _deviceInfo[name].Speed 
-                                ? _deviceInfo[name].Speed 
-                                : _deviceInfo[name].CurrentSpeed + accelerationPerInterval() * Math.Sign(pointDifference());
+                        // moving too fast than target speed. 
+                        if (Math.Abs(_deviceInfo[name].CurrentSpeed) > _deviceInfo[name].Speed)
+                            updatedSpeedValue = Math.Abs(_deviceInfo[name].CurrentSpeed - decelerationPerInterval() * Math.Sign(pointDifference())) < _deviceInfo[name].Speed
+                                ? _deviceInfo[name].Speed * Math.Sign(pointDifference())
+                                : _deviceInfo[name].CurrentSpeed - decelerationPerInterval() * Math.Sign(pointDifference());
+
+                        // moving too slow than target speed.
                         else
-                            updatedSpeedValue = _deviceInfo[name].Speed;
+                            updatedSpeedValue = Math.Abs(_deviceInfo[name].CurrentSpeed + accelerationPerInterval() * Math.Sign(pointDifference())) > _deviceInfo[name].Speed
+                                ? _deviceInfo[name].Speed * Math.Sign(pointDifference())
+                                : _deviceInfo[name].CurrentSpeed + accelerationPerInterval() * Math.Sign(pointDifference());
+                        
+                        
                         
                     }
                 }
@@ -182,11 +188,17 @@ namespace standa_controller_software.device_manager.controller_interfaces
         {
             foreach (var positioner in Devices)
             {
-                positioner.Value.Position = _deviceInfo[positioner.Key].CurrentPosition;
-                positioner.Value.Speed = _deviceInfo[positioner.Key].CurrentSpeed;
-                log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, Position: {positioner.Value.Position}");
+                positioner.Value.CurrentPosition = _deviceInfo[positioner.Key].CurrentPosition;
+                positioner.Value.CurrentSpeed = _deviceInfo[positioner.Key].CurrentSpeed;
+                positioner.Value.Acceleration = _deviceInfo[positioner.Key].Acceleration;
+                positioner.Value.Deceleration= _deviceInfo[positioner.Key].Deceleration;
+                positioner.Value.Speed = _deviceInfo[positioner.Key].Speed;
+                positioner.Value.MaxAcceleration = _deviceInfo[positioner.Key].MaxAcceleration;
+                positioner.Value.MaxDeceleration = _deviceInfo[positioner.Key].MaxDeceleration;
+
+                log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
             }
-            await Task.Delay(1);
+            await Task.Delay(10);
         }
 
         public override IController GetCopy()

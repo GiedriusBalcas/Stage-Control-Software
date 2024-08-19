@@ -41,7 +41,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
         {
             if (Devices.TryGetValue(command.TargetDevice, out IPositionerDevice device))
             {
-                log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {command.Action} command on device {device.Name}");
+                log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {command.Action} command on device {device.Name}, parameters: {string.Join(" ", command.Parameters)}");
 
                 var tokenSource = new CancellationTokenSource();
 
@@ -66,8 +66,8 @@ namespace standa_controller_software.device_manager.controller_interfaces
                 {
                     throw new InvalidOperationException("Invalid action");
                 }
-
-                log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Completed {command.Action} command on device {device.Name}, New Position: {device.Position}");
+                if (command.Await)
+                    log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Completed {command.Action} command on device {device.Name}");
             }
             else
             {
@@ -84,7 +84,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
 
         protected virtual Task MoveAbsolute(Command command, IPositionerDevice device, CancellationToken cancellationToken) 
         {
-            device.Position = (float)command.Parameters[0];
+            device.CurrentPosition = (float)command.Parameters[0];
 
             return Task.CompletedTask;
         }

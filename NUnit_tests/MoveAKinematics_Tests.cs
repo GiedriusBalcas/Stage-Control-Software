@@ -42,9 +42,9 @@ namespace NUnit_tests
             _controllerManager = new ControllerManager();
 
             var controller = new PositionerController_Virtual("FirstController");
-            var deviceX = new LinearPositionerDevice("x") { Acceleration = 10000000, Deceleration = 10000000, MaxAcceleration = 20000000, MaxDeceleration = 4000000000, MaxSpeed = 20000000, Position = 0, Speed = 2000000 };
-            var deviceY = new LinearPositionerDevice("y") { Acceleration = 100000, Deceleration = 1000, MaxAcceleration = 2000, MaxDeceleration = 400000, MaxSpeed = 2000, Position = 0, Speed = 2000 }; ;
-            var deviceZ = new LinearPositionerDevice("z") { Acceleration = 100000, Deceleration = 1000, MaxAcceleration = 2000, MaxDeceleration = 400000, MaxSpeed = 2000, Position = 0, Speed = 2000 }; ;
+            var deviceX = new LinearPositionerDevice("x") { Acceleration = 10000000, Deceleration = 10000000, MaxAcceleration = 20000000, MaxDeceleration = 4000000000, MaxSpeed = 1000000000, Speed = 20000000, CurrentPosition = 0, CurrentSpeed = 0 };
+            var deviceY = new LinearPositionerDevice("y") { Acceleration = 100000, Deceleration = 1000, MaxAcceleration = 2000, MaxDeceleration = 400000, MaxSpeed = 10000, Speed = 2000, CurrentPosition = 0, CurrentSpeed = 0 }; ;
+            var deviceZ = new LinearPositionerDevice("z") { Acceleration = 100000, Deceleration = 1000, MaxAcceleration = 2000, MaxDeceleration = 400000, MaxSpeed = 10000, Speed = 2000, CurrentPosition = 0, CurrentSpeed = 0 }; ;
 
             var controller2 = new PositionerController_Virtual("SecondController");
             controller.AddDevice(deviceX);
@@ -128,9 +128,9 @@ namespace NUnit_tests
                 Thread.Sleep(100);
                 currentQueue = _commandManager.GetCommandQueueAsString();
 
-                var posX = _controllerManager.TryGetDevice<IPositionerDevice>("x", out IPositionerDevice deviceX)? deviceX.Position : 0;
-                var posY = _controllerManager.TryGetDevice<IPositionerDevice>("y", out IPositionerDevice deviceY)? deviceY.Position : 0;
-                var posZ = _controllerManager.TryGetDevice<IPositionerDevice>("z", out IPositionerDevice deviceZ)? deviceZ.Position : 0;
+                var posX = _controllerManager.TryGetDevice<IPositionerDevice>("x", out IPositionerDevice deviceX)? deviceX.CurrentPosition : 0;
+                var posY = _controllerManager.TryGetDevice<IPositionerDevice>("y", out IPositionerDevice deviceY)? deviceY.CurrentPosition : 0;
+                var posZ = _controllerManager.TryGetDevice<IPositionerDevice>("z", out IPositionerDevice deviceZ)? deviceZ.CurrentPosition : 0;
                 Console.WriteLine($"x: {posX} \t y: {posY} \t z: {posZ}");
             }
 

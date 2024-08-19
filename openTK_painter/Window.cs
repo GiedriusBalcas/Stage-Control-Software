@@ -19,13 +19,13 @@ namespace opentk_painter_library
         private bool _isRightMousePressed;
 
         private float _mouseSensitivity = 0.1f;
-        private float _zoomSensitivity = 1f;
+        private float _zoomSensitivity = 10f;
 
         public Window(List<RenderLayer> renderLayer, int width = 1280, int height = 768, string title = "Game1")
             : base(
                   new GameWindowSettings
                   {
-                      UpdateFrequency = 25.0, // Update frequency to match render frequency
+                      UpdateFrequency = 140.0, // Update frequency to match render frequency
                   },
                   new NativeWindowSettings()
                   {

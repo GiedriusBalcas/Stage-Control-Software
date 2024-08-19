@@ -73,7 +73,7 @@ namespace standa_controller_software.device_manager
         public void RecalculateToolPosition()
         {
             var devicePositions = new Dictionary<string, float>();
-            _positionerDevices.ForEach(device => devicePositions[device.Name] = device.Position);
+            _positionerDevices.ForEach(device => devicePositions[device.Name] = device.CurrentPosition);
 
             Position = PositionCalcFunctions(devicePositions);
         }
@@ -81,7 +81,7 @@ namespace standa_controller_software.device_manager
         public Vector3 CalculateToolPositionUpdate(Dictionary<string, float> newPositions = null)
         {
             var devicePositions = new Dictionary<string, float>();
-            _positionerDevices.ForEach(device => devicePositions[device.Name] = device.Position);
+            _positionerDevices.ForEach(device => devicePositions[device.Name] = device.CurrentPosition);
 
             if(newPositions is not null) { 
                 foreach (var entry in newPositions)

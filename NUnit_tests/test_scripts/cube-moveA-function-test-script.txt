@@ -2,10 +2,14 @@
 length = 150;
 height = 100;
 
+kiekx = 10;
+kiekz = 5;
 
-for( k=1; k<10; k++)
+
+
+for( k=1; k<kiekz; k++)
 {
-	for( i=1; i<10; i++)
+	for( i=1; i<kiekx; i++)
 	{
 		direction = (-1)^i;
 		if(direction == 1)
@@ -18,9 +22,9 @@ for( k=1; k<10; k++)
 
 		}
 
-		xas = i*width/10 - width/2;
+		xas = i*width/kiekx - width/2;
 		yas = direction*length/2;
-		zas = height/10*k;
+		zas = height/kiekz*k;
 		moveA("xyz", xas, yas, zas);
 		
 	}
