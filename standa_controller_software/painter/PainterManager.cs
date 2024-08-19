@@ -118,23 +118,31 @@ namespace standa_controller_software.painter
             var commandLines = _commandManager.GetCommandQueueList();
             //var controllerManager = 
             var renderObjects = new LineObjectCollection();
-
+            
+            bool wasEngaged = false;
+            controllerManager_virtual.ToolInformation.EngagedStateChanged += () => wasEngaged = true;
             foreach (var commandLine in commandLines)
             {
+                wasEngaged = false;
                 var startPositions = controllerManager_virtual.ToolInformation.CalculateToolPositionUpdate();
-                var lineColor = controllerManager_virtual.ToolInformation.IsOn
-                    ? new Vector4(1, 0, 0, 1)
-                    : new Vector4(1, 1, 0, 1);
-
                 commandManager_virtual.ExecuteCommandLine(commandLine).GetAwaiter().GetResult();
 
                 var endPositions = controllerManager_virtual.ToolInformation.CalculateToolPositionUpdate();
+                
+                var lineColor = wasEngaged
+                    ? new Vector4(1, 0, 0, 1)
+                    : new Vector4(1, 1, 0, 1);
 
                 if(endPositions != startPositions)
                     renderObjects.AddLine(startPositions, endPositions, lineColor);
             }
 
             return renderObjects;
+        }
+
+        private void ToolInformation_EngagedStateChanged()
+        {
+            throw new NotImplementedException();
         }
     }
 }

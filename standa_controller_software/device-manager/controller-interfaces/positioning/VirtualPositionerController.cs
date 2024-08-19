@@ -87,12 +87,13 @@ namespace standa_controller_software.device_manager.controller_interfaces
             await UpdateMovementSettings(device.Name, speedValue, accelValue, decelValue, cancellationToken);
         }
 
-        private async Task UpdateMovementSettings(string name, float speedValue, float accelValue, float decelValue, CancellationToken cancellationToken)
+        private Task UpdateMovementSettings(string name, float speedValue, float accelValue, float decelValue, CancellationToken cancellationToken)
         {
-            await Task.Delay(1);
             _deviceInfo[name].Speed = speedValue;
             _deviceInfo[name].Acceleration = accelValue;
             _deviceInfo[name].Deceleration = decelValue;
+
+            return Task.CompletedTask;
         }
 
         protected override async Task WaitUntilStop(Command command, IPositionerDevice device, CancellationToken cancellationToken)
@@ -104,7 +105,8 @@ namespace standa_controller_software.device_manager.controller_interfaces
         {
             while (_deviceInfo[name].MoveStatus != 0)
             {
-                await Task.Delay(1, cancellationToken);
+                //await Task.Delay(1, cancellationToken);
+                await Task.Yield();
             }
         }
 

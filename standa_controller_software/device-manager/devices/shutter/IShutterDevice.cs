@@ -13,6 +13,6 @@ namespace standa_controller_software.device_manager.devices
         public int DelayOff { get; set; }
         public bool IsOn { get; set; }
 
-        public event EventHandler? StateChanged;
+        public event Action? StateChanged;
     }
 }

@@ -27,9 +27,12 @@ namespace standa_controller_software.custom_functions
                 throw new ArgumentException("Argument pasrsing was unsuccesfull. Wrong types.");
 
             Command[] commandsMovementParameters = new Command[devNames.Length];
-            Command[] commandsMovement = new Command[devNames.Length];
+            Command[] commandsMovement;
+            if (this.TryGetProperty("Shutter", out object isOn))
+                commandsMovement = (bool)isOn ? new Command[devNames.Length + 1] : new Command[devNames.Length];
+            else
+                commandsMovement = new Command[devNames.Length];
             Command[] commandsWaitForStop = new Command[devNames.Length];
-            Command[] commandsChangeStateOnInterval = new Command[1];
 
 
             this.TryGetProperty("Speed", out object trajSpeed);
@@ -87,9 +90,8 @@ namespace standa_controller_software.custom_functions
                         TargetDevice = devNames[i].ToString()
                     };
             }
-            _commandManager.EnqueueCommandLine(commandsMovement);
 
-            if (this.TryGetProperty("Shutter", out object isOn))
+            if ((bool)isOn)
             {
                 var shutterDevice = _controllerManager.GetDevices<IShutterDevice>().FirstOrDefault();
                 if (shutterDevice is null)
@@ -97,7 +99,7 @@ namespace standa_controller_software.custom_functions
 
                 var controller = _controllerManager.GetDeviceController<BaseShutterController>(shutterDevice.Name);
 
-                commandsChangeStateOnInterval[0] =
+                commandsMovement[commandsMovement.Length-1] = 
                     new Command()
                     {
                         Action = CommandDefinitionsLibrary.ChangeShutterStateOnInterval.ToString(),
@@ -106,8 +108,9 @@ namespace standa_controller_software.custom_functions
                         TargetController = controller.Name,
                         TargetDevice = shutterDevice.Name
                     };
-            _commandManager.EnqueueCommandLine(commandsChangeStateOnInterval);
+                
             }
+            _commandManager.EnqueueCommandLine(commandsMovement);
 
 
             for (int i = 0; i < devNames.Length; i++)

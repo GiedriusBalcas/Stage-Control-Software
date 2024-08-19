@@ -2,10 +2,10 @@
 length = 150;
 height = 100;
 
-kiekx = 10;
-kiekz = 10;
+kiekx = 1000;
+kiekz = 100;
 
-moveA.Speed = 100;
+moveA.Speed = 100000000;
 
 
 for( k=1; k<kiekz; k++)
@@ -13,6 +13,7 @@ for( k=1; k<kiekz; k++)
 	for( i=1; i<kiekx; i++)
 	{
 		direction = (-1)^i;
+		
 		if(direction == 1)
 		{
 			moveA.Shutter(true);

@@ -118,7 +118,7 @@ class Program
         Console.WriteLine("Log:");
         while (_commandManager.CurrentState == CommandManagerState.Processing)
         {
-            Thread.Sleep(100);
+            Thread.Sleep(200);
             _commandManager.PrintLog();
         }
 
@@ -144,11 +144,15 @@ class Program
         var controller1 = new VirtualPositionerController("FirstController");
         var controller2 = new VirtualPositionerController("SecondController");
         var controller3 = new VirtualPositionerController("ThirdController");
-        var deviceX = new LinearPositionerDevice("x") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
-        var deviceY = new LinearPositionerDevice("y") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
-        var deviceZ = new LinearPositionerDevice("z") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
+        var deviceX = new LinearPositionerDevice("x") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 1000000000000, MaxDeceleration = 1000000000000, MaxSpeed = 10000000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
+        var deviceY = new LinearPositionerDevice("y") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 1000000000000, MaxDeceleration = 1000000000000, MaxSpeed = 10000000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
+        var deviceZ = new LinearPositionerDevice("z") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 1000000000000, MaxDeceleration = 1000000000000, MaxSpeed = 10000000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
 
-        var shutterDevice = new ShutterDevice_Virtual("s") { DelayOff = 5, DelayOn = 5, IsOn = false };
+        //var deviceX = new LinearPositionerDevice("x") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
+        //var deviceY = new LinearPositionerDevice("y") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
+        //var deviceZ = new LinearPositionerDevice("z") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
+
+        var shutterDevice = new ShutterDevice_Virtual("s") { DelayOff = 1, DelayOn = 1, IsOn = false };
         var shutterController = new VirtualShutterController("Shutter-controller");
         controller1.AddDevice(deviceX);
         controller2.AddDevice(deviceY);

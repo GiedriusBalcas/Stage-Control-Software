@@ -135,7 +135,7 @@ namespace standa_controller_software.command_manager
                     var controller = controllerPair.Value;
                     await controller.UpdateStateAsync(_log);
                 }
-                await Task.Delay(5);
+                await Task.Delay(50);
             }
         }
 

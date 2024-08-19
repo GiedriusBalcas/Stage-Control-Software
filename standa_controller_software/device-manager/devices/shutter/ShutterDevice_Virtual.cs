@@ -11,9 +11,16 @@ namespace standa_controller_software.device_manager.devices.shutter
         public string Name { get; private set; }
         public int DelayOn { get; set; }
         public int DelayOff { get; set; }
-        public bool IsOn { get; set; }
+        //public bool IsOn { get { } set { } }
+        private bool _isOn;
+        public bool IsOn
+        {
+            get { return _isOn; }
+            set { _isOn = value; StateChanged?.Invoke(); }
+        }
 
-        public event EventHandler? StateChanged;
+
+        public event Action? StateChanged;
 
         public ShutterDevice_Virtual(string name)
         {

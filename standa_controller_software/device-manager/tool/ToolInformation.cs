@@ -55,12 +55,7 @@ namespace standa_controller_software.device_manager
             }
 
             _shutterDevice = shutterDevice;
-            _shutterDevice.StateChanged += Shutter_StateChanged;
-        }
-
-        private void Shutter_StateChanged(object? sender, EventArgs e)
-        {
-            UpdateEngagedState();
+            _shutterDevice.StateChanged += UpdateEngagedState;
         }
 
         private void UpdateEngagedState()
