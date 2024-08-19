@@ -2,9 +2,10 @@
 length = 150;
 height = 100;
 
-kiekx = 10;
-kiekz = 5;
+kiekx = 1000;
+kiekz = 100;
 
+moveA.Speed = 100000;
 
 
 for( k=1; k<kiekz; k++)

@@ -79,43 +79,39 @@ namespace text_parser_library
         }
 
 
-        //public override object VisitFunctionPropertyAssignment([Antlr4.Runtime.Misc.NotNull] GrammarSyntaxParser.FunctionPropertyAssignmentContext context)
-        //{
-        //    var classCallName = context.IDENTIFIER(0).GetText();
-        //    var propertyName = context.IDENTIFIER(1).GetText();
-        //    var value = Visit(context.expression());
+        public override object VisitFunctionPropertyAssignment([Antlr4.Runtime.Misc.NotNull] GrammarSyntaxParser.FunctionPropertyAssignmentContext context)
+        {
+            var functionName = context.IDENTIFIER(0).GetText();
+            var propertyName = context.IDENTIFIER(1).GetText();
+            var value = Visit(context.expression());
 
-        //    var selectedClassInstance = _definedFunctionList.FirstOrDefault(defFunc => (defFunc.Value as IFunction)?.CallName == classCallName).Value;
+            if(value is null)
+            {
+                State.AddMessage($"Error encountered on when trying to assign null value to {functionName}.{propertyName}.");
+                State.SetState(ParserState.States.Error);
+                throw new Exception();
+            }
 
-        //    if (selectedClassInstance == null)
-        //    {
-        //        // Handle the case where the class instance isn't found
-        //        return base.VisitFunctionPropertyAssignment(context);
-        //    }
+            try
+            {
+                var result = _definitionsLibrary.TrySetFunctionProperty(functionName, propertyName, value);
+                if(!result)
+                {
+                    State.AddMessage($"Error encountered on when trying to assign value to {functionName}.{propertyName}.");
+                    State.SetState(ParserState.States.Error);
+                    throw new Exception();
+                }
 
-        //    var selectedClassType = selectedClassInstance.GetType();
+            }
+            catch (Exception ex)
+            {
+                State.AddMessage($"Exception thrown trying to assign {functionName}.{propertyName} with value {value}: {ex.Message}");
+                State.SetState(ParserState.States.Error);
+                throw new Exception();
+            }
 
-        //    var selectedProperty = selectedClassType.GetProperties()
-        //        .FirstOrDefault(prop => prop.Name == propertyName && prop.GetCustomAttribute<DynamicPropertyAttribute>() != null);
-
-        //    if (selectedProperty == null)
-        //        throw new ArgumentNullException("Provided property doesn't exist");
-
-        //    if (selectedProperty != null)
-        //    {
-        //        try
-        //        {
-        //            var convertedValue = Convert.ChangeType(value, selectedProperty.PropertyType);
-        //            selectedProperty.SetValue(selectedClassInstance, convertedValue);
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            throw new Exception(message: ex.ToString());
-        //        }
-        //    }
-
-        //    return base.VisitFunctionPropertyAssignment(context);
-        //}
+            return base.VisitFunctionPropertyAssignment(context);
+        }
 
         public override object? VisitEqualsAssignment(GrammarSyntaxParser.EqualsAssignmentContext context)
         {

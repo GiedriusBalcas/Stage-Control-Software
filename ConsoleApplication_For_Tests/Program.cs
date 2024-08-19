@@ -52,7 +52,7 @@ class Program
 
         // Read text input
 
-        string filePath = "C:\\Users\\giedr\\OneDrive\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\NUnit_tests\\test_scripts\\cube-moveA-function-test-script.txt";
+        string filePath = "C:\\Users\\giedr\\OneDrive\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\NUnit_tests\\test_scripts\\spiral-moveA-function-test-script.txt";
         string fileContent = File.ReadAllText(filePath);
 
         try
@@ -143,9 +143,9 @@ class Program
         var controller1 = new VirtualPositionerController("FirstController");
         var controller2 = new VirtualPositionerController("SecondController");
         var controller3 = new VirtualPositionerController("ThirdController");
-        var deviceX = new LinearPositionerDevice("x") { Acceleration = 10000, Deceleration = 10000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 10000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
-        var deviceY = new LinearPositionerDevice("y") { Acceleration = 10000, Deceleration = 10000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 10000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
-        var deviceZ = new LinearPositionerDevice("z") { Acceleration = 10000, Deceleration = 10000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 10000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
+        var deviceX = new LinearPositionerDevice("x") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000000, MaxDeceleration = 10000000, MaxSpeed = 100000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
+        var deviceY = new LinearPositionerDevice("y") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000000, MaxDeceleration = 10000000, MaxSpeed = 100000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
+        var deviceZ = new LinearPositionerDevice("z") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000000, MaxDeceleration = 10000000, MaxSpeed = 100000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
 
         var shutterDevice = new ShutterDevice_Virtual("s") { DelayOff = 0, DelayOn = 0, IsOn = false };
         var shutterController = new ShutterController_Virtual("Shutter-controller");

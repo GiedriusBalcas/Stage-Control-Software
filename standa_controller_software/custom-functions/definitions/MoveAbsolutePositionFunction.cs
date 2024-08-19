@@ -17,6 +17,7 @@ namespace standa_controller_software.custom_functions
         {
             _commandManager = commandManager;
             _controllerManager = controllerManager;
+            this.SetProperty("Speed", 1000f);
         }
 
         public override object? Execute(params object[] args)
@@ -27,7 +28,22 @@ namespace standa_controller_software.custom_functions
             Command[] commandsMovementParameters = new Command[devNames.Length];
             Command[] commandsMovement = new Command[devNames.Length];
             Command[] commandsWaitForStop = new Command[devNames.Length];
-            var trajectorySpeed = 1000f;
+
+            this.TryGetProperty("Speed", out object trajSpeed);
+            
+            float trajectorySpeed = 1000f; // Default value
+
+            if (trajSpeed != null)
+            {
+                if (trajSpeed is float)
+                {
+                    trajectorySpeed = (float)trajSpeed > 0 ? (float)trajSpeed : 1000f;
+                }
+                else if (trajSpeed is int)
+                {
+                    trajectorySpeed = (int)trajSpeed > 0 ? Convert.ToSingle(trajSpeed) : 1000f;
+                }
+            }
 
 
             //CustomFunctionHelper.GetLineKinParameters(devNames, positions, trajectorySpeed, _controllerManager, out float[] speedValuesOut, out float[] accelValuesOut, out float[] decelValuesOut, out float allocatedTime);

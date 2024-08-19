@@ -1,10 +1,12 @@
 ﻿
 
-radius = 20;
-dtheta = PI/5;
-dh = 10;
+radius = 100;
+dtheta = PI/20;
+dh = 0.005;
 
-for(i = 0; i < 10; i++)
+moveA.Speed = 10000000;
+
+for(i = 0; i < 10000; i++)
 {
 	posx = sin( dtheta*i );
 	posy = cos( dtheta*i );

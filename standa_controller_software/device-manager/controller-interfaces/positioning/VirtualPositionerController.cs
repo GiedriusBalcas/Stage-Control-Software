@@ -57,7 +57,17 @@ namespace standa_controller_software.device_manager.controller_interfaces
 
             if (device is IPositionerDevice positioningDevice)
             {
-                _deviceInfo.TryAdd(positioningDevice.Name, new DeviceInformation());
+                _deviceInfo.TryAdd(positioningDevice.Name, new DeviceInformation()
+                {
+                    CurrentPosition = positioningDevice.CurrentPosition,
+                    CurrentSpeed = positioningDevice.CurrentSpeed,
+                    MaxAcceleration = positioningDevice.MaxAcceleration,
+                    MaxDeceleration = positioningDevice.MaxDeceleration,
+                    MaxSpeed = positioningDevice.MaxSpeed,
+                    Speed = positioningDevice.Speed,
+                    Acceleration = positioningDevice.Acceleration,
+                    Deceleration = positioningDevice.Deceleration,
+                });
             }
         }
 
@@ -94,13 +104,13 @@ namespace standa_controller_software.device_manager.controller_interfaces
         {
             while (_deviceInfo[name].MoveStatus != 0)
             {
-                await Task.Delay(5, cancellationToken);
+                await Task.Delay(1, cancellationToken);
             }
         }
 
         private async Task UpdateCommandMoveA(string name, float targetPosition, CancellationToken cancellationToken)
         {
-            int updateInterval = 5;
+            int updateInterval = 1;
             var distanceToStop = () => 0.5f * _deviceInfo[name].Deceleration * Math.Pow((Math.Abs(_deviceInfo[name].CurrentSpeed) / _deviceInfo[name].Deceleration), 2);
             var directionToTarget = () => Math.Sign(targetPosition - _deviceInfo[name].CurrentPosition);
             var distanceToTarget = () => Math.Abs(targetPosition - _deviceInfo[name].CurrentPosition);
