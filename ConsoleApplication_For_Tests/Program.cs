@@ -52,7 +52,7 @@ class Program
 
         // Read text input
 
-        string filePath = "C:\\Users\\giedr\\OneDrive\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\NUnit_tests\\test_scripts\\spiral-moveA-function-test-script.txt";
+        string filePath = "C:\\Users\\giedr\\OneDrive\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\NUnit_tests\\test_scripts\\cube-moveA-function-test-script.txt";
         string fileContent = File.ReadAllText(filePath);
 
         try
@@ -104,10 +104,7 @@ class Program
     private static async Task ExecuteCommandQueue(CommandManager commandManager_virtual, ControllerManager controllerManager_virtual)
     {
 
-
         Thread.Sleep(1000);
-
-        
 
         Console.WriteLine("Before Starting:");
         Console.WriteLine(_commandManager.GetCommandQueueAsString());
@@ -117,7 +114,7 @@ class Program
         Console.WriteLine("Log:");
         while (_commandManager.CurrentState == CommandManagerState.Processing)
         {
-            Thread.Sleep(5);
+            Thread.Sleep(100);
             _commandManager.PrintLog();
         }
 
@@ -143,9 +140,9 @@ class Program
         var controller1 = new VirtualPositionerController("FirstController");
         var controller2 = new VirtualPositionerController("SecondController");
         var controller3 = new VirtualPositionerController("ThirdController");
-        var deviceX = new LinearPositionerDevice("x") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000000, MaxDeceleration = 10000000, MaxSpeed = 100000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
-        var deviceY = new LinearPositionerDevice("y") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000000, MaxDeceleration = 10000000, MaxSpeed = 100000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
-        var deviceZ = new LinearPositionerDevice("z") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000000, MaxDeceleration = 10000000, MaxSpeed = 100000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
+        var deviceX = new LinearPositionerDevice("x") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000000, MaxDeceleration = 10000000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
+        var deviceY = new LinearPositionerDevice("y") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000000, MaxDeceleration = 10000000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
+        var deviceZ = new LinearPositionerDevice("z") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000000, MaxDeceleration = 10000000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
 
         var shutterDevice = new ShutterDevice_Virtual("s") { DelayOff = 0, DelayOn = 0, IsOn = false };
         var shutterController = new ShutterController_Virtual("Shutter-controller");
@@ -168,7 +165,7 @@ class Program
                 Z = positions.ContainsKey("z") ? positions["z"] : 0
             };
         };
-        var toolInfo = new ToolInformation(controllerManager.GetDevices<IPositionerDevice>(), new ShutterDevice_Virtual("s"), toolPositionFunctionX);
+        var toolInfo = new ToolInformation(controllerManager.GetDevices<IPositionerDevice>(), shutterDevice, toolPositionFunctionX);
         controllerManager.ToolInformation = toolInfo;
 
         return controllerManager;

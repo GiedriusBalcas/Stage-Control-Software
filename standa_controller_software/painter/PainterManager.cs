@@ -75,7 +75,7 @@ namespace standa_controller_software.painter
             _controllerManager.ToolInformation.RecalculateToolPosition() ; // Recalculate positions before drawing
             _toolPointLayer.ClearCollections() ;
             var pointCollection = new PointObjectCollection();
-            pointCollection.AddPoint(_controllerManager.ToolInformation.Position, 50, new Vector4(0, 1, 1, 1));
+            pointCollection.AddPoint(_controllerManager.ToolInformation.Position, 50, _controllerManager.ToolInformation.IsOn ? new Vector4(1,0,0,1) : new Vector4(1,1,0,1));
             _toolPointLayer.AddObjectCollection(pointCollection);
             //_toolPointLayer.UpdateUniforms();
             _toolPointLayer.InitializeCollections();

@@ -34,7 +34,10 @@ namespace standa_controller_software.device_manager
 
         public bool IsOn
         {
-            get { return _shutterDevice.IsOn; }
+            get 
+            { 
+                return _shutterDevice.IsOn; 
+            }
             private set
             {
                 _isOn = value;
