@@ -18,6 +18,7 @@ namespace standa_controller_software.custom_functions
             _commandManager = commandManager;
             _controllerManager = controllerManager;
             this.SetProperty("Speed", 1000f);
+            this.SetProperty("Shutter", false);
         }
 
         public override object? Execute(params object[] args)
@@ -28,6 +29,8 @@ namespace standa_controller_software.custom_functions
             Command[] commandsMovementParameters = new Command[devNames.Length];
             Command[] commandsMovement = new Command[devNames.Length];
             Command[] commandsWaitForStop = new Command[devNames.Length];
+            Command[] commandsChangeStateOnInterval = new Command[1];
+
 
             this.TryGetProperty("Speed", out object trajSpeed);
             
@@ -67,6 +70,7 @@ namespace standa_controller_software.custom_functions
                         TargetDevice = devNames[i].ToString()
                     };
             }
+            _commandManager.EnqueueCommandLine(commandsMovementParameters);
 
             for (int i = 0; i< devNames.Length; i++) {
 
@@ -82,6 +86,27 @@ namespace standa_controller_software.custom_functions
                         TargetController = controller.Name,
                         TargetDevice = devNames[i].ToString()
                     };
+            }
+            _commandManager.EnqueueCommandLine(commandsMovement);
+
+            if (this.TryGetProperty("Shutter", out object isOn))
+            {
+                var shutterDevice = _controllerManager.GetDevices<IShutterDevice>().FirstOrDefault();
+                if (shutterDevice is null)
+                    throw new Exception("Trying to use non existing shutter device");
+
+                var controller = _controllerManager.GetDeviceController<BaseShutterController>(shutterDevice.Name);
+
+                commandsChangeStateOnInterval[0] =
+                    new Command()
+                    {
+                        Action = CommandDefinitionsLibrary.ChangeShutterStateOnInterval.ToString(),
+                        Await = false,
+                        Parameters = [allocatedTime],
+                        TargetController = controller.Name,
+                        TargetDevice = shutterDevice.Name
+                    };
+            _commandManager.EnqueueCommandLine(commandsChangeStateOnInterval);
             }
 
 
@@ -101,10 +126,8 @@ namespace standa_controller_software.custom_functions
                         TargetDevice = devNames[i].ToString()
                     };
             }
-
-            _commandManager.EnqueueCommandLine(commandsMovementParameters);
-            _commandManager.EnqueueCommandLine(commandsMovement);
             _commandManager.EnqueueCommandLine(commandsWaitForStop);
+
 
             _commandManager.ExecuteCommandLine(commandsMovementParameters);
             _commandManager.ExecuteCommandLine(commandsMovement);

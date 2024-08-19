@@ -34,7 +34,11 @@ class Program
 
         // Set-up Definitions
 
-        var rules = new Dictionary<Type, Type> { { typeof(BasePositionerController), typeof(PositionerController_Virtual) } };
+        var rules = new Dictionary<Type, Type> 
+        {
+            { typeof(BasePositionerController), typeof(PositionerController_Virtual) },
+            { typeof(BaseShutterController), typeof(ShutterController_Virtual) }
+        };
         var controllerManager_virtual = _controllerManager.CreateACopy(rules);
         var commandManager_virtual = new CommandManager(controllerManager_virtual);
 
@@ -140,12 +144,12 @@ class Program
         var controller1 = new VirtualPositionerController("FirstController");
         var controller2 = new VirtualPositionerController("SecondController");
         var controller3 = new VirtualPositionerController("ThirdController");
-        var deviceX = new LinearPositionerDevice("x") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000000, MaxDeceleration = 10000000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
-        var deviceY = new LinearPositionerDevice("y") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000000, MaxDeceleration = 10000000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
-        var deviceZ = new LinearPositionerDevice("z") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000000, MaxDeceleration = 10000000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
+        var deviceX = new LinearPositionerDevice("x") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
+        var deviceY = new LinearPositionerDevice("y") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
+        var deviceZ = new LinearPositionerDevice("z") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
 
-        var shutterDevice = new ShutterDevice_Virtual("s") { DelayOff = 0, DelayOn = 0, IsOn = false };
-        var shutterController = new ShutterController_Virtual("Shutter-controller");
+        var shutterDevice = new ShutterDevice_Virtual("s") { DelayOff = 5, DelayOn = 5, IsOn = false };
+        var shutterController = new VirtualShutterController("Shutter-controller");
         controller1.AddDevice(deviceX);
         controller2.AddDevice(deviceY);
         controller3.AddDevice(deviceZ);

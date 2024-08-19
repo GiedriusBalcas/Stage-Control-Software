@@ -21,9 +21,13 @@ namespace standa_controller_software.device_manager.controller_interfaces
         {
             Name = name;
             _methodMap[CommandDefinitionsLibrary.ChangeShutterState.ToString()] = ChangeState;
+            _methodMap[CommandDefinitionsLibrary.ChangeShutterStateOnInterval.ToString()] = ChangeStateOnInterval;
+
             Devices = new Dictionary<string, IShutterDevice>();
             //methodMap["UpdateStates"] = UpdateStatesCall;
         }
+
+        protected abstract Task ChangeStateOnInterval(Command command, IShutterDevice device, CancellationToken token);
 
         protected abstract Task ChangeState(Command command, IShutterDevice device, CancellationToken token);
 

@@ -10,20 +10,21 @@ using System.Threading.Tasks;
 
 namespace standa_controller_software.device_manager.controller_interfaces.shutter
 {
-    public class ShutterController_Virtual : BaseShutterController
+    public class VirtualShutterController : BaseShutterController
     {
 
         private class DeviceInformation
         {
             public bool _isOn = false;
-            public int _delayOn = 0;
-            public int _delayOff = 0;
+            public int _delayOn = 1000;
+            public int _delayOff = 100;
         }
         private ConcurrentDictionary<string, DeviceInformation> _deviceInfo = new ConcurrentDictionary<string, DeviceInformation>();
 
-        public ShutterController_Virtual(string name) : base(name)
+        public VirtualShutterController(string name) : base(name)
         {
         }
+
 
         public override void AddDevice(IDevice device)
         {
@@ -70,15 +71,17 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
 
         protected override async Task ChangeStateOnInterval(Command command, IShutterDevice device, CancellationToken token)
         {
-            //var duration = (float)command.Parameters[0] * 1000000;
+            var duration = (float)command.Parameters[0] * 1000000 - device.DelayOff*1000 - device.DelayOn*1000;
 
-            //var state = true;
-            //_deviceInfo[device.Name]._isOn = state;
+            var state = true;
+            await Task.Run(() => DelayMicroseconds((int)device.DelayOn*1000), token);
 
-            ////await Task.Run(() => DelayMicroseconds((int)duration), token);
+            _deviceInfo[device.Name]._isOn = state;
 
-            //state = false;
-            //_deviceInfo[device.Name]._isOn = state;
+            await Task.Run(() => DelayMicroseconds((int)duration), token);
+
+            state = false;
+            _deviceInfo[device.Name]._isOn = state;
 
         }
 

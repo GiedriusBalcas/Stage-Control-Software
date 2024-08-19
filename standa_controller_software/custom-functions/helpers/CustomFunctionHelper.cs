@@ -120,6 +120,8 @@ namespace standa_controller_software.custom_functions.helpers
             var decelTime = new Dictionary<string, float>();
             var accelValues = new Dictionary<string, float>();
             var decelValues = new Dictionary<string, float>();
+            var accelValuesNorm = new Dictionary<string, float>();
+            var decelValuesNorm = new Dictionary<string, float>();
 
             for (int i = 0; i < devNames.Length; i++)
             {
@@ -176,26 +178,66 @@ namespace standa_controller_software.custom_functions.helpers
 
             foreach (var key in accelTime.Keys.ToList())
             {
-                if (accelTime[key] != 0)
-                {
-                    accelValues[key] = accelValues[key] * (accelTime[key] / maxAccelTimeValue);
-                }
 
-                if (decelTime[key] != 0)
-                {
-                    decelValues[key] = decelValues[key] * (decelTime[key] / maxDecelTimeValue);
-                }
+                accelValuesNorm[key] = accelTime[key] != 0
+                    ? accelValues[key] * (accelTime[key] / maxAccelTimeValue)
+                    : accelValues[key];
+
+
+                decelValuesNorm[key] = decelTime[key] != 0
+                    ? decelValues[key] * (decelTime[key] / maxDecelTimeValue)
+                    : decelValues[key];
+
             }
 
 
             for (int i = 0; i < devNames.Length; i++)
             {
                 speedValuesOut[i] = endingSpeeds[devNames[i]];
-                accelValuesOut[i] = accelValues[devNames[i]];
-                decelValuesOut[i] = decelValues[devNames[i]];
+                accelValuesOut[i] = accelValuesNorm[devNames[i]];
+                decelValuesOut[i] = decelValuesNorm[devNames[i]];
             }
 
+            allocatedTime = (float)CalculateTotalTime(trajectoryLength, trajectorySpeed, accelValues.Values.Where(v => v > 0).Max(), decelValues.Values.Where(v => v > 0).Max());
+
             return true;
+        }
+
+        public static double CalculateTotalTime(double pathLength, double targetSpeed, double acceleration, double deceleration)
+        {
+            // Calculate time to reach target speed
+            double t_acc = targetSpeed / acceleration;
+            // Calculate distance covered during acceleration
+            double d_acc = (targetSpeed * targetSpeed) / (2 * acceleration);
+
+            // Calculate time to decelerate from target speed to 0
+            double t_dec = targetSpeed / deceleration;
+            // Calculate distance covered during deceleration
+            double d_dec = (targetSpeed * targetSpeed) / (2 * deceleration);
+
+            // Check if the path length allows reaching the target speed
+            if (d_acc + d_dec <= pathLength)
+            {
+                // Case 1: Target speed is reached
+                double d_const = pathLength - (d_acc + d_dec); // Distance at constant speed
+                double t_const = d_const / targetSpeed; // Time spent at constant speed
+
+                double totalTime = t_acc + t_const + t_dec;
+                return totalTime;
+            }
+            else
+            {
+                // Case 2: Path is too short to reach target speed
+                // Solve for the maximum speed that can be reached
+                double v_max = Math.Sqrt((2 * acceleration * deceleration * pathLength) / (acceleration + deceleration));
+
+                // Recalculate time and distance for the maximum achievable speed
+                t_acc = v_max / acceleration;
+                t_dec = v_max / deceleration;
+
+                double totalTime = t_acc + t_dec;
+                return totalTime;
+            }
         }
 
     }
