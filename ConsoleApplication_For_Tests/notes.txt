@@ -1,0 +1,7 @@
+﻿
+            /// Might be that arduino can only handle one task at a time. So we need a semaphore handling better than now.
+            /// Currently the semaphores are not being treated by the UpdateStatesAsync calls, cause of the WaitUntilStop method.
+            /// Might have to release and start the semaphores inside of my controller classes.
+            /// Which is quite honestly favorable in most cases.
+            /// This way I can control the logic with different kind of controllers.
+            /// Also, I need a way to not await in UpdateState when semaphore is found locked and just skip that controller entirely.

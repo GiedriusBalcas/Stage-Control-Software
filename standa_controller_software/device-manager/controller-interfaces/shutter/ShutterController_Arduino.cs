@@ -95,13 +95,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
                 try
                 {
                     string response = await ReadFromSerialAsync(_deviceInfo[device.Key]._serialPort, new CancellationToken());
-                    Console.WriteLine($"Arduino response: {response}");
+                    state = response == "1" ? true : false;
                 }
                 catch (OperationCanceledException)
                 {
                     Console.WriteLine("Operation was canceled.");
                 }
-
+                device.Value.IsOn = state;
                 log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {device.Value.Name}, State: {device.Value.IsOn}");
             }
         }
@@ -153,16 +153,23 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             // Send the command to the Arduino
             await _deviceInfo[device.Name]._serialPort.BaseStream.WriteAsync(commandBytes, 0, commandBytes.Length);
 
-            // Listen for the response from Arduino
-            try
-            {
-                string response = await ReadFromSerialAsync(_deviceInfo[device.Name]._serialPort, token);
-                Console.WriteLine($"Arduino response: {response}");
-            }
-            catch (OperationCanceledException)
-            {
-                Console.WriteLine("Operation was canceled.");
-            }
+            //// Listen for the response from Arduino
+            //try
+            //{
+            //    string response = await ReadFromSerialAsync(_deviceInfo[device.Name]._serialPort, token);
+            //    Console.WriteLine($"Arduino response: {response}");
+            //}
+            //catch (OperationCanceledException)
+            //{
+            //    Console.WriteLine("Operation was canceled.");
+            //}
+
+            /// Might be that arduino can only handle one task at a time. So we need a semaphore handling better than now.
+            /// Currently the semaphores are not being treated by the UpdateStatesAsync calls, cause of the WaitUntilStop method.
+            /// Might have to release and start the semaphores inside of my controller classes.
+            /// Which is quite honestly favorable in most cases.
+            /// This way I can control the logic with different kind of controllers.
+            /// Also, I need a way to not await in UpdateState when semaphore is found locked and just skip that controller entirely.
         }
 
         private async Task<string> ReadFromSerialAsync(SerialPort serialPort, CancellationToken token)
