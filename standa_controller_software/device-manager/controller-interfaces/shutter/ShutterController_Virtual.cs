@@ -102,5 +102,16 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
 
             stopwatch.Stop();
         }
+
+        protected override Task SetDelayAsync(Command command, IShutterDevice device, CancellationToken token)
+        {
+            var delayOn = (uint)command.Parameters[0];
+            var delayOff = (uint)command.Parameters[1];
+
+            _deviceInfo[device.Name]._delayOn = (int)delayOn;
+            _deviceInfo[device.Name]._delayOff = (int)delayOff;
+
+            return Task.CompletedTask;
+        }
     }
 }

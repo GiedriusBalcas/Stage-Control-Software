@@ -110,8 +110,8 @@ class Program
 
         Thread.Sleep(1000);
 
-        Console.WriteLine("Before Starting:");
-        Console.WriteLine(_commandManager.GetCommandQueueAsString());
+        //Console.WriteLine("Before Starting:");
+        //Console.WriteLine(_commandManager.GetCommandQueueAsString());
         
         _commandManager.Start();
 
@@ -152,8 +152,8 @@ class Program
         //var deviceY = new LinearPositionerDevice("y") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
         //var deviceZ = new LinearPositionerDevice("z") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
 
-        var shutterDevice = new ShutterDevice_Virtual("s") { DelayOff = 1, DelayOn = 1, IsOn = false };
-        var shutterController = new VirtualShutterController("Shutter-controller");
+        var shutterDevice = new ShutterDevice("s") { DelayOff = 50, DelayOn = 50, IsOn = false };
+        var shutterController = new ShutterController_Arduino("Shutter-controller");
         controller1.AddDevice(deviceX);
         controller2.AddDevice(deviceY);
         controller3.AddDevice(deviceZ);

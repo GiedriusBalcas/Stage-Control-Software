@@ -63,7 +63,7 @@ namespace NUnit_tests
                     Z = positions.ContainsKey("z") ? positions["z"] : 0
                 };
             };
-            var toolInfo = new ToolInformation(_controllerManager.GetDevices<IPositionerDevice>(), new ShutterDevice_Virtual("s"), toolPositionFunctionX);
+            var toolInfo = new ToolInformation(_controllerManager.GetDevices<IPositionerDevice>(), new ShutterDevice("s"), toolPositionFunctionX);
             _controllerManager.ToolInformation = toolInfo;
 
 

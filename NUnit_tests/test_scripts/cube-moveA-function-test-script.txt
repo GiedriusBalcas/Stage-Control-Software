@@ -2,10 +2,10 @@
 length = 150;
 height = 100;
 
-kiekx = 1000;
-kiekz = 100;
+kiekx = 10;
+kiekz = 10;
 
-moveA.Speed = 100000000;
+moveA.Speed = 100;
 
 
 for( k=1; k<kiekz; k++)
@@ -17,10 +17,12 @@ for( k=1; k<kiekz; k++)
 		if(direction == 1)
 		{
 			moveA.Shutter(true);
+			//shutter("s",true);
 		}
 		else
 		{
 			moveA.Shutter(false);
+			//shutter("s",false);
 		}
 
 		xas = i*width/kiekx - width/2;

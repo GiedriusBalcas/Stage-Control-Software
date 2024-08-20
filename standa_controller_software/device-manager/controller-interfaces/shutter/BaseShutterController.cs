@@ -28,6 +28,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
         }
 
         protected abstract Task ChangeStateOnInterval(Command command, IShutterDevice device, CancellationToken token);
+        protected abstract Task SetDelayAsync(Command command, IShutterDevice device, CancellationToken token);
 
         protected abstract Task ChangeState(Command command, IShutterDevice device, CancellationToken token);
 

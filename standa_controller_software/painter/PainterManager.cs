@@ -116,7 +116,6 @@ namespace standa_controller_software.painter
             var commandManager_virtual = new CommandManager(controllerManager_virtual);
 
             var commandLines = _commandManager.GetCommandQueueList();
-            //var controllerManager = 
             var renderObjects = new LineObjectCollection();
             
             bool wasEngaged = false;
@@ -128,7 +127,10 @@ namespace standa_controller_software.painter
                 commandManager_virtual.ExecuteCommandLine(commandLine).GetAwaiter().GetResult();
 
                 var endPositions = controllerManager_virtual.ToolInformation.CalculateToolPositionUpdate();
-                
+
+                if (controllerManager_virtual.ToolInformation.IsOn)
+                    wasEngaged = true;
+
                 var lineColor = wasEngaged
                     ? new Vector4(1, 0, 0, 1)
                     : new Vector4(1, 1, 0, 1);
