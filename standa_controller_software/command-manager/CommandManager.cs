@@ -2,6 +2,7 @@
 using standa_controller_software.device_manager;
 using System.Collections.Concurrent;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace standa_controller_software.command_manager
 {
@@ -71,7 +72,62 @@ namespace standa_controller_software.command_manager
             }
         }
 
-        public Task ExecuteCommandLine(Command[] commands)
+        //public Task ExecuteCommandLine(Command[] commands)
+        //{
+        //    var tasks = new List<Task>();
+
+        //    // Group commands by their target device
+        //    var groupedCommands = commands.GroupBy(c => c.TargetDevice);
+
+        //    // Dictionary to track the last task for each device
+        //    var deviceTasks = new Dictionary<string, Task>();
+
+        //    foreach (var group in groupedCommands)
+        //    {
+        //        var deviceName = group.Key;
+        //        var controller = _controllerManager.GetDeviceController<IController>(deviceName);
+        //        var semaphore = _controllerManager.ControllerLocks[controller.Name];
+
+        //        foreach (var command in group)
+        //        {
+        //            // Check if there is a previous task for the same device
+        //            if (deviceTasks.TryGetValue(deviceName, out var lastTask))
+        //            {
+        //                // Chain the command execution after the last task for the same device
+        //                var task = lastTask.ContinueWith(_ => ExecuteCommand(controller, semaphore, command)).Unwrap();
+        //                deviceTasks[deviceName] = task;
+        //                tasks.Add(task);
+        //            }
+        //            else
+        //            {
+        //                // No previous task, execute immediately
+        //                var task = ExecuteCommand(controller, semaphore, command);
+        //                deviceTasks[deviceName] = task;
+        //                tasks.Add(task);
+        //            }
+        //        }
+        //    }
+
+        //    // Return a task that completes when all commands in this line are done
+        //    return Task.WhenAll(tasks);
+        //}
+
+        //private async Task ExecuteCommand(IController controller, SemaphoreSlim semaphore, Command command)
+        //{
+        //    await semaphore.WaitAsync();
+        //    try
+        //    {
+        //        await controller.ExecuteCommandAsync(command, semaphore, _log);
+        //    }
+        //    finally
+        //    {
+        //        if(semaphore.CurrentCount == 0)
+        //            semaphore.Release();
+        //    }
+        //}
+
+
+        public async Task ExecuteCommandLine(Command[] commands)
         {
             var tasks = new List<Task>();
 
@@ -81,61 +137,111 @@ namespace standa_controller_software.command_manager
             // Dictionary to track the last task for each device
             var deviceTasks = new Dictionary<string, Task>();
 
+            // List of semaphores to acquire
+            var semaphoresToAcquire = new List<SemaphoreSlim>();
+
+            // Acquire all semaphores before starting execution
             foreach (var group in groupedCommands)
             {
                 var deviceName = group.Key;
                 var controller = _controllerManager.GetDeviceController<IController>(deviceName);
                 var semaphore = _controllerManager.ControllerLocks[controller.Name];
 
-                foreach (var command in group)
+                // Add the semaphore to the list to be acquired
+                semaphoresToAcquire.Add(semaphore);
+            }
+
+            // Acquire all semaphores
+            foreach (var semaphore in semaphoresToAcquire)
+            {
+                await semaphore.WaitAsync();
+            }
+
+            try
+            {
+                // Execute commands after acquiring all semaphores
+                foreach (var group in groupedCommands)
                 {
-                    // Check if there is a previous task for the same device
-                    if (deviceTasks.TryGetValue(deviceName, out var lastTask))
+                    var deviceName = group.Key;
+                    var controller = _controllerManager.GetDeviceController<IController>(deviceName);
+                    var semaphore = _controllerManager.ControllerLocks[controller.Name];
+
+                    foreach (var command in group)
                     {
-                        // Chain the command execution after the last task for the same device
-                        var task = lastTask.ContinueWith(_ => ExecuteCommand(controller, semaphore, command)).Unwrap();
-                        deviceTasks[deviceName] = task;
-                        tasks.Add(task);
+                        // Check if there is a previous task for the same device
+                        if (deviceTasks.TryGetValue(deviceName, out var lastTask))
+                        {
+                            // Chain the command execution after the last task for the same device
+                            var task = lastTask.ContinueWith(_ => ExecuteCommand(controller, semaphore, command)).Unwrap();
+                            deviceTasks[deviceName] = task;
+                            tasks.Add(task);
+                        }
+                        else
+                        {
+                            // No previous task, execute immediately
+                            var task = ExecuteCommand(controller, semaphore, command);
+                            deviceTasks[deviceName] = task;
+                            tasks.Add(task);
+                        }
                     }
-                    else
-                    {
-                        // No previous task, execute immediately
-                        var task = ExecuteCommand(controller, semaphore, command);
-                        deviceTasks[deviceName] = task;
-                        tasks.Add(task);
-                    }
+                }
+            }
+            finally
+            {
+                // Release all semaphores
+                foreach (var semaphore in semaphoresToAcquire)
+                {
+                    if (semaphore.CurrentCount == 0)
+                        semaphore.Release();
                 }
             }
 
             // Return a task that completes when all commands in this line are done
-            return Task.WhenAll(tasks);
+            await Task.WhenAll(tasks);
         }
 
         private async Task ExecuteCommand(IController controller, SemaphoreSlim semaphore, Command command)
         {
-            await semaphore.WaitAsync();
             try
             {
                 await controller.ExecuteCommandAsync(command, semaphore, _log);
             }
             finally
             {
-                semaphore.Release();
+                if (semaphore.CurrentCount == 0)
+                    semaphore.Release();
             }
         }
 
 
-
+        // I should release semaphore only when awaited the response here.
         public async Task UpdateStatesAsync()
         {
             while (_running)
             {
+                var tasks = new List<Task>();
+
                 foreach (var controllerPair in _controllerManager.Controllers)
                 {
+                    
                     var controller = controllerPair.Value;
-                    await controller.UpdateStateAsync(_log);
+                    var semaphore = _controllerManager.ControllerLocks[controller.Name];
+                    if (semaphore.CurrentCount > 0)
+                    {
+                        await semaphore.WaitAsync();
+
+                        var task = Task.Run(async () =>
+                        {
+                            await controller.UpdateStateAsync(_log);
+                            if (semaphore.CurrentCount == 0)
+                                semaphore.Release();
+                        });
+                        tasks.Add(task);
+                    }
+                    
                 }
-                await Task.Delay(50);
+                await Task.WhenAll(tasks);
+                await Task.Delay(100);
             }
         }
 

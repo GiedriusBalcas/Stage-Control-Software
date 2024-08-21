@@ -13,7 +13,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
     {
 
         private ConcurrentDictionary<string, CancellationTokenSource> deviceCancellationTokens = new ConcurrentDictionary<string, CancellationTokenSource>();
-        private Dictionary<string, Func<Command, IPositionerDevice, CancellationToken, Task>> _methodMap = new Dictionary<string, Func<Command, IPositionerDevice, CancellationToken, Task>>();
+        private Dictionary<string, Func<Command, IPositionerDevice, CancellationToken, SemaphoreSlim, Task>> _methodMap = new Dictionary<string, Func<Command, IPositionerDevice, CancellationToken, SemaphoreSlim, Task>>();
         protected Dictionary<string, IPositionerDevice> Devices { get; }
         public string Name { get; private set; }
 
@@ -58,9 +58,9 @@ namespace standa_controller_software.device_manager.controller_interfaces
                 if (_methodMap.TryGetValue(command.Action, out var method))
                 {
                     if (command.Await)
-                        await method(command, device, tokenSource.Token);
+                        await method(command, device, tokenSource.Token, semaphore);
                     else
-                        _ = method(command, device, tokenSource.Token); // Start method without awaiting
+                        _ = method(command, device, tokenSource.Token, semaphore); // Start method without awaiting
                 }
                 else
                 {
@@ -82,14 +82,14 @@ namespace standa_controller_software.device_manager.controller_interfaces
 
         public abstract Task UpdateStateAsync(ConcurrentQueue<string> log);
 
-        protected virtual Task MoveAbsolute(Command command, IPositionerDevice device, CancellationToken cancellationToken) 
+        protected virtual Task MoveAbsolute(Command command, IPositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore) 
         {
             device.CurrentPosition = (float)command.Parameters[0];
-
+            semaphore.Release();
             return Task.CompletedTask;
         }
-        protected abstract Task UpdateMoveSettings(Command command, IPositionerDevice device, CancellationToken cancellationToken);
-        protected abstract Task WaitUntilStop(Command command, IPositionerDevice device, CancellationToken cancellationToken);
+        protected abstract Task UpdateMoveSettings(Command command, IPositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore);
+        protected abstract Task WaitUntilStop(Command command, IPositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore);
 
         public abstract IController GetCopy();
     }

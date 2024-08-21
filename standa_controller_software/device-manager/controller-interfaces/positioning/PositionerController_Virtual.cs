@@ -61,7 +61,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
 
 
 
-        protected override Task UpdateMoveSettings(Command command, IPositionerDevice device, CancellationToken cancellationToken)
+        protected override Task UpdateMoveSettings(Command command, IPositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore)
         {
             float speedValue = (float)(command.Parameters[0]);
             float accelValue = (float)(command.Parameters[1]);
@@ -75,7 +75,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
         }
 
 
-        protected override Task WaitUntilStop(Command command, IPositionerDevice device, CancellationToken cancellationToken)
+        protected override Task WaitUntilStop(Command command, IPositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore)
         {
             return Task.CompletedTask;
         }

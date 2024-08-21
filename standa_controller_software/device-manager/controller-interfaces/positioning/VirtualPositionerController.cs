@@ -71,20 +71,25 @@ namespace standa_controller_software.device_manager.controller_interfaces
             }
         }
 
-        protected override async Task MoveAbsolute(Command command, IPositionerDevice device, CancellationToken cancellationToken)
+        protected override async Task MoveAbsolute(Command command, IPositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore)
         {
             float targetPosition = (float)(command.Parameters[0]);
 
-            UpdateCommandMoveA(device.Name, targetPosition, cancellationToken);
+            
+            var task = UpdateCommandMoveA(device.Name, targetPosition, cancellationToken);
+            semaphore.Release();
+            await task;
         }
 
-        protected override async Task UpdateMoveSettings(Command command, IPositionerDevice device, CancellationToken cancellationToken)
+        protected override async Task UpdateMoveSettings(Command command, IPositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore)
         {
             float speedValue = (float)(command.Parameters[0]);
             float accelValue = (float)(command.Parameters[1]);
             float decelValue = (float)(command.Parameters[2]);
 
-            await UpdateMovementSettings(device.Name, speedValue, accelValue, decelValue, cancellationToken);
+            var task = UpdateMovementSettings(device.Name, speedValue, accelValue, decelValue, cancellationToken);
+            semaphore.Release();
+            await task;
         }
 
         private Task UpdateMovementSettings(string name, float speedValue, float accelValue, float decelValue, CancellationToken cancellationToken)
@@ -96,9 +101,11 @@ namespace standa_controller_software.device_manager.controller_interfaces
             return Task.CompletedTask;
         }
 
-        protected override async Task WaitUntilStop(Command command, IPositionerDevice device, CancellationToken cancellationToken)
+        protected override async Task WaitUntilStop(Command command, IPositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore)
         {
-            await UpdateWaitUntilStop(device.Name, cancellationToken);
+            var task = UpdateWaitUntilStop(device.Name, cancellationToken);
+            semaphore.Release();
+            await task;
         }
 
         private async Task UpdateWaitUntilStop(string name, CancellationToken cancellationToken)
