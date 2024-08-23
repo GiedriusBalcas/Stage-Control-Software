@@ -142,10 +142,47 @@ namespace standa_controller_software.painter
 
             return renderObjects;
         }
+        public void PaintCommandQueue()
+        {
+            var rules = new Dictionary<Type, Type>
+            {
+                { typeof(BasePositionerController), typeof(PositionerController_Virtual) },
+                { typeof(BaseShutterController), typeof(ShutterController_Virtual) }
+            };
+            var controllerManager_virtual = _controllerManager.CreateACopy(rules);
+            var commandManager_virtual = new CommandManager(controllerManager_virtual);
+
+            var commandLines = _commandManager.GetCommandQueueList();
+            var renderObjects = new LineObjectCollection();
+
+            bool wasEngaged = false;
+            controllerManager_virtual.ToolInformation.EngagedStateChanged += () => wasEngaged = true;
+            foreach (var commandLine in commandLines)
+            {
+                wasEngaged = false;
+                var startPositions = controllerManager_virtual.ToolInformation.CalculateToolPositionUpdate();
+                commandManager_virtual.ExecuteCommandLine(commandLine).GetAwaiter().GetResult();
+
+                var endPositions = controllerManager_virtual.ToolInformation.CalculateToolPositionUpdate();
+
+                if (controllerManager_virtual.ToolInformation.IsOn)
+                    wasEngaged = true;
+
+                var lineColor = wasEngaged
+                    ? new Vector4(1, 0, 0, 1)
+                    : new Vector4(1, 1, 0, 1);
+
+                if (endPositions != startPositions)
+                    renderObjects.AddLine(startPositions, endPositions, lineColor);
+            }
+
+            _lineCollection = renderObjects;
+        }
 
         private void ToolInformation_EngagedStateChanged()
         {
             throw new NotImplementedException();
         }
+
     }
 }

@@ -1,16 +1,89 @@
-﻿
-
+﻿using standa_control_software_WPF.view_models.commands;
+using standa_controller_software.command_manager;
+using standa_controller_software.custom_functions;
+using standa_controller_software.device_manager;
+using standa_controller_software.painter;
+using System.Collections.ObjectModel;
+using System.Windows.Input;
+using text_parser_library;
 
 namespace standa_control_software_WPF.view_models.system_control
 {
     public class SystemControlViewModel : ViewModelBase
     {
-        //private readonly CommandManager _commandManager;
-        //private readonly Painter _painter;
-        //private string _commandText="";
-        //private string _outputMessage;
+        private readonly standa_controller_software.command_manager.CommandManager _commandManager;
+        private readonly ControllerManager _controllerManager;
+        private readonly FunctionManager _functionDefinitionLibrary;
+        private standa_controller_software.command_manager.CommandManager _commandManager_virtual;
+        private readonly TextInterpreterWrapper _textInterpreter;
+        private readonly PainterManager _painterManager;
+        private string _inputText = "";
+        private string _outputMessage;
+
+
+        private DocumentViewModel _selectedDocument;
+
+        public string InputText
+        {
+            get { return _inputText; }
+            set
+            {
+                _inputText = value;
+                OnPropertyChanged(nameof(InputText));
+            }
+        }
+
+        public string OutputMessage
+        {
+            get
+            {
+                return _outputMessage;
+            }
+            set
+            {
+                _outputMessage = value;
+                OnPropertyChanged(nameof(OutputMessage));
+            }
+        }
+
+        public ObservableCollection<DocumentViewModel> Documents { get; } = new ObservableCollection<DocumentViewModel>();
+
+        public DocumentViewModel SelectedDocument
+        {
+            get => _selectedDocument;
+            set
+            {
+                InputText = _selectedDocument?.CommandText;
+                _selectedDocument = value;
+                OnPropertyChanged(nameof(SelectedDocument));
+            }
+        }
+        public ICommand AddNewDocumentCommand { get; set; }
+        public ICommand OpenDocumentCommand { get; set; }
+        public event Action OnExecutionStart;
+
+        
+
+        public ICommand CreateCommandQueueFromInput { get; set; }
+        public ICommand ClearOutputMessageCommand { get; set; }
+        public ICommand ExecuteCommandQueueCommand { get; set; }
+        public ICommand CheckInputTextCommand { get; set; }
+        public ICommand ForceStopCommand { get; set; }
+
+
+        private int _highlightedLineNumber;// _debugger.CurrentLine
+        public int HighlightedLineNumber
+        {
+            get { return _highlightedLineNumber; }
+            private set { _highlightedLineNumber = value; }
+        }
+
+        //private bool _isTrackingTool;
+        //private bool _isOrthographicView;
+        //private Vector4 _lineColorEngaged = new Vector4(1,0,0,0.5f);
+        //private Vector4 _lineColorNotEngaged = new Vector4(0,1,0,0.05f);
+        //private bool _IsRendering;//private readonly Painter _painter;
         //private TextParserViewModel _configParser;
-        //private SystemConfig _virtualConfig;
         //private TextParserViewModel _virtualParser;
         //private SystemConfig _painterConfig;
         //private TextParserViewModel _painterParser;
@@ -19,102 +92,65 @@ namespace standa_control_software_WPF.view_models.system_control
         //private Vector4 _lineColor;
         //private Vector4 _defaultToolColor = new Vector4(0.3411764705882353f, 0.4117647058823529f, 0.8352941176470589f, 0.8f);
 
+        public SystemControlViewModel(ControllerManager controllerManager, standa_controller_software.command_manager.CommandManager commandManager)
+        {
+            _commandManager = commandManager;
+            _controllerManager = controllerManager;
 
-        //private DocumentViewModel _selectedDocument;
-        //private bool _isTrackingTool;
-        //private bool _isOrthographicView;
-        //private Vector4 _lineColorEngaged = new Vector4(1,0,0,0.5f);
-        //private Vector4 _lineColorNotEngaged = new Vector4(0,1,0,0.05f);
-        //private bool _IsRendering;
+            bool isProbing = true;
+            UpdateDeviceStates(isProbing);
 
-        //public ICommand CheckCommandTextCommand { get; set; }
-        //public ICommand ClearOutputMessageCommand { get; set; }
-        //public ICommand RenderCommand { get; set; }
-        //public ICommand ExecuteCommandsCommand { get; set; }
+            _functionDefinitionLibrary = new FunctionManager(_controllerManager, _commandManager);
+            _textInterpreter = new TextInterpreterWrapper();
+            _painterManager = new PainterManager(_commandManager, _controllerManager);
 
-        //public ICommand PauseDebuggingCommand { get; set; }
-        //public ICommand ResumeDebuggingCommand { get; set; }
-        //public ICommand StopDebuggingCommand { get; set; }
+            CheckInputTextCommand = new RelayCommand(CheckInputTextAsync);
+            ExecuteCommandQueueCommand = new RelayCommand(ExecuteCommandsQueueAsync);
+        }
 
-        //public ICommand CameraViewXYCommand { get; set; }
-        //public ICommand CameraViewXZCommand { get; set; }
-        //public ICommand CameraViewYZCommand { get; set; }
-        //public ICommand CameraFitObjectCommand { get; set; }
+        private async void UpdateDeviceStates(bool isProbing)
+        {
+            Task.Run(() => _commandManager.UpdateStatesAsync());
+        }
 
-        //public ICommand ForceStopCommand { get; set; }
+        private async void ExecuteCommandsQueueAsync()
+        {
+            Task.Run(() => _commandManager.Start());
+        }
 
-        //public bool IsTrackingTool
-        //{
-        //    get => _isTrackingTool;
-        //    set
-        //    {
-        //        _isTrackingTool = value;
-        //        _painter.IsTrackingTool = value;
-        //        OnPropertyChanged(nameof(IsTrackingTool));
-        //    }
-        //}
+        private async void CheckInputTextAsync()
+        {
+            var inputText = InputText;
+            _functionDefinitionLibrary.InitializeDefinitions();
+            try
+            {
+                _textInterpreter.ReadInput(inputText);
 
-        //public bool IsOrthographicView
-        //{
-        //    get => _isOrthographicView;
-        //    set
-        //    {
-        //        _isOrthographicView = value;
-        //        _painter.IsOrthographic = value;
-        //        OnPropertyChanged(nameof(IsTrackingTool));
-        //    }
-        //}
+                foreach (var commandLine in _functionDefinitionLibrary.ExtractCommands())
+                {
+                    _commandManager.EnqueueCommandLine(commandLine);
+                }
 
-        //public string CommandText
-        //{
-        //    get { return _commandText; }
-        //    set 
-        //    { 
-        //        _commandText = value;
-        //        //OnPropertyChanged(nameof(CommandText));
-        //    }
-        //}
-
-        //public string OutputMessage 
-        //{
-        //    get 
-        //    {
-        //        return _outputMessage;
-        //    }
-        //    set 
-        //    {
-        //        _outputMessage = value;
-        //        OnPropertyChanged(nameof(OutputMessage));
-        //    }
-        //}
-
-        //private int _highlightedLineNumber => _debugger.CurrentLine;
-        //public int HighlightedLineNumber
-        //{
-        //    get { return _highlightedLineNumber; }
-        //}
+                _painterManager.PaintCommandQueue();
+            }
+            catch (Exception ex)
+            {
+                OutputMessage += $"\n{ex.Message}";
+                if(_textInterpreter.State.CurrentState == ParserState.States.Error)
+                {
+                    OutputMessage += $"\n{_textInterpreter.State.Message}";
+                    HighlightedLineNumber = _textInterpreter.State.LineNumber?? 0;
+                }
+                // update the highlighted line number in red.
+            }
+        }
 
 
-        //public ObservableCollection<DocumentViewModel> Documents { get; } = new ObservableCollection<DocumentViewModel>();
 
-        //public DocumentViewModel SelectedDocument
-        //{
-        //    get => _selectedDocument;
-        //    set 
-        //    {
-        //        CommandText = _selectedDocument?.CommandText;
-        //        _selectedDocument = value;
-        //        OnPropertyChanged(nameof(SelectedDocument));
-        //    }
-        //}
-
-        //public ICommand AddNewDocumentCommand {  get; set; }
-        //public ICommand OpenDocumentCommand {  get; set; }
-        //public event Action OnExecutionStart;
 
         //public SystemControlViewModel(SystemConfig config)
         //{
-            
+
         //    _commandManager = config;
         //    _toolColor =  _commandManager.GetTool().IsEngaged ? new Vector4(1, 0, 0, 1) : _defaultToolColor;
         //    _painter = new Painter()
@@ -130,8 +166,8 @@ namespace standa_control_software_WPF.view_models.system_control
         //    };
 
         //    CheckCommandTextCommand = new RelayCommand(CheckCommandText);
-        //    ClearOutputMessageCommand = new RelayCommand(() => OutputMessage = string.Empty);
         //    ExecuteCommandsCommand = new RelayCommand(ExecuteCommandTextAsync);
+        //    ClearOutputMessageCommand = new RelayCommand(() => OutputMessage = string.Empty);
 
         //    ResumeDebuggingCommand = new RelayCommand( () => { _debugger.Resume(); });
         //    PauseDebuggingCommand = new RelayCommand(() => { _debugger.Pause(); });
@@ -282,7 +318,7 @@ namespace standa_control_software_WPF.view_models.system_control
         //            controllerInstance.Name = controller.Name;
 
         //            _virtualConfig.AddController(controllerInstance);
-                
+
         //            foreach (var device in controller.GetDevices())
         //            {
         //                Type? deviceType = device.GetType();
@@ -337,7 +373,7 @@ namespace standa_control_software_WPF.view_models.system_control
         //    OpenTKPainter? positionerControllerInstance = null;
         //    if (firstPositionerController != null)
         //    {
-                
+
         //        foreach (var shutterController in _commandManager.GetAllControllers().OfType<IShutterController>().ToList())
         //        {
         //            var controllerInstance = new PainterShutterController();
@@ -356,13 +392,13 @@ namespace standa_control_software_WPF.view_models.system_control
         //                _painterConfig.AddDevice(deviceInstance);
         //            }
         //            controllerInstance.CopyState(shutterController);
-                    
+
         //        }
 
         //        // In the future, hold the Engaged Color Scheme inside of th shutter Devices.
         //        // For now let's just take the first shutter device controller and insert the default engaged/disengage color scheme.
 
-                
+
         //        positionerControllerInstance = new OpenTKPainter(firstPositionerController.Name,
         //            (Vector3 start, Vector3 end) =>
         //            {
@@ -399,7 +435,7 @@ namespace standa_control_software_WPF.view_models.system_control
         //        }
         //    }
 
-            
+
 
         //    positioners = _painterConfig.GetDevicesByType<IPositioner>();
         //    var shutterDevicePainter = _painterConfig.GetDevicesByType<IShutter>().First();
