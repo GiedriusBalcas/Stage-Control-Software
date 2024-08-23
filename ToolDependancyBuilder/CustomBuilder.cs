@@ -5,7 +5,7 @@ namespace ToolDependancyBuilder
 { 
     public class CustomBuilder : ToolExpressionBaseVisitor<Expression>
     {
-        private ParameterExpression _devicesParam = Expression.Parameter(typeof(Dictionary<string, float>), "devices");
+        private ParameterExpression _devicesParam = Expression.Parameter(typeof(Dictionary<char, float>), "devices");
         private List<char> _devNames;
 
         public CustomBuilder(List<char> devNames)

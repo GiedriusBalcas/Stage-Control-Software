@@ -10,6 +10,7 @@ using standa_controller_software.device_manager.devices;
 using ToolDependancyBuilder;
 using standa_control_software_WPF.view_models.config_creation.serialization_helpers;
 using standa_control_software_WPF.view_models.config_creation;
+using standa_controller_software.device_manager.devices.shutter;
 
 namespace standa_control_software_WPF.view_models
 {
@@ -161,8 +162,9 @@ namespace standa_control_software_WPF.view_models
 
                 _controllerManager = controllerMangerInstance;
 
-                var shutterDevice = _controllerManager.GetDevices<BaseShutterDevice>().First();
+                var shutterDevice = _controllerManager.GetDevices<BaseShutterDevice>().FirstOrDefault()?? new ShutterDevice('s',"undefined");
                 var positionerDevices = _controllerManager.GetDevices<BasePositionerDevice>();
+                var positionerNames = positionerDevices.Select(dev => dev.Name).ToList();
                 var calculator = new ToolPositionCalculator();
 
                 calculator.CreateFunction(Configuration.XToolDependancy, positionerDevices.Select(dev => dev.Name).ToList());

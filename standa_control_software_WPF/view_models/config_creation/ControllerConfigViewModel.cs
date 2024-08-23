@@ -185,15 +185,15 @@ namespace standa_control_software_WPF.view_models.config_creation
 
 
             // Create the controller instance using reflection with parameters
-            //var constructorInfo = ControllerType.GetConstructor(new Type[] { });
-            //if (constructorInfo == null)
-            //{
-            //    throw new InvalidOperationException("Suitable constructor not found.");
-            //}
+            var constructorInfo = ControllerType.GetConstructor(new Type[] { typeof(string) });
+            if (constructorInfo == null)
+            {
+                throw new InvalidOperationException("Suitable constructor not found.");
+            }
 
-            //var controllerInstance = constructorInfo.Invoke(new object[] { }) as IController;
+            var controllerInstance = constructorInfo.Invoke(new object[] { name }) as BaseController;
 
-            var controllerInstance = Activator.CreateInstance(ControllerType) as BaseController;
+            //var controllerInstance = Activator.CreateInstance(ControllerType) as BaseController;
 
 
             if (controllerInstance == null)

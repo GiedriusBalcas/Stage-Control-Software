@@ -31,6 +31,8 @@ namespace standa_control_software_WPF.view_models.config_creation
                 OnPropertyChanged(nameof(IsEnabled));
             }
         }
+
+        private string _name;
         public string Name
         {
             get 
@@ -42,7 +44,7 @@ namespace standa_control_software_WPF.view_models.config_creation
                 return "u";
             }
             set {
-                Name = value;
+                _name = value;
                 OnPropertyChanged(nameof(Name));
             }
         }
