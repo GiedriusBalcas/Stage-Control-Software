@@ -7,6 +7,8 @@ using System.Windows;
 using standa_controller_software.device_manager;
 using standa_control_software_WPF.view_models.commands;
 using standa_controller_software.device_manager.devices;
+using ToolDependancyBuilder;
+using standa_control_software_WPF.view_models.config_creation.serialization_helpers;
 
 
 namespace standa_control_software_WPF.view_models.config_creation
@@ -81,10 +83,6 @@ namespace standa_control_software_WPF.view_models.config_creation
             SaveAsConfigurationsCommand = new RelayCommand(SaveAsConfigurationsExecute);
             CreateConfigInstanceCommand = new RelayCommand(ExecuteCreateConfigsInstance);
 
-            //CompleteInitializationCommand = new RelayCommand(() =>
-            //{
-            //    onInitializationCompleted.Invoke();
-            //});
         }
 
         private void SaveConfigurationsExecute()
@@ -138,7 +136,7 @@ namespace standa_control_software_WPF.view_models.config_creation
             try
             {
 
-                ControllerManager configInstance = new ControllerManager() 
+                ControllerManager controllerMangerInstance = new ControllerManager() 
                 {
                     Name = Configuration.Name
                 };
@@ -154,25 +152,40 @@ namespace standa_control_software_WPF.view_models.config_creation
                             if (device.IsEnabled)
                             {
                                 var deviceInstance = device.ExtractDevice(controllerInstance);
-                                controllerInstance.RegisterDevice(deviceInstance);
-                                configInstance.AddDevice(deviceInstance);
+                                controllerInstance.AddDevice(deviceInstance);
                             }
                         }
-                        configInstance.AddController(controllerInstance);
+                        controllerMangerInstance.AddController(controllerInstance);
                     }
                 }
 
-                _controllerManager = configInstance;
+                _controllerManager = controllerMangerInstance;
 
                 var shutterDevice = _controllerManager.GetDevices<IShutterDevice>().First();
+                var positionerDevices = _controllerManager.GetDevices<IPositionerDevice>();
+                var calculator = new ToolPositionCalculator();
 
+                calculator.CreateFunction(Configuration.XToolDependancy, positionerDevices.Select(dev => dev.Name).ToList());
+                var funcDelegX = calculator.GetFunction();
+                calculator.CreateFunction(Configuration.YToolDependancy, positionerDevices.Select(dev => dev.Name).ToList());
+                var funcDelegY = calculator.GetFunction();
+                calculator.CreateFunction(Configuration.ZToolDependancy, positionerDevices.Select(dev => dev.Name).ToList());
+                var funcDelegZ = calculator.GetFunction();
 
-                //new List<string> { Configuration.XToolDependancy, Configuration.YToolDependancy, Configuration.ZToolDependancy },
-                //    shutterDevice)
+                Func<Dictionary<string, float>, System.Numerics.Vector3> toolPosFunction = (Dictionary<string, float> positions) =>
+                {
+                    return new System.Numerics.Vector3()
+                    {
+                        X = funcDelegX.Invoke(positions),
+                        Y = funcDelegX.Invoke(positions),
+                        Z = funcDelegX.Invoke(positions),
+                    };
+                };
 
                 var tool = new ToolInformation(
-                    _controllerManager.GetDevices<IPositionerDevice>()
-                    , shutterDevice
+                    _controllerManager.GetDevices<IPositionerDevice>(),
+                    shutterDevice,
+                    toolPosFunction
                     );
 
                 _controllerManager.ToolInformation = tool;

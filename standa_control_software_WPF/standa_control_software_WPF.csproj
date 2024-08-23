@@ -13,7 +13,6 @@
     <Compile Remove="view_models\SystemCompiler\**" />
     <Compile Remove="view_models\SystemInfo\**" />
     <Compile Remove="view_models\SystemProperties\**" />
-    <Compile Remove="views\behaviours\**" />
     <Compile Remove="views\helper\**" />
     <Compile Remove="views\system-configuration\**" />
     <Compile Remove="views\system-info\**" />
@@ -21,7 +20,6 @@
     <EmbeddedResource Remove="view_models\SystemCompiler\**" />
     <EmbeddedResource Remove="view_models\SystemInfo\**" />
     <EmbeddedResource Remove="view_models\SystemProperties\**" />
-    <EmbeddedResource Remove="views\behaviours\**" />
     <EmbeddedResource Remove="views\helper\**" />
     <EmbeddedResource Remove="views\system-configuration\**" />
     <EmbeddedResource Remove="views\system-info\**" />
@@ -29,7 +27,6 @@
     <None Remove="view_models\SystemCompiler\**" />
     <None Remove="view_models\SystemInfo\**" />
     <None Remove="view_models\SystemProperties\**" />
-    <None Remove="views\behaviours\**" />
     <None Remove="views\helper\**" />
     <None Remove="views\system-configuration\**" />
     <None Remove="views\system-info\**" />
@@ -37,7 +34,6 @@
     <Page Remove="view_models\SystemCompiler\**" />
     <Page Remove="view_models\SystemInfo\**" />
     <Page Remove="view_models\SystemProperties\**" />
-    <Page Remove="views\behaviours\**" />
     <Page Remove="views\helper\**" />
     <Page Remove="views\system-configuration\**" />
     <Page Remove="views\system-info\**" />
@@ -76,6 +72,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\standa_controller_software\standa_controller_software.csproj" />
+    <ProjectReference Include="..\ToolDependancyBuilder\ToolDependancyBuilder.csproj" />
   </ItemGroup>
 
 </Project>

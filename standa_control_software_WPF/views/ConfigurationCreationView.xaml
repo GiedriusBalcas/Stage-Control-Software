@@ -1,0 +1,247 @@
+﻿<UserControl x:Class="standa_control_software_WPF.views.ConfigurationCreationView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:standa_control_software_WPF.views"
+             xmlns:configVms="clr-namespace:standa_control_software_WPF.view_models.config_creation"
+             xmlns:configViews="clr-namespace:standa_control_software_WPF.views.config_creation"
+             xmlns:bhv="clr-namespace:standa_control_software_WPF.views.behaviours"
+             xmlns:behaviors="http://schemas.microsoft.com/xaml/behaviors"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+
+    <UserControl.Resources>
+        <!-- DataTemplates for ViewModel to View mapping -->
+        <DataTemplate DataType="{x:Type configVms:ConfigurationViewModel}">
+            <configViews:ConfigurationPropView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type configVms:ControllerConfigViewModel}">
+            <configViews:ControllerConfigPropView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type configVms:DeviceConfigViewModel}">
+            <configViews:DeviceConfigPropView />
+        </DataTemplate>
+
+    </UserControl.Resources>
+
+    <Grid Background="Transparent">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="15" />
+        </Grid.ColumnDefinitions>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="50" />
+        </Grid.RowDefinitions>
+
+        <Label Grid.Row="0"
+               Grid.Column="0"
+               Padding="30,10"
+               Content="Configuration"
+               FontSize="25"
+               FontWeight="Thin"
+               VerticalAlignment="Center"
+               Foreground="{StaticResource FontColorBrush}" />
+
+        <StackPanel Grid.Row="2"
+                    Grid.Column="1"
+                    HorizontalAlignment="Right"
+                    Orientation="Horizontal"
+                    Margin="10,0">
+            <Button Content="Save"
+                    Height="auto"
+                    VerticalAlignment="Center"
+                    Command="{Binding SaveConfigurationsCommand}"
+                    Style="{StaticResource customButtonStyle}" />
+            <Button Content="Save As"
+                    Height="auto"
+                    VerticalAlignment="Center"
+                    Command="{Binding SaveAsConfigurationsCommand}"
+                    Style="{StaticResource customButtonStyle}" />
+            <Button Content="Load"
+                    Height="auto"
+                    VerticalAlignment="Center"
+                    Command="{Binding LoadConfigurationsCommand}"
+                    Style="{StaticResource customButtonStyle}" />
+            <Button Content="Intialize"
+                    Height="auto"
+                    VerticalAlignment="Center"
+                    Margin="20,0"
+                    Command="{Binding CreateConfigInstanceCommand}"
+                    Style="{StaticResource customButtonStyle}" />
+        </StackPanel>
+
+        <Grid Grid.Row="1"
+              Grid.Column="0"
+              Grid.ColumnSpan="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="56" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="auto" />
+            </Grid.RowDefinitions>
+
+
+            <StackPanel Grid.Column="0"
+                        Grid.Row="1">
+
+                <TreeView Margin="5,0,15,0"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          Foreground="{StaticResource FontColorBrush}"
+                          ItemsSource="{Binding Configurations}"
+                          FontSize="14">
+
+                    <behaviors:Interaction.Behaviors>
+                        <bhv:BindableSelectedItemBehavior 
+                            SelectedItem="{Binding CurrentViewModel, Mode=TwoWay}" />
+                    </behaviors:Interaction.Behaviors>
+                    <TreeView.Resources>
+                        <Style TargetType="TreeViewItem">
+                            <Setter Property="Background"
+                                    Value="Transparent" />
+                            <Setter Property="Foreground"
+                                    Value="Transparent" />
+                            <!-- Add padding for better visual -->
+                            <Setter Property="Padding"
+                                    Value="4" />
+                            <Style.Triggers>
+                                <!-- Change Background when selected -->
+                                <Trigger Property="IsSelected"
+                                         Value="True">
+                                    <!-- Setting the Background to LightGray for selected items -->
+                                    <Setter Property="Background"
+                                            Value="Blue" />
+                                    <Setter Property="Foreground"
+                                            Value="Black" />
+                                </Trigger>
+                                <!-- Optional: Change Background when mouse is over (Hover) -->
+                                <Trigger Property="IsMouseOver"
+                                         Value="True">
+                                    <Setter Property="Background"
+                                            Value="{StaticResource MidBackgroundColorBrush}" />
+                                    <Setter Property="Foreground"
+                                            Value="Black" />
+                                </Trigger>
+                                <MultiTrigger>
+                                    <MultiTrigger.Conditions>
+                                        <Condition Property="IsSelected"
+                                                   Value="True" />
+                                        <Condition Property="IsSelectionActive"
+                                                   Value="False" />
+                                    </MultiTrigger.Conditions>
+                                    <Setter Property="Background"
+                                            Value="Blue" />
+                                    <!-- Set to your preferred selected color -->
+                                    <Setter Property="Foreground"
+                                            Value="Black" />
+                                    <Setter Property="BorderBrush"
+                                            Value="Transparent" />
+                                </MultiTrigger>
+                            </Style.Triggers>
+                        </Style>
+                        <HierarchicalDataTemplate DataType="{x:Type configVms:ConfigurationViewModel}"
+                                                  ItemsSource="{Binding Controllers}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Name}"
+                                           Foreground="{StaticResource FontColorBrush}">
+                                    <TextBlock.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Add Controller"
+                                                      Command="{Binding AddControllerCommand}" />
+                                            <MenuItem Header="Clear Configuration"
+                                                      Command="{Binding ClearConfigurationCommand}"
+                                                      CommandParameter="{Binding}" />
+                                        </ContextMenu>
+                                    </TextBlock.ContextMenu>
+                                </TextBlock>
+                                <!--<CheckBox 
+                            IsChecked="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}"
+                            Margin="5,0" 
+                            VerticalAlignment="Center" 
+                            Background="AliceBlue"/>-->
+                            </StackPanel>
+                        </HierarchicalDataTemplate>
+                        <HierarchicalDataTemplate DataType="{x:Type configVms:ControllerConfigViewModel}"
+                                                  ItemsSource="{Binding Devices}">
+                            <StackPanel Orientation="Horizontal">
+                                <CheckBox IsChecked="{Binding IsEnabled}"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,5,0">
+                                    <CheckBox.LayoutTransform>
+                                        <ScaleTransform ScaleX="0.8"
+                                                        ScaleY="0.8" />
+                                    </CheckBox.LayoutTransform>
+                                </CheckBox>
+                                <TextBlock Text="{Binding Name}"
+                                           Foreground="{StaticResource FontColorBrush}">
+                                    <TextBlock.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Add Device"
+                                                      Command="{Binding AddDeviceCommand}"
+                                                      CommandParameter="{Binding}" />
+                                            <MenuItem Header="Remove Controller"
+                                                      Command="{Binding RemoveControllerCommand}"
+                                                      CommandParameter="{Binding}" />
+                                        </ContextMenu>
+                                    </TextBlock.ContextMenu>
+                                </TextBlock>
+                                <TextBlock Text="|"
+                                           Margin="5,0"
+                                           Foreground="{StaticResource AccentColorBrush}" />
+                                <TextBlock Text="{Binding SelectedControllerType}"
+                                           Foreground="{StaticResource LightBackgroundColorBrush}"
+                                           FontSize="10"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </HierarchicalDataTemplate>
+                        <DataTemplate DataType="{x:Type configVms:DeviceConfigViewModel}">
+                            <StackPanel Orientation="Horizontal">
+                                <CheckBox IsChecked="{Binding IsEnabled}"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,5,0">
+                                    <CheckBox.LayoutTransform>
+                                        <ScaleTransform ScaleX="0.8"
+                                                        ScaleY="0.8" />
+                                    </CheckBox.LayoutTransform>
+                                </CheckBox>
+                                <TextBlock Text="{Binding Name}"
+                                           Foreground="{StaticResource FontColorBrush}">
+                                    <TextBlock.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Remove Device"
+                                                      Command="{Binding RemoveDeviceCommand}"
+                                                      CommandParameter="{Binding}" />
+                                        </ContextMenu>
+                                    </TextBlock.ContextMenu>
+                                </TextBlock>
+                                <TextBlock Text="|"
+                                           Margin="5,0"
+                                           Foreground="{StaticResource AccentColorBrush}" />
+                                <TextBlock Text="{Binding SelectedDeviceType}"
+                                           Foreground="{StaticResource LightBackgroundColorBrush}"
+                                           FontSize="10"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </TreeView.Resources>
+                </TreeView>
+            </StackPanel>
+
+            <ContentControl Grid.Column="1"
+                            Grid.RowSpan="2"
+                            Content="{Binding CurrentViewModel}" />
+
+
+        </Grid>
+    </Grid>
+
+
+</UserControl>
