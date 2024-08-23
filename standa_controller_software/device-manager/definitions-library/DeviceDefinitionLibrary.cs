@@ -1,4 +1,5 @@
 ﻿using standa_controller_software.device_manager.controller_interfaces;
+using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Generic;

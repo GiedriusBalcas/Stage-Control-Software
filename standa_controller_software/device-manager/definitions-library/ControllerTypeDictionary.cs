@@ -44,6 +44,18 @@ namespace standa_controller_software.device_manager
             return _dictionary.TryGetValue(key, out value);
         }
 
-        // Other necessary Dictionary methods can be added here...
+        public IEnumerable<ControllerInfo> GetAllControllerTypes()
+        {
+            var result = new List<ControllerInfo>();
+
+            foreach (var item in _dictionary)
+            {
+                var listOfControllerInfo = item.Value;
+                result.AddRange(listOfControllerInfo);
+                result.Distinct();
+            }
+
+            return result;
+        }
     }
 }

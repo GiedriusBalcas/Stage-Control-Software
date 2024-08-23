@@ -15,6 +15,7 @@ namespace standa_controller_software.device_manager
         public Dictionary<string, IController> Controllers { get; private set; } = new Dictionary<string, IController>();
         public Dictionary<string, SemaphoreSlim> ControllerLocks { get; private set; } = new Dictionary<string, SemaphoreSlim>();
 
+        public string Name { get; set; }
         public ControllerManager()
         {
         }

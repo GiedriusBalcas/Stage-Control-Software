@@ -9,6 +9,7 @@ using text_parser_library;
 using NUnit.Framework.Internal.Commands;
 using System.Numerics;
 using standa_controller_software.device_manager.devices.shutter;
+using standa_controller_software.device_manager.controller_interfaces.positioning;
 
 namespace NUnit_tests
 {

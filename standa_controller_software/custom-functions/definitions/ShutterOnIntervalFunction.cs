@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using text_parser_library;
+using standa_controller_software.device_manager.controller_interfaces.shutter;
 
 
 namespace standa_controller_software.custom_functions.definitions

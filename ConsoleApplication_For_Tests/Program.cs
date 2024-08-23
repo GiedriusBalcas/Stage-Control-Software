@@ -15,6 +15,7 @@ using standa_controller_software.custom_functions.definitions;
 using standa_controller_software.device_manager.controller_interfaces.shutter;
 using opentk_painter_library.render_objects;
 using System.Runtime.CompilerServices;
+using standa_controller_software.device_manager.controller_interfaces.positioning;
 class Program
 {
     private static ControllerManager _controllerManager;
@@ -153,7 +154,7 @@ class Program
         //var deviceZ = new LinearPositionerDevice("z") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
 
         var shutterDevice = new ShutterDevice("s") { DelayOff = 50, DelayOn = 50, IsOn = false };
-        var shutterController = new ShutterController_Arduino("Shutter-controller");
+        var shutterController = new ShutterController_Virtual("Shutter-controller");
         controller1.AddDevice(deviceX);
         controller2.AddDevice(deviceY);
         controller3.AddDevice(deviceZ);

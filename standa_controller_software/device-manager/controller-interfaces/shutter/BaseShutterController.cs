@@ -8,7 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace standa_controller_software.device_manager.controller_interfaces
+namespace standa_controller_software.device_manager.controller_interfaces.shutter
 {
     public abstract class BaseShutterController : IController
     {

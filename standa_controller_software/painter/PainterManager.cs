@@ -8,6 +8,7 @@ using System.Numerics;
 using System;
 using standa_controller_software.device_manager.devices.shutter;
 using standa_controller_software.device_manager.controller_interfaces.shutter;
+using standa_controller_software.device_manager.controller_interfaces.positioning;
 
 namespace standa_controller_software.painter
 {

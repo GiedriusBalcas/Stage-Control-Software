@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace standa_controller_software.device_manager.controller_interfaces
+namespace standa_controller_software.device_manager.controller_interfaces.positioning
 {
     public abstract class BasePositionerController : IController
     {

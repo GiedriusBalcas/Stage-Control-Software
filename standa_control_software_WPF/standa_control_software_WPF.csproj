@@ -9,8 +9,73 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="views\" />
-    <Folder Include="view-models\" />
+    <Compile Remove="view_models\Attributes\**" />
+    <Compile Remove="view_models\SystemCompiler\**" />
+    <Compile Remove="view_models\SystemInfo\**" />
+    <Compile Remove="view_models\SystemProperties\**" />
+    <Compile Remove="views\behaviours\**" />
+    <Compile Remove="views\helper\**" />
+    <Compile Remove="views\system-configuration\**" />
+    <Compile Remove="views\system-info\**" />
+    <EmbeddedResource Remove="view_models\Attributes\**" />
+    <EmbeddedResource Remove="view_models\SystemCompiler\**" />
+    <EmbeddedResource Remove="view_models\SystemInfo\**" />
+    <EmbeddedResource Remove="view_models\SystemProperties\**" />
+    <EmbeddedResource Remove="views\behaviours\**" />
+    <EmbeddedResource Remove="views\helper\**" />
+    <EmbeddedResource Remove="views\system-configuration\**" />
+    <EmbeddedResource Remove="views\system-info\**" />
+    <None Remove="view_models\Attributes\**" />
+    <None Remove="view_models\SystemCompiler\**" />
+    <None Remove="view_models\SystemInfo\**" />
+    <None Remove="view_models\SystemProperties\**" />
+    <None Remove="views\behaviours\**" />
+    <None Remove="views\helper\**" />
+    <None Remove="views\system-configuration\**" />
+    <None Remove="views\system-info\**" />
+    <Page Remove="view_models\Attributes\**" />
+    <Page Remove="view_models\SystemCompiler\**" />
+    <Page Remove="view_models\SystemInfo\**" />
+    <Page Remove="view_models\SystemProperties\**" />
+    <Page Remove="views\behaviours\**" />
+    <Page Remove="views\helper\**" />
+    <Page Remove="views\system-configuration\**" />
+    <Page Remove="views\system-info\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="view_models\DocumentViewModel.cs" />
+    <Compile Remove="view_models\InitializationViewModel.cs" />
+    <Compile Remove="view_models\LSCViewModel.cs" />
+    <Compile Remove="view_models\SystemCompilerViewModel.cs" />
+    <Compile Remove="view_models\SystemInformtaionViewModel.cs" />
+    <Compile Remove="view_models\SystemPropertiesViewModel.cs" />
+    <Compile Remove="views\LSCView.xaml.cs" />
+    <Compile Remove="views\SystemCompilerView.xaml.cs" />
+    <Compile Remove="views\SystemConfigCreationView.xaml.cs" />
+    <Compile Remove="views\SystemInfoView.xaml.cs" />
+    <Compile Remove="views\SystemPropertiesView.xaml.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Page Remove="views\LSCView.xaml" />
+    <Page Remove="views\SystemCompilerView.xaml" />
+    <Page Remove="views\SystemConfigCreationView.xaml" />
+    <Page Remove="views\SystemInfoView.xaml" />
+    <Page Remove="views\SystemPropertiesView.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AvalonEdit" Version="6.3.0.90" />
+    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.122" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="OpenTK.GLWpfControl" Version="4.3.2" />
+    <PackageReference Include="OxyPlot.Core" Version="2.1.2" />
+    <PackageReference Include="OxyPlot.Wpf" Version="2.1.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\standa_controller_software\standa_controller_software.csproj" />
   </ItemGroup>
 
 </Project>

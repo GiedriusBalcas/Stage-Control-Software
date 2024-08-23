@@ -4,6 +4,8 @@ using standa_controller_software.device_manager.controller_interfaces;
 using standa_controller_software.custom_functions.helpers;
 using text_parser_library;
 using standa_controller_software.device_manager.devices;
+using standa_controller_software.device_manager.controller_interfaces.positioning;
+using standa_controller_software.device_manager.controller_interfaces.shutter;
 
 namespace standa_controller_software.custom_functions
 {

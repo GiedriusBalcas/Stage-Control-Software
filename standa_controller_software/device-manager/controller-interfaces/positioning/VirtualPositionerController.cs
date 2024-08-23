@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-namespace standa_controller_software.device_manager.controller_interfaces
+namespace standa_controller_software.device_manager.controller_interfaces.positioning
 {
     public class VirtualPositionerController : BasePositionerController
     {
