@@ -1,4 +1,5 @@
 ﻿using standa_controller_software.command_manager;
+using standa_controller_software.device_manager.attributes;
 using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
@@ -35,11 +36,20 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 set { _speed = Math.Min(value, this.MaxSpeed); ; }
             }
             public float CurrentPosition { get; set; } = 0;
-            public float CurrentSpeed { get; set; } = 0;
-            public float MaxAcceleration { get; set; } = 10000;
-            public float MaxDeceleration { get; set; } = 10000;
-            public float MaxSpeed { get; set; } = 1000;
             public uint MoveStatus { get; set; } = 0;
+            [DynamicPropertyAttribute]
+            [DisplayPropertyAttribute]
+            public string Name { get; set; }
+            public float CurrentSpeed { get; set; } = 0;
+            [DynamicPropertyAttribute]
+            [DisplayPropertyAttribute]
+            public float MaxAcceleration { get; set; } = 10000;
+            [DynamicPropertyAttribute]
+            [DisplayPropertyAttribute]
+            public float MaxDeceleration { get; set; } = 10000;
+            [DynamicPropertyAttribute]
+            [DisplayPropertyAttribute]
+            public float MaxSpeed { get; set; } = 1000;
         }
         private ConcurrentDictionary<string, DeviceInformation> _deviceInfo = new ConcurrentDictionary<string, DeviceInformation>();
         // name | id

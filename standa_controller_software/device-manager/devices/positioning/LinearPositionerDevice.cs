@@ -1,4 +1,5 @@
-﻿using standa_controller_software.device_manager.controller_interfaces;
+﻿using standa_controller_software.device_manager.attributes;
+using standa_controller_software.device_manager.controller_interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,11 +10,18 @@ namespace standa_controller_software.device_manager.devices
 {
     public class LinearPositionerDevice : IPositionerDevice
     {
+        [DisplayPropertyAttribute]
         public string Name { get; }
         public float CurrentPosition { get; set; }
         public float CurrentSpeed { get ; set ; }
+        [DynamicPropertyAttribute]
+        [DisplayPropertyAttribute]
         public float MaxAcceleration { get; set; }
+        [DynamicPropertyAttribute]
+        [DisplayPropertyAttribute]
         public float MaxDeceleration { get; set; }
+        [DynamicPropertyAttribute]
+        [DisplayPropertyAttribute]
         public float MaxSpeed { get; set; }
         public float Acceleration { get; set; }
         public float Deceleration { get; set; }

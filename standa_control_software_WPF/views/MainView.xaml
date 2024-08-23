@@ -12,14 +12,14 @@
 
 
     <Grid Background="{StaticResource DarkBackgroundColorBrush}">
-        <!--<Grid.Resources>
+        <Grid.Resources>
             <DataTemplate DataType="{x:Type vms:ConfigurationCreationViewModel}">
-                <views:SystemConfigCreationView/>
+                <views:ConfigurationCreationView/>
             </DataTemplate>
-            <DataTemplate DataType="{x:Type vms:LSCViewModel}">
+            <!--<DataTemplate DataType="{x:Type vms:LSCViewModel}">
                 <views:LSCView />
-            </DataTemplate>
-        </Grid.Resources>-->
+            </DataTemplate>-->
+        </Grid.Resources>
 
 
         <ContentControl

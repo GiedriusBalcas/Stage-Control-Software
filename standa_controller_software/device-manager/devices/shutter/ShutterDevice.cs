@@ -1,4 +1,5 @@
-﻿using System;
+﻿using standa_controller_software.device_manager.attributes;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,8 +9,13 @@ namespace standa_controller_software.device_manager.devices.shutter
 {
     public class ShutterDevice : IShutterDevice
     {
+        [DisplayPropertyAttribute]
         public string Name { get; private set; }
+        [DynamicPropertyAttribute]
+        [DisplayPropertyAttribute]
         public int DelayOn { get; set; }
+        [DynamicPropertyAttribute]
+        [DisplayPropertyAttribute]
         public int DelayOff { get; set; }
         //public bool IsOn { get { } set { } }
         private bool _isOn;

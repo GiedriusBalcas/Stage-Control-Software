@@ -12,19 +12,20 @@ namespace standa_control_software_WPF.view_models.config_creation
 {
     public partial class DeviceConfigViewModel : ViewModelBase
     {
+        private bool _isEnabled;
         public bool IsEnabled
         {
             get 
             {
                 if (_controller.IsEnabled is true)
-                    return IsEnabled;
+                    return _isEnabled;
                 return false;
             }
             set
             {
                 if(_controller.IsEnabled is true)
                 {
-                    IsEnabled = value;
+                    _isEnabled = value;
                     OnPropertyChanged(nameof(IsEnabled));
                 }
                 OnPropertyChanged(nameof(IsEnabled));
@@ -69,6 +70,7 @@ namespace standa_control_software_WPF.view_models.config_creation
                     if (foundType != null)
                     {
                         DeviceType = foundType;
+                        GetProperties();
                     }
                 }
                 OnPropertyChanged(nameof(SelectedDeviceType));
@@ -101,6 +103,7 @@ namespace standa_control_software_WPF.view_models.config_creation
             
             if (DeviceType != null)
             {
+                var propertiesAll = DeviceType.GetProperties();
                 var properties = DeviceType.GetProperties()
                     .Where(prop => prop.GetCustomAttribute<DisplayPropertyAttribute>() != null);
 

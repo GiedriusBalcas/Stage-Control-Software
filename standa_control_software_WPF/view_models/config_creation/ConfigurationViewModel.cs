@@ -7,57 +7,76 @@ namespace standa_control_software_WPF.view_models.config_creation
     public class ConfigurationViewModel : ViewModelBase
     {
         public readonly ConfigurationCreationViewModel ConfigManager;
-        
+
+        private string _name;
+        private string _xToolDependancy;
+        private string _yToolDependancy;
+        private string _zToolDependancy;
         public string Name
         {
             get
             {
-                if (Name == string.Empty || Name is null)
+                if (_name == string.Empty || _name is null)
                     return "Undefined";
-                return Name;
+                return _name;
             }
             set
             {
-                Name = value;
-                OnPropertyChanged(nameof(Name));
+                if(value != "" && value != string.Empty)
+                {
+                    _name = value;
+                    OnPropertyChanged(nameof(Name));
+                }
             }
         }
         public string XToolDependancy
         {
             get
             {
-                return XToolDependancy;
+                return _xToolDependancy;
             }
             set
             {
-                XToolDependancy = value;
-                OnPropertyChanged(nameof(XToolDependancy));
+                if (_xToolDependancy != value)
+                {
+                    _xToolDependancy = value;
+                    OnPropertyChanged(nameof(XToolDependancy));
+                }
             }
         }
+
         public string YToolDependancy
         {
             get
             {
-                return YToolDependancy;
+                return _yToolDependancy;
             }
             set
             {
-                YToolDependancy = value;
-                OnPropertyChanged(nameof(YToolDependancy));
+                if (_yToolDependancy != value)
+                {
+                    _yToolDependancy = value;
+                    OnPropertyChanged(nameof(YToolDependancy));
+                }
             }
         }
+
         public string ZToolDependancy
         {
             get
             {
-                return ZToolDependancy;
+                return _zToolDependancy;
             }
             set
             {
-                ZToolDependancy = value;
-                OnPropertyChanged(nameof(ZToolDependancy));
+                if (_zToolDependancy != value)
+                {
+                    _zToolDependancy = value;
+                    OnPropertyChanged(nameof(ZToolDependancy));
+                }
             }
         }
+
 
         public ObservableCollection<ControllerConfigViewModel> Controllers { get; set; } = new ObservableCollection<ControllerConfigViewModel>();
 
@@ -66,6 +85,8 @@ namespace standa_control_software_WPF.view_models.config_creation
 
         public ConfigurationViewModel(ConfigurationCreationViewModel systemConfigurations)
         {
+            Name = string.Empty;
+
             ConfigManager = systemConfigurations;
 
             ClearConfigurationCommand = new RelayCommand<ConfigurationViewModel>(ExecuteClearConfiguration);

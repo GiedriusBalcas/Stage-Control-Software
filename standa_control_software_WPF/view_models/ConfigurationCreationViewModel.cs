@@ -9,9 +9,9 @@ using standa_control_software_WPF.view_models.commands;
 using standa_controller_software.device_manager.devices;
 using ToolDependancyBuilder;
 using standa_control_software_WPF.view_models.config_creation.serialization_helpers;
+using standa_control_software_WPF.view_models.config_creation;
 
-
-namespace standa_control_software_WPF.view_models.config_creation
+namespace standa_control_software_WPF.view_models
 {
     public class ConfigurationCreationViewModel : ViewModelBase
     {
@@ -136,7 +136,7 @@ namespace standa_control_software_WPF.view_models.config_creation
             try
             {
 
-                ControllerManager controllerMangerInstance = new ControllerManager() 
+                ControllerManager controllerMangerInstance = new ControllerManager()
                 {
                     Name = Configuration.Name
                 };
@@ -172,7 +172,7 @@ namespace standa_control_software_WPF.view_models.config_creation
                 calculator.CreateFunction(Configuration.ZToolDependancy, positionerDevices.Select(dev => dev.Name).ToList());
                 var funcDelegZ = calculator.GetFunction();
 
-                Func<Dictionary<string, float>, System.Numerics.Vector3> toolPosFunction = (Dictionary<string, float> positions) =>
+                Func<Dictionary<string, float>, System.Numerics.Vector3> toolPosFunction = (positions) =>
                 {
                     return new System.Numerics.Vector3()
                     {

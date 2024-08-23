@@ -1,5 +1,4 @@
 ﻿using standa_control_software_WPF.view_models;
-using standa_control_software_WPF.view_models.config_creation;
 using standa_control_software_WPF.view_models.stores;
 using standa_control_software_WPF.views;
 using standa_controller_software.device_manager;

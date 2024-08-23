@@ -14,17 +14,20 @@ namespace standa_control_software_WPF.view_models.config_creation
         private readonly ConfigurationViewModel _config;
         private string _selectedControllerType;
 
+        private bool _isEnabled;
         public bool IsEnabled
         {
-            get => IsEnabled;
+            get => _isEnabled;
             set
             {
-                IsEnabled = value;
+                _isEnabled = value;
                 OnPropertyChanged(nameof(IsEnabled));
                 foreach (var device in Devices)
-                    device.IsEnabled = device.IsEnabled;
+                    device.IsEnabled = _isEnabled;
             }
         }
+
+        private string _name;
         public string Name
         {
             get
@@ -33,16 +36,16 @@ namespace standa_control_software_WPF.view_models.config_creation
                 if (nameProp != null && nameProp.PropertyValue is string stringVal)
                     if (stringVal != "")
                     {
-                        Name = stringVal;
-                        return Name;
+                        _name = stringVal;
+                        return _name;
                     }
 
-                Name = "Undefined Controller";
-                return Name;
+                _name = "Undefined Controller";
+                return _name;
             }
             set
             {
-                Name = value;
+                _name = value;
                 OnPropertyChanged(nameof(Name));
             }
         }
@@ -98,6 +101,7 @@ namespace standa_control_software_WPF.view_models.config_creation
             {
                 var ControllerPropertiesNew = new List<PropertyDisplayItem>();
 
+                var propertiesAll = ControllerType.GetProperties();
                 var properties = ControllerType.GetProperties()
                     .Where(prop => prop.GetCustomAttribute<DisplayPropertyAttribute>() != null);
 
