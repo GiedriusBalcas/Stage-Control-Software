@@ -15,7 +15,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         private ConcurrentDictionary<char, CancellationTokenSource> deviceCancellationTokens = new ConcurrentDictionary<char, CancellationTokenSource>();
         private Dictionary<string, Func<Command, BasePositionerDevice, CancellationToken, SemaphoreSlim, Task>> _methodMap = new Dictionary<string, Func<Command, BasePositionerDevice, CancellationToken, SemaphoreSlim, Task>>();
         protected Dictionary<char, BasePositionerDevice> Devices { get; }
-        public string Name { get; set; }
 
         public BasePositionerController(string name) : base(name)
         {

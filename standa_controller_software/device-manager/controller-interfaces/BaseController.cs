@@ -1,4 +1,5 @@
 ﻿using standa_controller_software.command_manager;
+using standa_controller_software.device_manager.attributes;
 using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
@@ -11,6 +12,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
 {
     public abstract class BaseController
     {
+        [DisplayPropertyAttribute]
         public string Name { get;}
         protected BaseController(string name)
         {

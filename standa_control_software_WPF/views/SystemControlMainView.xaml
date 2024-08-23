@@ -1,0 +1,222 @@
+﻿<UserControl x:Class="standa_control_software_WPF.views.SystemControlMainView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:standa_control_software_WPF.views"
+             xmlns:vms="clr-namespace:standa_control_software_WPF.view_models.system_control"
+             xmlns:views ="clr-namespace:standa_control_software_WPF.views.system_control"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+
+    <Grid Background="{StaticResource DarkBackgroundColorBrush}">
+
+        <Grid.Resources>
+            <DataTemplate DataType="{x:Type vms:SystemPropertiesViewModel}">
+                <views:SystemPropertiesView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vms:SystemInformtaionViewModel}">
+                <views:SystemInformationView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vms:SystemControlViewModel}">
+                <views:SystemControlView/>
+            </DataTemplate>
+        </Grid.Resources>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!--<ToolBarPanel Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2">
+            <ToolBar>
+                <Label Content="CurrentCommandScript" />
+
+                <ListBox  Width="auto">
+                    <ListBoxItem  Content="Configuration #1"/>
+                </ListBox>
+                <Button Content="Execute" VerticalAlignment="Center"/>
+            </ToolBar>
+        </ToolBarPanel>-->
+
+        <Menu Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" FontSize="13"
+              Background="{StaticResource MidBackgroundColorBrush}">
+            <MenuItem Header="File">
+                <MenuItem Header="Open"/>
+                <MenuItem Header="New"/>
+                <Separator />
+                <MenuItem Header="Exit"/>
+            </MenuItem>
+            <MenuItem Header="View">
+                <MenuItem Header="System Properties"/>
+                <MenuItem Header="System Info"/>
+                <MenuItem Header="Compiler"/>
+            </MenuItem>
+        </Menu>
+
+
+        <Border Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="3" Background="{StaticResource MidBackgroundColorBrush}"  DataContext="{Binding CurrentCompilerViewModel}">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Open" Command="{Binding OpenDocumentCommand}"
+                        Style="{StaticResource customButtonStyleForBar}"/>
+                <Button Content="New" Command="{Binding AddNewDocumentCommand}"
+                        Style="{StaticResource customButtonStyleForBar}"/>
+                <Button Content="Save" 
+                        Style="{StaticResource customButtonStyleForBar}"/>
+                <Button Content="Save All" 
+                        Style="{StaticResource customButtonStyleForBar}"/>
+
+                <Separator 
+                    BorderThickness="1" 
+                    BorderBrush="{StaticResource LightBackgroundColorBrush}" 
+                    Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
+                    />
+                <Label Content="Active document:" FontSize="12" VerticalAlignment="Center"/>
+                <Label Content="{Binding SelectedDocument.Name}" FontSize="12" VerticalAlignment="Center" Margin="0"/>
+                <Separator 
+                    BorderThickness="1" 
+                    BorderBrush="{StaticResource LightBackgroundColorBrush}" 
+                    Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
+                    />
+
+
+                <!--<ListBox  Width="auto" VerticalAlignment="Center">
+                    <ListBoxItem  Content="Virtual Config"/>
+                </ListBox>-->
+
+
+                <Button
+                        Command="{Binding CheckCommandTextCommand}"
+                        Style="{StaticResource customButtonStyleForBar}">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Width="20" Height="15" Fill="{StaticResource FontColorBrush}" Data="{StaticResource parseIconPath}" Stretch="Uniform"/>
+                        <TextBlock Text="Parse" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                    </StackPanel>
+                </Button>
+
+
+                <Button 
+                        Command="{Binding ExecuteCommandsCommand}"
+                        Style="{StaticResource customButtonStyleForBar}">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Width="20" Height="15" Fill="{StaticResource FontColorBrush}" Data="{StaticResource executeIcontPath}" Stretch="Uniform"/>
+                        <TextBlock Text="Execute" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                    </StackPanel>
+                </Button>
+
+
+
+                <Button
+                        Command="{Binding PauseDebuggingCommand}"
+                        Style="{StaticResource customButtonStyleForBar}">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Width="20" Height="15" Fill="{StaticResource FontColorBrush}" Data="{StaticResource pauseIconPath}" Stretch="Uniform"/>
+                        <TextBlock Text="Pause" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button 
+                        Command="{Binding ResumeDebuggingCommand}"
+                        Style="{StaticResource customButtonStyleForBar}">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Width="20" Height="15" Fill="{StaticResource FontColorBrush}" Data="{StaticResource resumeIconPath}" Stretch="Uniform"/>
+                        <TextBlock Text="Resume" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button 
+                        Command="{Binding StopDebuggingCommand}"
+                        Style="{StaticResource customButtonStyleForBar}">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Width="20" Height="15" Fill="{StaticResource FontColorBrush}" Data="{StaticResource stopIconPath}" Stretch="Uniform"/>
+                        <TextBlock Text="Stop" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                    </StackPanel>
+                </Button>
+
+                <Separator 
+                    BorderThickness="1" 
+                    BorderBrush="{StaticResource LightBackgroundColorBrush}" 
+                    Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
+                    />
+
+                <Button 
+                        Command="{Binding ForceStopCommand}"
+                        Style="{StaticResource customButtonStyleForBar}">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Width="20" Height="15" Fill="{StaticResource FontColorBrush}" Data="{StaticResource foreceStopIconPath}" Stretch="Uniform"/>
+                        <TextBlock Text="Force Stop" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Border>
+
+
+        <Grid Grid.Column="0" Grid.Row="2" Margin="0,0,0,0">
+
+            <ListBox 
+                SelectedItem="{Binding SelectedNavItem}" 
+                ItemsSource="{Binding NavigationItems}"
+                VerticalAlignment="Center"
+                BorderBrush="Transparent"
+                d:ItemsSource="{d:SampleData ItemCount=5}"
+                Background="Transparent"
+                Margin="0,0">
+                <ListBox.Resources>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Background" Value="{StaticResource MidBackgroundColorBrush}"/>
+                        <Setter Property="Foreground" Value="{StaticResource FontColorBrush}"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Margin" Value="0"/>
+                        <Setter Property="Padding" Value="0,10,5,10"/>
+                        <!-- Hover/Overlay Background Color -->
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <Border Background="{TemplateBinding Background}"
+                Padding="{TemplateBinding Padding}"
+                BorderThickness="0,0"
+                BorderBrush="White">
+
+
+                                        <ContentPresenter />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <!-- Mouse Over Color -->
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="{StaticResource AccentColorBrush}"/>
+                                        </Trigger>
+                                        <!-- Selected Item Background Color -->
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background" Value="{StaticResource DarkBackgroundColorBrush}"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.Resources>
+
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <Rectangle Width="3" VerticalAlignment="Stretch" Fill="{StaticResource AccentColorBrush}"/>
+                            <TextBlock Text="{Binding Header}" Margin="5,0,0,0">
+                                <TextBlock.LayoutTransform>
+                                    <RotateTransform Angle="90"/>
+                                </TextBlock.LayoutTransform>
+                            </TextBlock>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+
+
+        <ContentControl Grid.Row="2" Grid.Column="1"
+    Content="{Binding CurrentViewModel}" />
+
+    </Grid>
+</UserControl>

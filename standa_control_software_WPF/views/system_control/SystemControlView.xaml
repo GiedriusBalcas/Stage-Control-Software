@@ -1,0 +1,307 @@
+﻿<UserControl x:Class="standa_control_software_WPF.views.system_control.SystemControlView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:standa_control_software_WPF.views.system_control"
+             
+             xmlns:glWpfControl="clr-namespace:OpenTK.Wpf;assembly=GLWpfControl"
+             xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit"
+             xmlns:behave ="clr-namespace:standa_control_software_WPF.views.behaviours"
+             xmlns:vms="clr-namespace:standa_control_software_WPF.view_models"
+             xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" 
+             d:DesignWidth="800">
+
+    <Grid Background="Transparent">
+        <!--<Grid.ColumnDefinitions>
+            <ColumnDefinition Width="20"/>
+            <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="3*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="50"/>
+        </Grid.RowDefinitions>
+        
+        
+
+
+        --><!--<Border Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="3" Background="{StaticResource MidBackgroundColorBrush}">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Open" Command="{Binding OpenDocumentCommand}"
+                        Style="{StaticResource customButtonStyleForBar}"/>
+                <Button Content="New" Command="{Binding AddNewDocumentCommand}"
+                        Style="{StaticResource customButtonStyleForBar}"/>
+                <Button Content="Save" 
+                        Style="{StaticResource customButtonStyleForBar}"/>
+                <Button Content="Save All" 
+                        Style="{StaticResource customButtonStyleForBar}"/>
+
+                <Separator 
+                    BorderThickness="1" 
+                    BorderBrush="{StaticResource LightBackgroundColorBrush}" 
+                    Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
+                    />
+                <Label Content="Active document:" FontSize="12" VerticalAlignment="Center"/>
+                <Label Content="{Binding SelectedDocument.Name}" FontSize="12" VerticalAlignment="Center" Margin="0"/>
+                <Separator 
+                    BorderThickness="1" 
+                    BorderBrush="{StaticResource LightBackgroundColorBrush}" 
+                    Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
+                    />
+
+                --><!--<ListBox  Width="auto" VerticalAlignment="Center">
+                    <ListBoxItem  Content="Virtual Config"/>
+                </ListBox>--><!--
+
+                <Button Content="Parse"
+                        Command="{Binding CheckCommandTextCommand}"
+                        Style="{StaticResource customButtonStyleForBar}"/>
+                <Button Content="Execute"
+                        Command="{Binding ExecuteCommandsCommand}"
+                        Style="{StaticResource customButtonStyleForBar}"/>
+
+
+                <Button Content="Pause"
+                        Command="{Binding PauseDebuggingCommand}"
+                        Style="{StaticResource customButtonStyleForBar}"/>
+                <Button Content="Resume"
+                        Command="{Binding ResumeDebuggingCommand}"
+                        Style="{StaticResource customButtonStyleForBar}"/>
+                <Button Content="Stop"
+                        Command="{Binding StopDebuggingCommand}"
+                        Style="{StaticResource customButtonStyleForBar}"/>
+
+                <Separator 
+                    BorderThickness="1" 
+                    BorderBrush="{StaticResource LightBackgroundColorBrush}" 
+                    Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
+                    />
+                
+                <Button Content="Force Stop"
+                        Command="{Binding ForceStopCommand}"
+                        Style="{StaticResource customButtonStyleForBar}"/>
+            </StackPanel>
+        </Border>--><!--
+
+
+        <Border  Grid.Row="2" Grid.Column="1"
+                 Background="{StaticResource MidBackgroundColorBrush}"
+                 Margin="0,20,0,0"
+                 Padding="0,0,5,5"
+                 Style="{StaticResource parentBorder}">
+            <TabControl 
+                        ItemsSource="{Binding Documents}"
+                        SelectedItem="{Binding SelectedDocument}"
+                         Background="{StaticResource MidBackgroundColorBrush}"
+                         Foreground="{StaticResource FontColorBrush}"
+                         BorderBrush="Transparent"
+                         >
+
+                <TabControl.Resources>
+                    <Style TargetType="TabItem">
+                        <Setter Property="Background" Value="{StaticResource DarkBackgroundColorBrush}" />
+                        <Setter Property="Foreground" Value="{StaticResource FontColorBrush}" />
+                        <Setter Property="BorderBrush" Value="{StaticResource LightBackgroundColorBrush}" />
+                        <Setter Property="BorderThickness" Value="1,0,1,0"/>
+                        <Setter Property="Padding" Value="10,4" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="TabItem">
+                                    <Grid Background="Transparent">
+                                        <Border x:Name="border"
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}">
+                                            <ContentPresenter x:Name="contentPresenter"
+                                                      ContentSource="Header"
+                                                      HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                      Margin="{TemplateBinding Padding}"/>
+                                        </Border>
+                                    </Grid>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            --><!-- Adjust color for hover state --><!--
+                                            <Setter TargetName="border" Property="Background" Value="{StaticResource MidBackgroundColorBrush}" />
+                                            <Setter Property="BorderBrush" Value="{StaticResource AccentColorBrush}" />
+                                            <Setter Property="BorderThickness" Value="1,1,1,0" />
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            --><!-- Adjust color for selected state --><!--
+                                            <Setter TargetName="border" Property="Background" Value="{StaticResource MidBackgroundColorBrush}" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </TabControl.Resources>
+
+                <TabControl.ItemTemplate>
+                    --><!-- This is the header template --><!--
+                    <DataTemplate>
+                        <DockPanel Width="auto" Height="auto">
+                            <DockPanel.ContextMenu>
+                                --><!-- ContextMenu for right-click on tab --><!--
+                                <ContextMenu Background="{StaticResource MidBackgroundColorBrush}">
+                                    <MenuItem Header="Save" Command="{Binding SaveFileCommand}"/>
+                                    <MenuItem Header="Save As" Command="{Binding SaveAsFileCommand}"/>
+                                    <MenuItem Header="Close" />
+                                    <MenuItem Header="Close All Except This" />
+                                </ContextMenu>
+                            </DockPanel.ContextMenu>
+                            <TextBlock Text="{Binding Name}" Margin="0,0" VerticalAlignment="Center" FontSize="12"/>
+                            <Button Command="{Binding CloseDocumentCommand}"
+                                    Content="✖" Background="Transparent" BorderThickness="0,0,0,0" FontSize="5" FontStyle="Normal" Margin="5,0,0,5" FontWeight="SemiBold" VerticalAlignment="Top" BorderBrush="Transparent"/>
+                        </DockPanel>
+                    </DataTemplate>
+                </TabControl.ItemTemplate>
+                <TabControl.ContentTemplate>
+                    <DataTemplate>
+                        <avalonEdit:TextEditor Grid.Row="0"
+                                    Loaded="avalonEditor_Loaded"
+                                    x:Name="avalonEditor"
+                                    SyntaxHighlighting="C#"
+                                    Margin="5,10,0,5"
+                                    ShowLineNumbers="True"
+                                    WordWrap="True"
+                                    HorizontalScrollBarVisibility="Auto"
+                                    VerticalScrollBarVisibility="Visible"
+                                    PreviewMouseWheel="AvalonTextEditor_PreviewMouseWheel"
+                                    compView:TextEditorExtensions.Text="{Binding CommandText, UpdateSourceTrigger=PropertyChanged}"
+                                     Background="{StaticResource MidBackgroundColorBrush}"
+                                     Foreground="{StaticResource FontColorBrush}"
+                                    >
+                            <i:Interaction.Behaviors>
+                                <behave:HighlightLineBehavior/>
+                                <behave:FontSizeAdjustmentBehavior/>
+                                </i:Interaction.Behaviors>
+                        </avalonEdit:TextEditor>
+                    </DataTemplate>
+                </TabControl.ContentTemplate>
+            </TabControl>
+        </Border>
+
+        <GridSplitter Grid.Column="2" Grid.Row="2" Grid.RowSpan="1" 
+              HorizontalAlignment="Left" 
+              VerticalAlignment="Stretch"
+              Background="{StaticResource MidBackgroundColorBrush}" 
+              ShowsPreview="true"
+                      Margin="0,20,0,0"
+              Width="3"/>
+
+
+
+        <Grid Grid.Row="2" Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="125"/>
+            </Grid.RowDefinitions>
+            
+            --><!--//HEREHH--><!--
+            <Grid Grid.Row="0" Margin="5,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <glWpfControl:GLWpfControl Grid.Column="0"
+                           x:Name="glControl" 
+                           Margin="10,10,10,0"
+                           />
+
+                <Border Grid.Column="1"
+                        Background="{StaticResource MidBackgroundColorBrush}" 
+                        VerticalAlignment="Top"
+                        Margin="0,10,10,0"
+                        Padding="5,10,5,10"
+                        Style="{StaticResource parentBorder}">
+                    <StackPanel Orientation="Vertical"
+                                Margin="0">
+                        <Button Content="xy"
+                                Command="{Binding CameraViewXYCommand}" 
+                                VerticalAlignment="Top"
+                                Style="{StaticResource customButtonStyle}"/>
+                        
+                        <Button Content="xz" 
+                                Command="{Binding CameraViewXZCommand}" 
+                                VerticalAlignment="Top"
+                                Style="{StaticResource customButtonStyle}"/>
+                        <Button Content="yz" 
+                                Command="{Binding CameraViewYZCommand}" 
+                                VerticalAlignment="Top"
+                                Style="{StaticResource customButtonStyle}"/>
+                        <Button Content="Fit" 
+                                Command="{Binding CameraFitObjectCommand}" 
+                                VerticalAlignment="Top"
+                                Style="{StaticResource customButtonStyle}"/>
+                        <ToggleButton 
+                            Content="Track"
+                            VerticalAlignment="Bottom"
+                            IsChecked="{Binding IsTrackingTool}"
+                            Style="{StaticResource customToggleButtonStyle}"/>
+                        <ToggleButton 
+                            Content="Orth." 
+                            VerticalAlignment="Bottom"
+                            IsChecked="{Binding IsOrthographicView}"
+                            Style="{StaticResource customToggleButtonStyle}"/>
+                    </StackPanel>
+                </Border>
+                    
+            </Grid>
+
+            <GridSplitter Grid.Row="0" Grid.ColumnSpan="5"
+                        HorizontalAlignment="Stretch" 
+                        VerticalAlignment="Bottom"
+                        Background="{StaticResource MidBackgroundColorBrush}" 
+                        ShowsPreview="true"
+                        Height="5"
+                          Margin="15,0,10,0"/>
+
+
+            <Border Grid.Row="1" 
+                    Margin="15,0,10,0"
+                    Background="{StaticResource MidBackgroundColorBrush}"
+                    Style="{StaticResource parentBorder}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="auto"/>
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" 
+                            Margin="10,0,10,0"
+                            BorderBrush="{StaticResource AccentColorBrush}"
+                            BorderThickness="0,0,0,1">
+                        <StackPanel Orientation="Horizontal">
+                            <Label Content="Output console"/>
+                            <Button Content="Clear" 
+                                    VerticalAlignment="Center" 
+                                    HorizontalAlignment="Right"
+                                    Command="{Binding ClearOutputMessageCommand}"
+                                    Style="{StaticResource customButtonStyle}"/>
+                        </StackPanel>
+                    </Border>
+
+                        <ScrollViewer Grid.Row="1" Margin="10,5,0,5"
+                                    VerticalScrollBarVisibility="Auto"
+                                    HorizontalScrollBarVisibility="Auto"
+                                    >
+                            <TextBlock Text="{Binding OutputMessage}"
+                                    TextWrapping="Wrap" 
+                            Background="Transparent"
+                            Foreground="{StaticResource FontColorBrush}"/>
+                        </ScrollViewer>
+                    
+                
+                </Grid>
+            </Border>
+        </Grid>-->
+
+    </Grid>
+</UserControl>

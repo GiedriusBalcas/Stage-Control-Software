@@ -1,5 +1,7 @@
-﻿using System;
+﻿using standa_controller_software.device_manager.attributes;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -11,12 +13,18 @@ namespace standa_controller_software.device_manager.devices
         protected BasePositionerDevice(char name, string id) : base(name, id)
         {
         }
+        [DisplayPropertyAttribute]
+        [DynamicPropertyAttribute]
+        public virtual float MaxSpeed { get; set; }
+        [DisplayPropertyAttribute]
+        [DynamicPropertyAttribute]
+        public virtual float MaxAcceleration { get; set; }
+        [DisplayPropertyAttribute]
+        [DynamicPropertyAttribute]
+        public virtual float MaxDeceleration { get; set; }
 
         public virtual float CurrentPosition { get; set; }
         public virtual float CurrentSpeed { get; set; }
-        public virtual float MaxSpeed { get; set; }
-        public virtual float MaxAcceleration { get; set; }
-        public virtual float MaxDeceleration { get; set; }
         public virtual float Acceleration { get; set; }
         public virtual float Deceleration { get; set; }
         public virtual float Speed { get; set; }

@@ -16,9 +16,9 @@
             <DataTemplate DataType="{x:Type vms:ConfigurationCreationViewModel}">
                 <views:ConfigurationCreationView/>
             </DataTemplate>
-            <!--<DataTemplate DataType="{x:Type vms:LSCViewModel}">
-                <views:LSCView />
-            </DataTemplate>-->
+            <DataTemplate DataType="{x:Type vms:SystemControlMainViewModel}">
+                <views:SystemControlMainView/>
+            </DataTemplate>
         </Grid.Resources>
 
 

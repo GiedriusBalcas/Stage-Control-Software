@@ -42,11 +42,9 @@
   <ItemGroup>
     <Compile Remove="view_models\DocumentViewModel.cs" />
     <Compile Remove="view_models\InitializationViewModel.cs" />
-    <Compile Remove="view_models\LSCViewModel.cs" />
     <Compile Remove="view_models\SystemCompilerViewModel.cs" />
     <Compile Remove="view_models\SystemInformtaionViewModel.cs" />
     <Compile Remove="view_models\SystemPropertiesViewModel.cs" />
-    <Compile Remove="views\LSCView.xaml.cs" />
     <Compile Remove="views\SystemCompilerView.xaml.cs" />
     <Compile Remove="views\SystemConfigCreationView.xaml.cs" />
     <Compile Remove="views\SystemInfoView.xaml.cs" />
@@ -54,7 +52,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Page Remove="views\LSCView.xaml" />
     <Page Remove="views\SystemCompilerView.xaml" />
     <Page Remove="views\SystemConfigCreationView.xaml" />
     <Page Remove="views\SystemInfoView.xaml" />
