@@ -20,14 +20,16 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             public SerialPort SerialPort;
         }
 
-        private readonly ConcurrentDictionary<string, DeviceInformation> _deviceInfo = new();
+        private readonly ConcurrentDictionary<char, DeviceInformation> _deviceInfo = new();
 
-        public ShutterController_Arduino(string name) : base(name) { }
-
-        public override void AddDevice(IDevice device)
+        public ShutterController_Arduino(string name) : base(name)
+        {
+            
+        }
+        public override void AddDevice(BaseDevice device)
         {
             base.AddDevice(device);
-            if (device is IShutterDevice shutterDevice)
+            if (device is BaseShutterDevice shutterDevice)
             {
                 var port = new SerialPort
                 {
@@ -50,7 +52,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             }
         }
 
-        public override IController GetCopy()
+        public override BaseController GetCopy()
         {
             var controller = new ShutterController_Virtual(Name);
             foreach (var device in Devices)
@@ -61,7 +63,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             return controller;
         }
 
-        protected override async Task SetDelayAsync(Command command, IShutterDevice device, CancellationToken token)
+        protected override async Task SetDelayAsync(Command command, BaseShutterDevice device, CancellationToken token)
         {
             var delayOn = (uint)command.Parameters[0];
             var delayOff = (uint)command.Parameters[1];
@@ -96,7 +98,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             }
         }
 
-        protected override async Task ChangeState(Command command, IShutterDevice device, CancellationToken token)
+        protected override async Task ChangeState(Command command, BaseShutterDevice device, CancellationToken token)
         {
             var state = (bool)command.Parameters[0];
 
@@ -110,7 +112,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             }
         }
 
-        private async Task ShutterOnAsync(IShutterDevice device, CancellationToken token)
+        private async Task ShutterOnAsync(BaseShutterDevice device, CancellationToken token)
         {
             byte[] command = { 0x02 }; // SHUTTER_ON command
             var serialPort = _deviceInfo[device.Name].SerialPort;
@@ -128,7 +130,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             //}
         }
 
-        private async Task ShutterOffAsync(IShutterDevice device, CancellationToken token)
+        private async Task ShutterOffAsync(BaseShutterDevice device, CancellationToken token)
         {
             byte[] command = { 0x03 }; // SHUTTER_OFF command
             var serialPort = _deviceInfo[device.Name].SerialPort;
@@ -141,7 +143,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             //Console.WriteLine($"ShutterOff Ack: {ackFF}");
         }
 
-        protected override async Task ChangeStateOnInterval(Command command, IShutterDevice device, CancellationToken token)
+        protected override async Task ChangeStateOnInterval(Command command, BaseShutterDevice device, CancellationToken token)
         {
             //uint duration = (uint)((float)command.Parameters[0] * 1000000);
 

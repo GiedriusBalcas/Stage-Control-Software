@@ -4,10 +4,10 @@ namespace ToolDependancyBuilder
 {
     public class ToolPositionCalculator
     {
-        private Func<Dictionary<string, float>, float> _CoordinateFunc;
+        private Func<Dictionary<char, float>, float> _CoordinateFunc;
 
 
-        public void CreateFunction(string xExprStr, List<string> deviceNames)
+        public void CreateFunction(string xExprStr, List<char> deviceNames)
         {
             var _deviceNames = deviceNames;
             var errorListener = new CustomErrorListener();
@@ -46,14 +46,14 @@ namespace ToolDependancyBuilder
             }
         }
 
-        public float CalculateXPosition(Dictionary<string, float> devicePositions)
+        public float CalculateXPosition(Dictionary<char, float> devicePositions)
         {
             if (_CoordinateFunc is not null)
                 return _CoordinateFunc(devicePositions);
             return 0f;
         }
 
-        public Func<Dictionary<string, float>, float> GetFunction() 
+        public Func<Dictionary<char, float>, float> GetFunction() 
         {
             return _CoordinateFunc;
         }

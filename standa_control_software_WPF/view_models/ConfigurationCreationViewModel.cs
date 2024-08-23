@@ -161,8 +161,8 @@ namespace standa_control_software_WPF.view_models
 
                 _controllerManager = controllerMangerInstance;
 
-                var shutterDevice = _controllerManager.GetDevices<IShutterDevice>().First();
-                var positionerDevices = _controllerManager.GetDevices<IPositionerDevice>();
+                var shutterDevice = _controllerManager.GetDevices<BaseShutterDevice>().First();
+                var positionerDevices = _controllerManager.GetDevices<BasePositionerDevice>();
                 var calculator = new ToolPositionCalculator();
 
                 calculator.CreateFunction(Configuration.XToolDependancy, positionerDevices.Select(dev => dev.Name).ToList());
@@ -172,7 +172,7 @@ namespace standa_control_software_WPF.view_models
                 calculator.CreateFunction(Configuration.ZToolDependancy, positionerDevices.Select(dev => dev.Name).ToList());
                 var funcDelegZ = calculator.GetFunction();
 
-                Func<Dictionary<string, float>, System.Numerics.Vector3> toolPosFunction = (positions) =>
+                Func<Dictionary<char, float>, System.Numerics.Vector3> toolPosFunction = (positions) =>
                 {
                     return new System.Numerics.Vector3()
                     {
@@ -183,7 +183,7 @@ namespace standa_control_software_WPF.view_models
                 };
 
                 var tool = new ToolInformation(
-                    _controllerManager.GetDevices<IPositionerDevice>(),
+                    _controllerManager.GetDevices<BasePositionerDevice>(),
                     shutterDevice,
                     toolPosFunction
                     );

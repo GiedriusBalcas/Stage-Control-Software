@@ -40,20 +40,17 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             public float MaxSpeed { get; set; } = 1000;
             public uint MoveStatus { get; set; } = 0;
         }
-        private ConcurrentDictionary<string, DeviceInformation> _deviceInfo = new ConcurrentDictionary<string, DeviceInformation>();
-        
+        private ConcurrentDictionary<char, DeviceInformation> _deviceInfo = new ConcurrentDictionary<char, DeviceInformation>();
+
         //---------------------------------------------------
 
-
-        public PositionerController_Virtual(string name) : base(name)
-        {
-        }
-
-        public override void AddDevice(IDevice device)
+        public PositionerController_Virtual(string name) : base(name) { }
+        
+        public override void AddDevice(BaseDevice device)
         {
             base.AddDevice(device);
 
-            if (device is IPositionerDevice positioningDevice)
+            if (device is BasePositionerDevice positioningDevice)
             {
                 _deviceInfo.TryAdd(positioningDevice.Name, new DeviceInformation());
             }
@@ -61,7 +58,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
 
 
-        protected override Task UpdateMoveSettings(Command command, IPositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore)
+        protected override Task UpdateMoveSettings(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore)
         {
             float speedValue = (float)(command.Parameters[0]);
             float accelValue = (float)(command.Parameters[1]);
@@ -75,7 +72,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         }
 
 
-        protected override Task WaitUntilStop(Command command, IPositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore)
+        protected override Task WaitUntilStop(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore)
         {
             return Task.CompletedTask;
         }
@@ -86,7 +83,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return Task.CompletedTask;
         }
 
-        public override IController GetCopy()
+        public override BaseController GetCopy()
         {
             var controller = new VirtualPositionerController(Name);
             foreach (var device in Devices)

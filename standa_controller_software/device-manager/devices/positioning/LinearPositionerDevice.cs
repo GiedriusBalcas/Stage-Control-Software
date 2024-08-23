@@ -8,33 +8,31 @@ using System.Threading.Tasks;
 
 namespace standa_controller_software.device_manager.devices
 {
-    public class LinearPositionerDevice : IPositionerDevice
+    public class LinearPositionerDevice : BasePositionerDevice
     {
-        [DisplayPropertyAttribute]
-        public string Name { get; }
-        public float CurrentPosition { get; set; }
-        public float CurrentSpeed { get ; set ; }
-        [DynamicPropertyAttribute]
-        [DisplayPropertyAttribute]
-        public float MaxAcceleration { get; set; }
-        [DynamicPropertyAttribute]
-        [DisplayPropertyAttribute]
-        public float MaxDeceleration { get; set; }
-        [DynamicPropertyAttribute]
-        [DisplayPropertyAttribute]
-        public float MaxSpeed { get; set; }
-        public float Acceleration { get; set; }
-        public float Deceleration { get; set; }
-        public float Speed { get; set; }
 
-        public LinearPositionerDevice(string name)
+        //public float CurrentPosition { get; set; }
+        //public float CurrentSpeed { get ; set ; }
+        //[DynamicPropertyAttribute]
+        //[DisplayPropertyAttribute]
+        //public float MaxAcceleration { get; set; }
+        //[DynamicPropertyAttribute]
+        //[DisplayPropertyAttribute]
+        //public override float MaxDeceleration { get; set; }
+        //[DynamicPropertyAttribute]
+        //[DisplayPropertyAttribute]
+        //public float MaxSpeed { get; set; }
+        //public float Acceleration { get; set; }
+        //public float Deceleration { get; set; }
+        //public float Speed { get; set; }
+
+        public LinearPositionerDevice(char name, string id) : base(name, id)
         {
-            Name = name;
+        }
+        public override BaseDevice GetCopy()
+        {
+            return new LinearPositionerDevice(this.Name, this.ID) { CurrentPosition = this.CurrentPosition, CurrentSpeed = this.CurrentSpeed, Acceleration = this.Acceleration, Deceleration = this.Deceleration, Speed = this.Speed, MaxAcceleration = this.MaxAcceleration, MaxDeceleration = this.MaxDeceleration, MaxSpeed = this.MaxSpeed };
         }
 
-        public IDevice GetCopy()
-        {
-            return new LinearPositionerDevice(this.Name) { CurrentPosition = this.CurrentPosition, CurrentSpeed = this.CurrentSpeed, Acceleration = this.Acceleration, Deceleration = this.Deceleration, Speed = this.Speed, MaxAcceleration = this.MaxAcceleration, MaxDeceleration = this.MaxDeceleration, MaxSpeed = this.MaxSpeed };
-        }
     }
 }

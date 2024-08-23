@@ -9,27 +9,26 @@ using System.Threading.Tasks;
 
 namespace standa_controller_software.device_manager.controller_interfaces.positioning
 {
-    public abstract class BasePositionerController : IController
+    public abstract class BasePositionerController : BaseController
     {
 
-        private ConcurrentDictionary<string, CancellationTokenSource> deviceCancellationTokens = new ConcurrentDictionary<string, CancellationTokenSource>();
-        private Dictionary<string, Func<Command, IPositionerDevice, CancellationToken, SemaphoreSlim, Task>> _methodMap = new Dictionary<string, Func<Command, IPositionerDevice, CancellationToken, SemaphoreSlim, Task>>();
-        protected Dictionary<string, IPositionerDevice> Devices { get; }
-        public string Name { get; private set; }
+        private ConcurrentDictionary<char, CancellationTokenSource> deviceCancellationTokens = new ConcurrentDictionary<char, CancellationTokenSource>();
+        private Dictionary<string, Func<Command, BasePositionerDevice, CancellationToken, SemaphoreSlim, Task>> _methodMap = new Dictionary<string, Func<Command, BasePositionerDevice, CancellationToken, SemaphoreSlim, Task>>();
+        protected Dictionary<char, BasePositionerDevice> Devices { get; }
+        public string Name { get; set; }
 
-        public BasePositionerController(string name)
+        public BasePositionerController(string name) : base(name)
         {
-            Name = name;
             _methodMap["MoveAbsolute"] = MoveAbsolute;
             _methodMap["UpdateMoveSettings"] = UpdateMoveSettings;
             _methodMap["WaitUntilStop"] = WaitUntilStop;
-            Devices = new Dictionary<string, IPositionerDevice>();
+            Devices = new Dictionary<char, BasePositionerDevice>();
             //methodMap["UpdateStates"] = UpdateStatesCall;
         }
 
-        public virtual void AddDevice(IDevice device)
+        public override void AddDevice(BaseDevice device)
         {
-            if (device is IPositionerDevice positioningDevice)
+            if (device is BasePositionerDevice positioningDevice)
             {
                 Devices.Add(positioningDevice.Name, positioningDevice);
             }
@@ -37,9 +36,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 throw new Exception($"Unable to add device: {device.Name}. Controller {this.Name} only accepts positioning devices.");
         }
 
-        public async Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        public override async Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
-            if (Devices.TryGetValue(command.TargetDevice, out IPositionerDevice device))
+            if (Devices.TryGetValue(command.TargetDevice, out BasePositionerDevice device))
             {
                 log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {command.Action} command on device {device.Name}, parameters: {string.Join(" ", command.Parameters)}");
 
@@ -75,22 +74,22 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             }
         }
 
-        public List<IDevice> GetDevices()
+        public override List<BaseDevice> GetDevices()
         {
-            return Devices.Values.Cast<IDevice>().ToList();
+            return Devices.Values.Cast<BaseDevice>().ToList();
         }
 
-        public abstract Task UpdateStateAsync(ConcurrentQueue<string> log);
+        public override abstract Task UpdateStateAsync(ConcurrentQueue<string> log);
 
-        protected virtual Task MoveAbsolute(Command command, IPositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore) 
+        protected virtual Task MoveAbsolute(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore) 
         {
             device.CurrentPosition = (float)command.Parameters[0];
             semaphore.Release();
             return Task.CompletedTask;
         }
-        protected abstract Task UpdateMoveSettings(Command command, IPositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore);
-        protected abstract Task WaitUntilStop(Command command, IPositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore);
+        protected abstract Task UpdateMoveSettings(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore);
+        protected abstract Task WaitUntilStop(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore);
 
-        public abstract IController GetCopy();
+        public override abstract BaseController GetCopy();
     }
 }

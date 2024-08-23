@@ -10,31 +10,29 @@ using System.Threading.Tasks;
 
 namespace standa_controller_software.device_manager.controller_interfaces.shutter
 {
-    public abstract class BaseShutterController : IController
+    public abstract class BaseShutterController : BaseController
     {
-        private Dictionary<string, Func<Command, IShutterDevice, CancellationToken, Task>> _methodMap = new Dictionary<string, Func<Command, IShutterDevice, CancellationToken, Task>>();
-        private ConcurrentDictionary<string, CancellationTokenSource> _deviceCancellationTokens = new ConcurrentDictionary<string, CancellationTokenSource>();
-        protected Dictionary<string, IShutterDevice> Devices { get; }
-        public string Name { get; private set; }
+        private Dictionary<string, Func<Command, BaseShutterDevice, CancellationToken, Task>> _methodMap = new Dictionary<string, Func<Command, BaseShutterDevice, CancellationToken, Task>>();
+        private ConcurrentDictionary<char, CancellationTokenSource> _deviceCancellationTokens = new ConcurrentDictionary<char, CancellationTokenSource>();
+        protected Dictionary<char, BaseShutterDevice> Devices { get; }
 
-        protected BaseShutterController(string name)
+        protected BaseShutterController(string name) : base(name)
         {
-            Name = name;
             _methodMap[CommandDefinitionsLibrary.ChangeShutterState.ToString()] = ChangeState;
             _methodMap[CommandDefinitionsLibrary.ChangeShutterStateOnInterval.ToString()] = ChangeStateOnInterval;
 
-            Devices = new Dictionary<string, IShutterDevice>();
+            Devices = new Dictionary<char, BaseShutterDevice>();
             //methodMap["UpdateStates"] = UpdateStatesCall;
         }
 
-        protected abstract Task ChangeStateOnInterval(Command command, IShutterDevice device, CancellationToken token);
-        protected abstract Task SetDelayAsync(Command command, IShutterDevice device, CancellationToken token);
+        protected abstract Task ChangeStateOnInterval(Command command, BaseShutterDevice device, CancellationToken token);
+        protected abstract Task SetDelayAsync(Command command, BaseShutterDevice device, CancellationToken token);
 
-        protected abstract Task ChangeState(Command command, IShutterDevice device, CancellationToken token);
+        protected abstract Task ChangeState(Command command, BaseShutterDevice device, CancellationToken token);
 
-        public virtual void AddDevice(IDevice device)
+        public override void AddDevice(BaseDevice device)
         {
-            if (device is IShutterDevice shutterDevice)
+            if (device is BaseShutterDevice shutterDevice)
             {
                 Devices.Add(shutterDevice.Name, shutterDevice);
             }
@@ -42,9 +40,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
                 throw new Exception($"Unable to add device: {device.Name}. Controller {this.Name} only accepts positioning devices.");
         }
 
-        public async Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        public override async Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
-            if (Devices.TryGetValue(command.TargetDevice, out IShutterDevice device))
+            if (Devices.TryGetValue(command.TargetDevice, out BaseShutterDevice device))
             {
                 log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {command.Action} command on device {device.Name}");
 
@@ -80,13 +78,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             }
         }
 
-        public abstract IController GetCopy();
+        public override abstract BaseController GetCopy();
 
-        public List<IDevice> GetDevices()
+        public override List<BaseDevice> GetDevices()
         {
-            return Devices.Values.Cast<IDevice>().ToList();
+            return Devices.Values.Cast<BaseDevice>().ToList();
         }
 
-        public abstract Task UpdateStateAsync(ConcurrentQueue<string> log);
+        public override abstract Task UpdateStateAsync(ConcurrentQueue<string> log);
     }
 }

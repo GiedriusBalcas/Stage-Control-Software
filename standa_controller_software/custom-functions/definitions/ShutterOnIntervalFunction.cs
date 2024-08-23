@@ -35,7 +35,7 @@ namespace standa_controller_software.custom_functions.definitions
 
             for (int i = 0; i < devNames.Length; i++)
             {
-                var controller = _controllerManager.GetDeviceController<BaseShutterController>(devNames[i].ToString());
+                var controller = _controllerManager.GetDeviceController<BaseShutterController>(devNames[i]);
 
                 commandsChangeStateOnInterval[i] =
                     new Command()
@@ -44,7 +44,7 @@ namespace standa_controller_software.custom_functions.definitions
                         Await = false,
                         Parameters = [durations[i]],
                         TargetController = controller.Name,
-                        TargetDevice = devNames[i].ToString()
+                        TargetDevice = devNames[i]
                     };
             }
 

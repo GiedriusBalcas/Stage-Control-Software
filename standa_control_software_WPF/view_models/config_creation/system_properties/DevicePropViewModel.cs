@@ -11,10 +11,10 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
     public class DevicePropViewModel : ViewModelBase
     {
         private readonly ControllerManager _systemConfig;
-        public readonly IDevice _device;
+        public readonly BaseDevice _device;
 
         public ObservableCollection<DevicePropertyDisplayItem> DeviceProperties { get; } = new ObservableCollection<DevicePropertyDisplayItem>();
-        public string Name { get; set; }
+        public char Name { get; set; }
 
         public string IsConnectedText
         {
@@ -32,7 +32,7 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
         {
             get
             {
-                var controller = _systemConfig.GetDeviceController<IController>(_device.Name);
+                var controller = _systemConfig.GetDeviceController<BaseController>(_device.Name);
 
                 //var deviceType = DeviceDefinitions.AvailableControllers
                 //    .FirstOrDefault(controllerDef => controllerDef.Type == controller.GetType())?.AllowedDevices?
@@ -57,14 +57,14 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
                 string controllerName = "";
                 if (_device != null && _systemConfig != null)
                 {
-                    controllerName = _systemConfig.GetDeviceController<IController>(_device.Name).Name;
+                    controllerName = _systemConfig.GetDeviceController<BaseController>(_device.Name).Name;
                 }
                 return controllerName;
             }
         }
 
 
-        public DevicePropViewModel(ControllerManager systemConfig, IDevice device)
+        public DevicePropViewModel(ControllerManager systemConfig, BaseDevice device)
         {
             _systemConfig = systemConfig;
             _device = device;
@@ -99,7 +99,7 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
 
         internal void Connect()
         {
-            var controller = _systemConfig.GetDeviceController<IController>(_device.Name);
+            var controller = _systemConfig.GetDeviceController<BaseController>(_device.Name);
             //controller.ConnectDevice(_device.Name).GetAwaiter().GetResult();
             OnPropertyChanged(nameof(IsConnectedText));
         }

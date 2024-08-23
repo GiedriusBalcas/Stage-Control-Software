@@ -159,7 +159,7 @@ namespace standa_control_software_WPF.view_models.config_creation
             _controller.Devices.Remove(device);
         }
 
-        public IDevice ExtractDevice(IController controller)
+        public BaseDevice ExtractDevice(BaseController controller)
         {
             if (DeviceType == null || _controller == null)
             {
@@ -184,7 +184,7 @@ namespace standa_control_software_WPF.view_models.config_creation
                 throw new InvalidOperationException("Suitable constructor not found.");
             }
 
-            var deviceInstance = constructorInfo.Invoke(new object[] { name, id }) as IDevice;
+            var deviceInstance = constructorInfo.Invoke(new object[] { name, id }) as BaseDevice;
 
             if (deviceInstance == null)
             {

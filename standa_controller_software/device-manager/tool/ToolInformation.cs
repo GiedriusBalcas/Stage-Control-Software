@@ -10,15 +10,15 @@ namespace standa_controller_software.device_manager
 {
     public class ToolInformation
     {
-        public Func<Dictionary<string, float>, Vector3> PositionCalcFunctions {  get; private set; }
-        private readonly IShutterDevice _shutterDevice;
-        private List<IPositionerDevice> _positionerDevices = new List<IPositionerDevice>();
+        public Func<Dictionary<char, float>, Vector3> PositionCalcFunctions {  get; private set; }
+        private readonly BaseShutterDevice _shutterDevice;
+        private List<BasePositionerDevice> _positionerDevices = new List<BasePositionerDevice>();
         private Vector3 _position;
 
         public event Action<Vector3>? PositionChanged;
         public event Action? EngagedStateChanged;
 
-        public string Name { get => _shutterDevice.Name;}
+        public char Name { get => _shutterDevice.Name;}
 
         public Vector3 Position
         {
@@ -45,7 +45,7 @@ namespace standa_controller_software.device_manager
             }
         }
 
-        public ToolInformation(IEnumerable<IPositionerDevice> positioners, IShutterDevice shutterDevice, Func<Dictionary<string, float>, Vector3> positionCalculationFunctions)
+        public ToolInformation(IEnumerable<BasePositionerDevice> positioners, BaseShutterDevice shutterDevice, Func<Dictionary<char, float>, Vector3> positionCalculationFunctions)
         {
             PositionCalcFunctions = positionCalculationFunctions;
             foreach (var positioner in positioners)
@@ -70,15 +70,15 @@ namespace standa_controller_software.device_manager
 
         public void RecalculateToolPosition()
         {
-            var devicePositions = new Dictionary<string, float>();
+            var devicePositions = new Dictionary<char, float>();
             _positionerDevices.ForEach(device => devicePositions[device.Name] = device.CurrentPosition);
 
             Position = PositionCalcFunctions(devicePositions);
         }
 
-        public Vector3 CalculateToolPositionUpdate(Dictionary<string, float> newPositions = null)
+        public Vector3 CalculateToolPositionUpdate(Dictionary<char, float> newPositions = null)
         {
-            var devicePositions = new Dictionary<string, float>();
+            var devicePositions = new Dictionary<char, float>();
             _positionerDevices.ForEach(device => devicePositions[device.Name] = device.CurrentPosition);
 
             if(newPositions is not null) { 
@@ -92,9 +92,9 @@ namespace standa_controller_software.device_manager
             return positionResult;
         }
 
-        public Vector3 CalculateToolPosition(Dictionary<string, float> newPositions)
+        public Vector3 CalculateToolPosition(Dictionary<char, float> newPositions)
         {
-            var devicePositions = new Dictionary<string, float>();
+            var devicePositions = new Dictionary<char, float>();
             foreach (var entry in newPositions)
             {
                 devicePositions[entry.Key] = entry.Value;

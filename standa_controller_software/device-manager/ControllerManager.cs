@@ -12,7 +12,7 @@ namespace standa_controller_software.device_manager
     public class ControllerManager
     {
         public ToolInformation ToolInformation { get; set; }
-        public Dictionary<string, IController> Controllers { get; private set; } = new Dictionary<string, IController>();
+        public Dictionary<string, BaseController> Controllers { get; private set; } = new Dictionary<string, BaseController>();
         public Dictionary<string, SemaphoreSlim> ControllerLocks { get; private set; } = new Dictionary<string, SemaphoreSlim>();
 
         public string Name { get; set; }
@@ -20,7 +20,7 @@ namespace standa_controller_software.device_manager
         {
         }
 
-        public void AddController(IController controller)
+        public void AddController(BaseController controller)
         {
             // Check if controller's name is unique
             if (Controllers.ContainsKey(controller.Name))
@@ -30,7 +30,7 @@ namespace standa_controller_software.device_manager
             ControllerLocks.Add(controller.Name, new SemaphoreSlim(1, 1));
         }
 
-        public TController GetDeviceController<TController>(string deviceName) where TController : IController
+        public TController GetDeviceController<TController>(char deviceName) where TController : BaseController
         {
             var correctTypeControllers = Controllers.Values.OfType<TController>();
 
@@ -45,7 +45,7 @@ namespace standa_controller_software.device_manager
             return (TController)selectedController;
         }
 
-        public bool TryGetDevice<TDevice>(string name, out TDevice device) where TDevice : class, IDevice
+        public bool TryGetDevice<TDevice>(char name, out TDevice device) where TDevice : BaseDevice
         {
             device = Controllers.Values
                 .SelectMany(controller => controller.GetDevices())
@@ -55,7 +55,7 @@ namespace standa_controller_software.device_manager
             return device is not null;
         }
 
-        public bool TryGetDeviceController<TController>(string name, out TController selectedController) where TController : class, IController
+        public bool TryGetDeviceController<TController>(char name, out TController selectedController) where TController : BaseController
         {
             var correctTypeControllers = Controllers.Values.OfType<TController>();
 
@@ -66,7 +66,7 @@ namespace standa_controller_software.device_manager
             return selectedController != null;
         }
 
-        public List<TDevice> GetDevices<TDevice>() where TDevice : class, IDevice
+        public List<TDevice> GetDevices<TDevice>() where TDevice : BaseDevice
         {
             return Controllers.Values
                 .SelectMany(controller => controller.GetDevices())
@@ -98,11 +98,11 @@ namespace standa_controller_software.device_manager
                 }
 
                 // Create a new instance of the replacement type or the original type
-                IController newController;
+                BaseController newController;
                 if (newType != originalType)
                 {
                     // Assume a constructor that takes the original controller's name as a parameter
-                    newController = Activator.CreateInstance(newType, controllerEntry.Value.Name) as IController;
+                    newController = Activator.CreateInstance(newType, controllerEntry.Value.Name) as BaseController;
 
                     var devices = controllerEntry.Value.GetDevices();
                     foreach (var device in devices)
@@ -129,9 +129,9 @@ namespace standa_controller_software.device_manager
             }
 
 
-            ToolInformation toolInfo = new ToolInformation(controllerManager.GetDevices<IPositionerDevice>(), new ShutterDevice("undefined"), this.ToolInformation.PositionCalcFunctions);
-            if (controllerManager.TryGetDevice<IShutterDevice>(this.ToolInformation.Name, out IShutterDevice shutterDevice))
-                toolInfo = new ToolInformation(controllerManager.GetDevices<IPositionerDevice>(), shutterDevice, this.ToolInformation.PositionCalcFunctions);
+            ToolInformation toolInfo = new ToolInformation(controllerManager.GetDevices<BasePositionerDevice>(), new ShutterDevice('u', "undefined"), this.ToolInformation.PositionCalcFunctions);
+            if (controllerManager.TryGetDevice<BaseShutterDevice>(this.ToolInformation.Name, out BaseShutterDevice shutterDevice))
+                toolInfo = new ToolInformation(controllerManager.GetDevices<BasePositionerDevice>(), shutterDevice, this.ToolInformation.PositionCalcFunctions);
             controllerManager.ToolInformation = toolInfo;
 
             return controllerManager;

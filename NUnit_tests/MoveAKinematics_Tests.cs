@@ -43,9 +43,9 @@ namespace NUnit_tests
             _controllerManager = new ControllerManager();
 
             var controller = new PositionerController_Virtual("FirstController");
-            var deviceX = new LinearPositionerDevice("x") { Acceleration = 10000000, Deceleration = 10000000, MaxAcceleration = 20000000, MaxDeceleration = 4000000000, MaxSpeed = 1000000000, Speed = 20000000, CurrentPosition = 0, CurrentSpeed = 0 };
-            var deviceY = new LinearPositionerDevice("y") { Acceleration = 100000, Deceleration = 1000, MaxAcceleration = 2000, MaxDeceleration = 400000, MaxSpeed = 10000, Speed = 2000, CurrentPosition = 0, CurrentSpeed = 0 }; ;
-            var deviceZ = new LinearPositionerDevice("z") { Acceleration = 100000, Deceleration = 1000, MaxAcceleration = 2000, MaxDeceleration = 400000, MaxSpeed = 10000, Speed = 2000, CurrentPosition = 0, CurrentSpeed = 0 }; ;
+            var deviceX = new LinearPositionerDevice('x',"") { Acceleration = 10000000, Deceleration = 10000000, MaxAcceleration = 20000000, MaxDeceleration = 4000000000, MaxSpeed = 1000000000, Speed = 20000000, CurrentPosition = 0, CurrentSpeed = 0 };
+            var deviceY = new LinearPositionerDevice('y',"") { Acceleration = 100000, Deceleration = 1000, MaxAcceleration = 2000, MaxDeceleration = 400000, MaxSpeed = 10000, Speed = 2000, CurrentPosition = 0, CurrentSpeed = 0 }; ;
+            var deviceZ = new LinearPositionerDevice('z', "") { Acceleration = 100000, Deceleration = 1000, MaxAcceleration = 2000, MaxDeceleration = 400000, MaxSpeed = 10000, Speed = 2000, CurrentPosition = 0, CurrentSpeed = 0 }; ;
 
             var controller2 = new PositionerController_Virtual("SecondController");
             controller.AddDevice(deviceX);
@@ -55,16 +55,16 @@ namespace NUnit_tests
             _controllerManager.AddController(controller);
             _controllerManager.AddController(controller2);
             
-            var toolPositionFunctionX = (Dictionary<string, float> positions) =>
+            var toolPositionFunctionX = (Dictionary<char, float> positions) =>
             {
                 return new Vector3()
                 {
-                    X = positions.ContainsKey("x") ? positions["x"] : 0,
-                    Y = positions.ContainsKey("y") ? positions["y"] : 0,
-                    Z = positions.ContainsKey("z") ? positions["z"] : 0
+                    X = positions.ContainsKey('x') ? positions['x'] : 0,
+                    Y = positions.ContainsKey('y') ? positions['y'] : 0,
+                    Z = positions.ContainsKey('z') ? positions['z'] : 0
                 };
             };
-            var toolInfo = new ToolInformation(_controllerManager.GetDevices<IPositionerDevice>(), new ShutterDevice("s"), toolPositionFunctionX);
+            var toolInfo = new ToolInformation(_controllerManager.GetDevices<BasePositionerDevice>(), new ShutterDevice('s',""), toolPositionFunctionX);
             _controllerManager.ToolInformation = toolInfo;
 
 
@@ -129,9 +129,9 @@ namespace NUnit_tests
                 Thread.Sleep(100);
                 currentQueue = _commandManager.GetCommandQueueAsString();
 
-                var posX = _controllerManager.TryGetDevice<IPositionerDevice>("x", out IPositionerDevice deviceX)? deviceX.CurrentPosition : 0;
-                var posY = _controllerManager.TryGetDevice<IPositionerDevice>("y", out IPositionerDevice deviceY)? deviceY.CurrentPosition : 0;
-                var posZ = _controllerManager.TryGetDevice<IPositionerDevice>("z", out IPositionerDevice deviceZ)? deviceZ.CurrentPosition : 0;
+                var posX = _controllerManager.TryGetDevice<BasePositionerDevice>('x', out BasePositionerDevice deviceX)? deviceX.CurrentPosition : 0;
+                var posY = _controllerManager.TryGetDevice<BasePositionerDevice>('y', out BasePositionerDevice deviceY)? deviceY.CurrentPosition : 0;
+                var posZ = _controllerManager.TryGetDevice<BasePositionerDevice>('z', out BasePositionerDevice deviceZ)? deviceZ.CurrentPosition : 0;
                 Console.WriteLine($"x: {posX} \t y: {posY} \t z: {posZ}");
             }
 

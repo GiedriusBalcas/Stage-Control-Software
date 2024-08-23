@@ -170,7 +170,7 @@ namespace standa_control_software_WPF.view_models.config_creation
 
 
 
-        public IController ExtractController()
+        public BaseController ExtractController()
         {
             if (ControllerType == null)
             {
@@ -193,7 +193,7 @@ namespace standa_control_software_WPF.view_models.config_creation
 
             //var controllerInstance = constructorInfo.Invoke(new object[] { }) as IController;
 
-            var controllerInstance = Activator.CreateInstance(ControllerType) as IController;
+            var controllerInstance = Activator.CreateInstance(ControllerType) as BaseController;
 
 
             if (controllerInstance == null)

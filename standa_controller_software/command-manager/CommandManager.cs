@@ -135,7 +135,7 @@ namespace standa_controller_software.command_manager
             var groupedCommands = commands.GroupBy(c => c.TargetDevice);
 
             // Dictionary to track the last task for each device
-            var deviceTasks = new Dictionary<string, Task>();
+            var deviceTasks = new Dictionary<char, Task>();
 
             // List of semaphores to acquire
             var semaphoresToAcquire = new List<SemaphoreSlim>();
@@ -144,7 +144,7 @@ namespace standa_controller_software.command_manager
             foreach (var group in groupedCommands)
             {
                 var deviceName = group.Key;
-                var controller = _controllerManager.GetDeviceController<IController>(deviceName);
+                var controller = _controllerManager.GetDeviceController<BaseController>(deviceName);
                 var semaphore = _controllerManager.ControllerLocks[controller.Name];
 
                 // Add the semaphore to the list to be acquired
@@ -163,7 +163,7 @@ namespace standa_controller_software.command_manager
                 foreach (var group in groupedCommands)
                 {
                     var deviceName = group.Key;
-                    var controller = _controllerManager.GetDeviceController<IController>(deviceName);
+                    var controller = _controllerManager.GetDeviceController<BaseController>(deviceName);
                     var semaphore = _controllerManager.ControllerLocks[controller.Name];
 
                     foreach (var command in group)
@@ -200,7 +200,7 @@ namespace standa_controller_software.command_manager
             await Task.WhenAll(tasks);
         }
 
-        private async Task ExecuteCommand(IController controller, SemaphoreSlim semaphore, Command command)
+        private async Task ExecuteCommand(BaseController controller, SemaphoreSlim semaphore, Command command)
         {
             try
             {

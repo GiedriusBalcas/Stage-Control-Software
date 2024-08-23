@@ -15,7 +15,7 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
 
         public bool isDynamic { get; set; }
         public PropertyInfo PropertyInformation { get; set; } // Represents the actual property info
-        public IDevice DeviceReference { get; set; } // Reference to the _device object
+        public BaseDevice DeviceReference { get; set; } // Reference to the _device object
 
         public string PropertyName { get; set; }
         public object PropertyValue

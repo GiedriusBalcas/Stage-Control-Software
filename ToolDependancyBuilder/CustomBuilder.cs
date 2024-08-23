@@ -6,16 +6,16 @@ namespace ToolDependancyBuilder
     public class CustomBuilder : ToolExpressionBaseVisitor<Expression>
     {
         private ParameterExpression _devicesParam = Expression.Parameter(typeof(Dictionary<string, float>), "devices");
-        private List<string> _devNames;
+        private List<char> _devNames;
 
-        public CustomBuilder(List<string> devNames)
+        public CustomBuilder(List<char> devNames)
         {
             _devNames = devNames;
         }
 
         public override Expression VisitDeviceNameExpression([NotNull] ToolExpressionParser.DeviceNameExpressionContext context)
         {
-            string deviceName = context.DEVICE_NAME().GetText();
+            char deviceName = context.DEVICE_NAME().GetText().ToCharArray()[0];
 
             if (!_devNames.Contains(deviceName))
                 throw new ArgumentException($"Could not find device with name {deviceName}");
@@ -154,7 +154,7 @@ namespace ToolDependancyBuilder
             return Expression.Convert(powerExpr, typeof(float));
         }
 
-        public Expression<Func<Dictionary<string, float>, float>> CompileExprToDelegate(ToolExpressionParser.ExpressionContext context)
+        public Expression<Func<Dictionary<char, float>, float>> CompileExprToDelegate(ToolExpressionParser.ExpressionContext context)
         {
             var body = this.Visit(context);
 
@@ -166,7 +166,7 @@ namespace ToolDependancyBuilder
             }
 
             // Compile the expression into a delegate that takes a dictionary and returns a float
-            return Expression.Lambda<Func<Dictionary<string, float>, float>>(body, _devicesParam);
+            return Expression.Lambda<Func<Dictionary<char, float>, float>>(body, _devicesParam);
         }
     }
 }

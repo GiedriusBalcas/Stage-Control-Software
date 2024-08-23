@@ -26,10 +26,10 @@ namespace standa_controller_software.custom_functions.definitions
 
         public override object? Execute(params object[] args)
         {
-            if (!TryParseArguments(args, out string devName, out bool turnOn))
+            if (!TryParseArguments(args, out char devName, out bool turnOn))
                 throw new ArgumentException("Argument pasrsing was unsuccesfull. Wrong types.");
 
-            if (!_controllerManager.TryGetDevice<IShutterDevice>(devName, out var shutterDevice))
+            if (!_controllerManager.TryGetDevice<BaseShutterDevice>(devName, out var shutterDevice))
                 throw new Exception($"Unable to retrieve shutter device named {devName}.");
             
             if (!_controllerManager.TryGetDeviceController<BaseShutterController>(devName, out var shutterController))
@@ -53,10 +53,10 @@ namespace standa_controller_software.custom_functions.definitions
             return null;
         }
 
-        public bool TryParseArguments(object?[] arguments, out string deviceName, out bool isEngaged)
+        public bool TryParseArguments(object?[] arguments, out char deviceName, out bool isEngaged)
         {
             isEngaged = false;
-            deviceName = "";
+            deviceName = '\0';
 
             if (arguments == null || arguments.Length != 2)
             {
@@ -65,7 +65,11 @@ namespace standa_controller_software.custom_functions.definitions
 
             if (arguments[0] is string str)
             {
-                deviceName = str;
+                deviceName = str[0];
+            }
+            else if (arguments[0] is char chr)
+            {
+                deviceName = chr;
             }
             else if (arguments[0] != null) // Check for non-string and non-null first argument
             {

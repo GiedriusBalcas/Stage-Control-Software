@@ -11,10 +11,10 @@ namespace standa_controller_software.custom_functions.helpers
         public static void GetLineKinParameters(char[] deviceNames, float[] endPositions, float trajectorySpeed, ControllerManager controllerManager, out float[] speedValuesOut, out float[] accelValuesOut, out float[] decelValuesOut, out float allocatedTime)
         {
 
-            var devices = controllerManager.GetDevices<IPositionerDevice>();
-            string[] devNames = deviceNames.Select(c => c.ToString()).ToArray();
+            var devices = controllerManager.GetDevices<BasePositionerDevice>();
+            char[] devNames = deviceNames;
 
-            var newPositionDict = new Dictionary<string, float>();
+            var newPositionDict = new Dictionary<char, float>();
             for (int i = 0; i < devNames.Length; i++)
             {
                 var deviceName = devNames[i];
@@ -23,7 +23,7 @@ namespace standa_controller_software.custom_functions.helpers
             }
             var startingPoint = controllerManager.ToolInformation.CalculateToolPositionUpdate(newPositionDict);
 
-            newPositionDict = new Dictionary<string, float>();
+            newPositionDict = new Dictionary<char, float>();
             for (int i = 0; i < devNames.Length; i++)
             {
                 newPositionDict[devNames[i]] = endPositions[i];
@@ -101,14 +101,14 @@ namespace standa_controller_software.custom_functions.helpers
         }
 
         public static bool TryGetLineKinParameters(
-    char[] deviceNames,
-    float[] endPositions,
-    float trajectorySpeed,
-    ControllerManager controllerManager,
-    out float[] speedValuesOut,
-    out float[] accelValuesOut,
-    out float[] decelValuesOut,
-    out float allocatedTime)
+            char[] deviceNames,
+            float[] endPositions,
+            float trajectorySpeed,
+            ControllerManager controllerManager,
+            out float[] speedValuesOut,
+            out float[] accelValuesOut,
+            out float[] decelValuesOut,
+            out float allocatedTime)
         {
             // Initialize output arrays
             int deviceCount = deviceNames.Length;
@@ -117,16 +117,16 @@ namespace standa_controller_software.custom_functions.helpers
             decelValuesOut = new float[deviceCount];
 
             // Get device information
-            var devices = controllerManager.GetDevices<IPositionerDevice>();
-            string[] devNames = deviceNames.Select(c => c.ToString()).ToArray();
+            var devices = controllerManager.GetDevices<BasePositionerDevice>();
+            char[] devNames = deviceNames;
 
-            var startSpeeds = new Dictionary<string, float>();
-            var startPositions = new Dictionary<string, float>();
-            var endSpeeds = new Dictionary<string, float>();
-            var accelTimes = new Dictionary<string, float>();
-            var decelTimes = new Dictionary<string, float>();
-            var accelValues = new Dictionary<string, float>();
-            var decelValues = new Dictionary<string, float>();
+            var startSpeeds = new Dictionary<char, float>();
+            var startPositions = new Dictionary<char, float>();
+            var endSpeeds = new Dictionary<char, float>();
+            var accelTimes = new Dictionary<char, float>();
+            var decelTimes = new Dictionary<char, float>();
+            var accelValues = new Dictionary<char, float>();
+            var decelValues = new Dictionary<char, float>();
 
             // Populate initial values
             for (int i = 0; i < deviceCount; i++)
@@ -191,7 +191,7 @@ namespace standa_controller_software.custom_functions.helpers
             // Populate output arrays
             for (int i = 0; i < deviceCount; i++)
             {
-                string name = devNames[i];
+                char name = devNames[i];
                 speedValuesOut[i] = endSpeeds[name];
                 accelValuesOut[i] = accelValuesNorm[name];
                 decelValuesOut[i] = decelValuesNorm[name];
@@ -210,11 +210,11 @@ namespace standa_controller_software.custom_functions.helpers
         }
 
         private static void NormalizeValues(
-            Dictionary<string, float> timeValues,
-            Dictionary<string, float> originalValues,
-            out Dictionary<string, float> normalizedValues)
+            Dictionary<char, float> timeValues,
+            Dictionary<char, float> originalValues,
+            out Dictionary<char, float> normalizedValues)
         {
-            normalizedValues = new Dictionary<string, float>();
+            normalizedValues = new Dictionary<char, float>();
             float maxTimeValue = timeValues.Values.Where(v => v > 0).Max();
 
             foreach (var key in timeValues.Keys)
@@ -226,10 +226,10 @@ namespace standa_controller_software.custom_functions.helpers
         }
 
         private static void AdjustForLimitedTime(
-            string[] devNames,
-            ref Dictionary<string, float> endSpeeds,
-            ref Dictionary<string, float> accelValues,
-            ref Dictionary<string, float> decelValues,
+            char[] devNames,
+            ref Dictionary<char, float> endSpeeds,
+            ref Dictionary<char, float> accelValues,
+            ref Dictionary<char, float> decelValues,
             float allocatedTime)
         {
             // Adjust speed, acceleration, and deceleration based on the limited time

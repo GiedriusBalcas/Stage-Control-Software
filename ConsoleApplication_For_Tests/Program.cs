@@ -145,15 +145,15 @@ class Program
         var controller1 = new VirtualPositionerController("FirstController");
         var controller2 = new VirtualPositionerController("SecondController");
         var controller3 = new VirtualPositionerController("ThirdController");
-        var deviceX = new LinearPositionerDevice("x") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 1000000000000, MaxDeceleration = 1000000000000, MaxSpeed = 10000000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
-        var deviceY = new LinearPositionerDevice("y") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 1000000000000, MaxDeceleration = 1000000000000, MaxSpeed = 10000000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
-        var deviceZ = new LinearPositionerDevice("z") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 1000000000000, MaxDeceleration = 1000000000000, MaxSpeed = 10000000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
+        var deviceX = new LinearPositionerDevice('x',"") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 1000000000000, MaxDeceleration = 1000000000000, MaxSpeed = 10000000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
+        var deviceY = new LinearPositionerDevice('y', "") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 1000000000000, MaxDeceleration = 1000000000000, MaxSpeed = 10000000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
+        var deviceZ = new LinearPositionerDevice('z', "") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 1000000000000, MaxDeceleration = 1000000000000, MaxSpeed = 10000000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
 
         //var deviceX = new LinearPositionerDevice("x") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
         //var deviceY = new LinearPositionerDevice("y") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
         //var deviceZ = new LinearPositionerDevice("z") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
 
-        var shutterDevice = new ShutterDevice("s") { DelayOff = 50, DelayOn = 50, IsOn = false };
+        var shutterDevice = new ShutterDevice('s', "") { DelayOff = 50, DelayOn = 50, IsOn = false };
         var shutterController = new ShutterController_Virtual("Shutter-controller");
         controller1.AddDevice(deviceX);
         controller2.AddDevice(deviceY);
@@ -165,16 +165,16 @@ class Program
         controllerManager.AddController(controller3);
         controllerManager.AddController(shutterController);
 
-        var toolPositionFunctionX = (Dictionary<string, float> positions) =>
+        var toolPositionFunctionX = (Dictionary<char, float> positions) =>
         {
             return new Vector3()
             {
-                X = positions.ContainsKey("x") ? positions["x"] : 0,
-                Y = positions.ContainsKey("y") ? positions["y"] : 0,
-                Z = positions.ContainsKey("z") ? positions["z"] : 0
+                X = positions.ContainsKey('x') ? positions['x'] : 0,
+                Y = positions.ContainsKey('y') ? positions['y'] : 0,
+                Z = positions.ContainsKey('z') ? positions['z'] : 0
             };
         };
-        var toolInfo = new ToolInformation(controllerManager.GetDevices<IPositionerDevice>(), shutterDevice, toolPositionFunctionX);
+        var toolInfo = new ToolInformation(controllerManager.GetDevices<BasePositionerDevice>(), shutterDevice, toolPositionFunctionX);
         controllerManager.ToolInformation = toolInfo;
 
         return controllerManager;

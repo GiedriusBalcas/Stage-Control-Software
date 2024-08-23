@@ -10,7 +10,7 @@ namespace standa_controller_software.device_manager
         {
             get
             {
-                if (!typeof(IController).IsAssignableFrom(key))
+                if (!typeof(BaseController).IsAssignableFrom(key))
                 {
                     throw new ArgumentException("Key must implement IController");
                 }
@@ -18,7 +18,7 @@ namespace standa_controller_software.device_manager
             }
             set
             {
-                if (!typeof(IController).IsAssignableFrom(key))
+                if (!typeof(BaseController).IsAssignableFrom(key))
                 {
                     throw new ArgumentException("Key must implement IController");
                 }
@@ -28,7 +28,7 @@ namespace standa_controller_software.device_manager
 
         public void Add(Type key, List<ControllerInfo> value)
         {
-            if (!typeof(IController).IsAssignableFrom(key))
+            if (!typeof(BaseController).IsAssignableFrom(key))
             {
                 throw new ArgumentException("Key must implement IController");
             }
@@ -37,7 +37,7 @@ namespace standa_controller_software.device_manager
 
         public bool TryGetValue(Type key, out List<ControllerInfo> value)
         {
-            if (!typeof(IController).IsAssignableFrom(key))
+            if (!typeof(BaseController).IsAssignableFrom(key))
             {
                 throw new ArgumentException("Key must implement IController");
             }

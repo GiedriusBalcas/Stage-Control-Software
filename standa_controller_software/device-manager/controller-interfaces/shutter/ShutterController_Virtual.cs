@@ -19,16 +19,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             public int _delayOn = 0;
             public int _delayOff = 0;
         }
-        private ConcurrentDictionary<string, DeviceInformation> _deviceInfo = new ConcurrentDictionary<string, DeviceInformation>();
+        private ConcurrentDictionary<char, DeviceInformation> _deviceInfo = new ConcurrentDictionary<char, DeviceInformation>();
 
-        public ShutterController_Virtual(string name) : base(name)
-        {
-        }
-
-        public override void AddDevice(IDevice device)
+        public ShutterController_Virtual(string name) : base(name) { }
+        public override void AddDevice(BaseDevice device)
         {
             base.AddDevice(device);
-            if (device is IShutterDevice shuttterDevice)
+            if (device is BaseShutterDevice shuttterDevice)
             {
                 _deviceInfo.TryAdd(shuttterDevice.Name, new DeviceInformation()
                 {
@@ -37,7 +34,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
                 });
             }
         }
-        public override IController GetCopy()
+        public override BaseController GetCopy()
         {
             var controller = new ShutterController_Virtual(Name);
             foreach (var device in Devices)
@@ -60,7 +57,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             await Task.Delay(10);
         }
 
-        protected override async Task ChangeState(Command command, IShutterDevice device, CancellationToken token)
+        protected override async Task ChangeState(Command command, BaseShutterDevice device, CancellationToken token)
         {
             var state = (bool)command.Parameters[0];
             _deviceInfo[device.Name]._isOn = state;
@@ -68,7 +65,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             await Task.Delay(10, token);
         }
 
-        protected override Task ChangeStateOnInterval(Command command, IShutterDevice device, CancellationToken token)
+        protected override Task ChangeStateOnInterval(Command command, BaseShutterDevice device, CancellationToken token)
         {
             //var duration = (float)command.Parameters[0] * 1000000;
 
@@ -85,25 +82,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
 
         }
 
-        private static async Task DelayMicroseconds(int microseconds)
-        {
-            if (microseconds <= 0) return;
-
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
-
-            // Spin until the requested number of microseconds has passed
-            while (stopwatch.ElapsedTicks < microseconds * (Stopwatch.Frequency / 1_000_000))
-            {
-                // Using Thread.Yield() to give up the remainder of the time slice to another thread
-                // This helps avoid too much CPU consumption
-                Thread.Yield();
-            }
-
-            stopwatch.Stop();
-        }
-
-        protected override Task SetDelayAsync(Command command, IShutterDevice device, CancellationToken token)
+        protected override Task SetDelayAsync(Command command, BaseShutterDevice device, CancellationToken token)
         {
             var delayOn = (uint)command.Parameters[0];
             var delayOff = (uint)command.Parameters[1];

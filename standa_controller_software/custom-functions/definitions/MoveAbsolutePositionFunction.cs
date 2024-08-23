@@ -63,7 +63,7 @@ namespace standa_controller_software.custom_functions
             {
                 if (float.IsNaN(speedValuesOut[i]) || float.IsNaN(accelValuesOut[i]) || float.IsNaN(decelValuesOut[i]))
                     throw new ArgumentNullException("Failed to create kinematics parameters");
-                var controller = _controllerManager.GetDeviceController<BasePositionerController>(devNames[i].ToString());
+                var controller = _controllerManager.GetDeviceController<BasePositionerController>(devNames[i]);
 
                 commandsMovementParameters[i] =
                     new Command()
@@ -72,14 +72,14 @@ namespace standa_controller_software.custom_functions
                         Await = true,
                         Parameters = [speedValuesOut[i], accelValuesOut[i], decelValuesOut[i]],
                         TargetController = controller.Name,
-                        TargetDevice = devNames[i].ToString()
+                        TargetDevice = devNames[i]
                     };
             }
             _commandManager.EnqueueCommandLine(commandsMovementParameters);
 
             for (int i = 0; i< devNames.Length; i++) {
 
-                var controller = _controllerManager.GetDeviceController<BasePositionerController>(devNames[i].ToString());
+                var controller = _controllerManager.GetDeviceController<BasePositionerController>(devNames[i]);
 
                 commandsMovement[i] =
                     new Command()
@@ -89,13 +89,13 @@ namespace standa_controller_software.custom_functions
                         Await = false,
                         Parameters = [positions[i]],
                         TargetController = controller.Name,
-                        TargetDevice = devNames[i].ToString()
+                        TargetDevice = devNames[i]
                     };
             }
 
             if ((bool)isOn)
             {
-                var shutterDevice = _controllerManager.GetDevices<IShutterDevice>().FirstOrDefault();
+                var shutterDevice = _controllerManager.GetDevices<BaseShutterDevice>().FirstOrDefault();
                 if (shutterDevice is null)
                     throw new Exception("Trying to use non existing shutter device");
 
@@ -119,7 +119,7 @@ namespace standa_controller_software.custom_functions
             {
                 if (float.IsNaN(speedValuesOut[i]) || float.IsNaN(accelValuesOut[i]) || float.IsNaN(decelValuesOut[i]))
                     throw new ArgumentNullException("Failed to create kinematics parameters");
-                var controller = _controllerManager.GetDeviceController<BasePositionerController>(devNames[i].ToString());
+                var controller = _controllerManager.GetDeviceController<BasePositionerController>(devNames[i]);
 
                 commandsWaitForStop[i] =
                     new Command()
@@ -128,7 +128,7 @@ namespace standa_controller_software.custom_functions
                         Await = true,
                         Parameters = [],
                         TargetController = controller.Name,
-                        TargetDevice = devNames[i].ToString()
+                        TargetDevice = devNames[i]
                     };
             }
             _commandManager.EnqueueCommandLine(commandsWaitForStop);
