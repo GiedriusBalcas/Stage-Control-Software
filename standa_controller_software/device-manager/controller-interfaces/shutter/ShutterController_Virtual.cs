@@ -45,7 +45,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             return controller;
         }
 
-        public override async Task UpdateStateAsync(ConcurrentQueue<string> log)
+        public override Task UpdateStateAsync(ConcurrentQueue<string> log)
         {
             foreach (var device in Devices)
             {
@@ -54,7 +54,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
                 device.Value.DelayOff = _deviceInfo[device.Key]._delayOff;
                 log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {device.Value.Name}, State: {device.Value.IsOn}");
             }
-            await Task.Delay(10);
+
+            return Task.CompletedTask;
+            //await Task.Delay(10);
         }
 
         protected override Task ChangeState(Command command, BaseShutterDevice device, CancellationToken token)

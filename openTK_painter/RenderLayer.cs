@@ -50,7 +50,6 @@ namespace opentk_painter_library
         public void AddObjectCollection(IRenderCollection collection)
         {
             RenderCollections.Add(collection);
-            InitializeCollections();
         }
 
         public void ClearCollections()
@@ -93,6 +92,7 @@ namespace opentk_painter_library
                 _shader.Use();
                 _shader.UpdateUniformValues();
 
+                InitializeCollections();
 
                 foreach (var collection in RenderCollections)
                 {

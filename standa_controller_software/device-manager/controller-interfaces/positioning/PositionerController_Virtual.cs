@@ -57,7 +57,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         }
 
 
-
         protected override Task UpdateMoveSettings(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore)
         {
             float speedValue = (float)(command.Parameters[0]);

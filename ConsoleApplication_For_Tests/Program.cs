@@ -16,6 +16,7 @@ using standa_controller_software.device_manager.controller_interfaces.shutter;
 using opentk_painter_library.render_objects;
 using System.Runtime.CompilerServices;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
+using System.Timers;
 class Program
 {
     private static ControllerManager _controllerManager;
@@ -23,78 +24,43 @@ class Program
     private static PainterManager _painterManager;
     private static RenderLayer _lineLayer;
     private static RenderLayer _toolPointLayer;
-
+    private static FunctionManager _functionDefinitionLibrary;
+    private static TextInterpreterWrapper _textInterpreter;
+    private static TaskCompletionSource<bool> _readTextCompletionSource = new TaskCompletionSource<bool>();
+    private static System.Timers.Timer _checkCompletionTimer;
     [STAThread]
     static void Main(string[] args)
     {
         _controllerManager = SetupSystemControllers();
-
-        // Set-up command manager and definitions
-        
         _commandManager = new CommandManager(_controllerManager);
 
-        // Set-up Definitions
-
-        var rules = new Dictionary<Type, Type> 
-        {
-            { typeof(BasePositionerController), typeof(PositionerController_Virtual) },
-            { typeof(BaseShutterController), typeof(ShutterController_Virtual) }
-        };
-        var controllerManager_virtual = _controllerManager.CreateACopy(rules);
-        var commandManager_virtual = new CommandManager(controllerManager_virtual);
-
-
-
-        var definitions = SetUpFunctionDefinitions(commandManager_virtual, controllerManager_virtual);
-
-        // Set-up text interpreter
-        
-        var _textInterpreter = new TextInterpreterWrapper
-        {
-            DefinitionLibrary = definitions,
-        };
-
-
-        // Read text input
-
-        string filePath = "C:\\Users\\giedr\\OneDrive\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\NUnit_tests\\test_scripts\\cube-moveA-function-test-script.txt";
-        string fileContent = File.ReadAllText(filePath);
-
-        try
-        {
-            _textInterpreter.ReadInput(fileContent);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex.Message);
-            throw new Exception(_textInterpreter.State.Message);
-        }
-
-        // Copy command queue to real command-manager
-
-        foreach (var commandLine in commandManager_virtual.GetCommandQueueList())
-        {
-            _commandManager.EnqueueCommandLine(commandLine);
-        }
-
-        // Create painter-manager
-
-        _painterManager = new PainterManager(_commandManager, _controllerManager);
-        var lines =  _painterManager.PaintCommands();
-        _lineLayer = _painterManager.GetCommandLayer();
-        
-
-
-        // Run painter
-        Task.Run(() => ExecuteCommandQueue(commandManager_virtual, controllerManager_virtual));
         Task.Run(() => _commandManager.UpdateStatesAsync());
 
+        _functionDefinitionLibrary = new FunctionManager(_controllerManager, _commandManager);
+        _textInterpreter = new TextInterpreterWrapper() { DefinitionLibrary = _functionDefinitionLibrary.Definitions };
+        _painterManager = new PainterManager(_commandManager, _controllerManager);
+
+        ReadText();
+
+        Task.Run(() => ExecuteCommandQueue());
+
+
+        LaunchWindow();
+        // Start the console input handling in a separate thread
+        //var inputThread = new Thread(() => HandleTestsInput());
+        //inputThread.Start();
+
+        // Run the window on the main thread
+
+    }
+
+    private static void LaunchWindow()
+    {
         try
         {
             using (var window = new Window(_painterManager.GetRenderLayers()))
             {
-                _lineLayer.AddObjectCollection(lines);
-
+                
                 window.Run();
                 Console.WriteLine("Display activated");
             }
@@ -103,19 +69,42 @@ class Program
         {
             Console.WriteLine($"An error occurred: {ex.Message}");
         }
-
-
     }
+    
 
-    private static async Task ExecuteCommandQueue(CommandManager commandManager_virtual, ControllerManager controllerManager_virtual)
+    private static void ReadText()
     {
 
-        Thread.Sleep(1000);
+        string filePath = "C:\\Users\\giedr\\OneDrive\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\NUnit_tests\\test_scripts\\cube-moveA-function-test-script.txt";
+        var inputText = File.ReadAllText(filePath);
+        
+        try
+        {
+            _functionDefinitionLibrary.InitializeDefinitions();
+            _textInterpreter.ReadInput(inputText);
+            var commands = _functionDefinitionLibrary.ExtractCommands();
+            _painterManager.PaintCommandQueue(commands);
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+    }
+
+    private static async void ExecuteCommandQueue()
+    {
+
+        Thread.Sleep(2000);
 
         Console.WriteLine("Before Starting:");
         Console.WriteLine(_commandManager.GetCommandQueueAsString());
-        
-        _commandManager.Start();
+
+        _commandManager.ClearQueue();
+        foreach (var commandLine in _functionDefinitionLibrary.ExtractCommands())
+        {
+            _commandManager.EnqueueCommandLine(commandLine);
+        }
+        _ = Task.Run(() => _commandManager.Start());
 
         Console.WriteLine("Log:");
         while (_commandManager.CurrentState == CommandManagerState.Processing)
