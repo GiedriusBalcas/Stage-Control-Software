@@ -105,13 +105,17 @@ class Program
             _commandManager.EnqueueCommandLine(commandLine);
         }
         _ = Task.Run(() => _commandManager.Start());
+        _ = Task.Run(() => {
+            Task.Delay(200);
+            while (_commandManager.CurrentState == CommandManagerState.Processing)
+            {
+                Thread.Sleep(200);
+                _commandManager.PrintLog();
+            }
+        });
 
         Console.WriteLine("Log:");
-        while (_commandManager.CurrentState == CommandManagerState.Processing)
-        {
-            Thread.Sleep(200);
-            _commandManager.PrintLog();
-        }
+        
 
         Console.WriteLine("After Starting:");
         Console.WriteLine(_commandManager.GetCommandQueueAsString());

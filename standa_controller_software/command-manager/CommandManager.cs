@@ -128,6 +128,11 @@ namespace standa_controller_software.command_manager
                 if (i > 0)
                 {
                     // Reacquire the semaphore for subsequent commands
+
+                    //if (semaphore.CurrentCount == 0)
+                    //await semaphore.WaitAsync();
+
+
                     await semaphore.WaitAsync();
                 }
 
