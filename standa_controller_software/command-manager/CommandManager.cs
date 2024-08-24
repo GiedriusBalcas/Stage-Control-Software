@@ -48,24 +48,24 @@ namespace standa_controller_software.command_manager
         }
         private async Task ProcessQueue()
         {
-            while (_running)
+            while (_commandQueue.Count > 0)
             {
                 if (_commandQueue.TryDequeue(out Command[] commands))
                 {
                     // Execute the command line
                     var commandLineTask = ExecuteCommandLine(commands);
+                    await commandLineTask;
 
-                    // Check if any command in the line has Await = true
-                    if (commands.Any(c => c.Await))
-                    {
-                        // Wait for the command line to complete before continuing
-                        await commandLineTask;
-                    }
+                    //// Check if any command in the line has Await = true
+                    //if (commands.Any(c => c.Await))
+                    //{
+                    //    // Wait for the command line to complete before continuing
+                    //    await commandLineTask;
+                    //}
                 }
                 else
                 {
                     CurrentState = CommandManagerState.Waiting;
-                    _running = false;
                 }
 
                 //await Task.Delay(10); // Adjust delay as needed
@@ -127,15 +127,89 @@ namespace standa_controller_software.command_manager
         //}
 
 
+        //public async Task ExecuteCommandLine(Command[] commands)
+        //{
+        //    var tasks = new List<Task>();
+
+        //    // Group commands by their target device
+        //    var groupedCommands = commands.GroupBy(c => c.TargetDevice);
+
+        //    // Dictionary to track the last task for each device
+        //    var deviceTasks = new Dictionary<char, Task>();
+
+        //    // List of semaphores to acquire
+        //    var semaphoresToAcquire = new List<SemaphoreSlim>();
+
+        //    // Acquire all semaphores before starting execution
+        //    foreach (var group in groupedCommands)
+        //    {
+        //        var deviceName = group.Key;
+        //        var controller = _controllerManager.GetDeviceController<BaseController>(deviceName);
+        //        var semaphore = _controllerManager.ControllerLocks[controller.Name];
+
+        //        // Add the semaphore to the list to be acquired
+        //        semaphoresToAcquire.Add(semaphore);
+        //    }
+
+        //    // Acquire all semaphores
+        //    foreach (var semaphore in semaphoresToAcquire)
+        //    {
+        //        await semaphore.WaitAsync();
+        //    }
+
+        //    try
+        //    {
+        //        // Execute commands after acquiring all semaphores
+        //        foreach (var group in groupedCommands)
+        //        {
+        //            var deviceName = group.Key;
+        //            var controller = _controllerManager.GetDeviceController<BaseController>(deviceName);
+        //            var semaphore = _controllerManager.ControllerLocks[controller.Name];
+
+        //            foreach (var command in group)
+        //            {
+        //                // Check if there is a previous task for the same device
+        //                if (deviceTasks.TryGetValue(deviceName, out var lastTask))
+        //                {
+        //                    // Chain the command execution after the last task for the same device
+        //                    var task = lastTask.ContinueWith(_ => ExecuteCommand(controller, semaphore, command)).Unwrap();
+        //                    deviceTasks[deviceName] = task;
+        //                    tasks.Add(task);
+        //                }
+        //                else
+        //                {
+        //                    // No previous task, execute immediately
+        //                    var task = ExecuteCommand(controller, semaphore, command);
+        //                    deviceTasks[deviceName] = task;
+        //                    tasks.Add(task);
+        //                }
+        //            }
+        //        }
+        //    }
+        //    finally
+        //    {
+        //        // Release all semaphores
+        //        foreach (var semaphore in semaphoresToAcquire)
+        //        {
+        //            if (semaphore.CurrentCount == 0)
+        //                semaphore.Release();
+        //        }
+        //    }
+
+        //    // Return a task that completes when all commands in this line are done
+        //    await Task.WhenAll(tasks);
+        //}
+
         public async Task ExecuteCommandLine(Command[] commands)
         {
             var tasks = new List<Task>();
 
-            // Group commands by their target device
-            var groupedCommands = commands.GroupBy(c => c.TargetDevice);
+            // Group commands by their target controller
+            var groupedCommands = commands
+                .GroupBy(c => _controllerManager.GetDeviceController<BaseController>(c.TargetDevice));
 
-            // Dictionary to track the last task for each device
-            var deviceTasks = new Dictionary<char, Task>();
+            // Dictionary to track the last task for each controller
+            var controllerTasks = new Dictionary<string, Task>();
 
             // List of semaphores to acquire
             var semaphoresToAcquire = new List<SemaphoreSlim>();
@@ -143,8 +217,7 @@ namespace standa_controller_software.command_manager
             // Acquire all semaphores before starting execution
             foreach (var group in groupedCommands)
             {
-                var deviceName = group.Key;
-                var controller = _controllerManager.GetDeviceController<BaseController>(deviceName);
+                var controller = group.Key;
                 var semaphore = _controllerManager.ControllerLocks[controller.Name];
 
                 // Add the semaphore to the list to be acquired
@@ -162,25 +235,24 @@ namespace standa_controller_software.command_manager
                 // Execute commands after acquiring all semaphores
                 foreach (var group in groupedCommands)
                 {
-                    var deviceName = group.Key;
-                    var controller = _controllerManager.GetDeviceController<BaseController>(deviceName);
+                    var controller = group.Key;
                     var semaphore = _controllerManager.ControllerLocks[controller.Name];
 
                     foreach (var command in group)
                     {
-                        // Check if there is a previous task for the same device
-                        if (deviceTasks.TryGetValue(deviceName, out var lastTask))
+                        // Check if there is a previous task for the same controller
+                        if (controllerTasks.TryGetValue(controller.Name, out var lastTask))
                         {
-                            // Chain the command execution after the last task for the same device
+                            // Chain the command execution after the last task for the same controller
                             var task = lastTask.ContinueWith(_ => ExecuteCommand(controller, semaphore, command)).Unwrap();
-                            deviceTasks[deviceName] = task;
+                            controllerTasks[controller.Name] = task;
                             tasks.Add(task);
                         }
                         else
                         {
                             // No previous task, execute immediately
                             var task = ExecuteCommand(controller, semaphore, command);
-                            deviceTasks[deviceName] = task;
+                            controllerTasks[controller.Name] = task;
                             tasks.Add(task);
                         }
                     }
@@ -204,6 +276,8 @@ namespace standa_controller_software.command_manager
         {
             try
             {
+                await semaphore.WaitAsync();
+
                 await controller.ExecuteCommandAsync(command, semaphore, _log);
             }
             finally
@@ -217,7 +291,7 @@ namespace standa_controller_software.command_manager
         // I should release semaphore only when awaited the response here.
         public async Task UpdateStatesAsync()
         {
-            while (_running)
+            while (true)
             {
                 var tasks = new List<Task>();
 

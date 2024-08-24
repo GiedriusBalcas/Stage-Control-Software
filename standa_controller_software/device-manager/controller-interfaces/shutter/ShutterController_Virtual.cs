@@ -57,12 +57,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             await Task.Delay(10);
         }
 
-        protected override async Task ChangeState(Command command, BaseShutterDevice device, CancellationToken token)
+        protected override Task ChangeState(Command command, BaseShutterDevice device, CancellationToken token)
         {
             var state = (bool)command.Parameters[0];
             _deviceInfo[device.Name]._isOn = state;
             device.IsOn = state;
-            await Task.Delay(10, token);
+
+            return Task.CompletedTask;
         }
 
         protected override Task ChangeStateOnInterval(Command command, BaseShutterDevice device, CancellationToken token)

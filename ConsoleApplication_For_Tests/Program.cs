@@ -83,7 +83,6 @@ class Program
         var lines =  _painterManager.PaintCommands();
         _lineLayer = _painterManager.GetCommandLayer();
         
-        _lineLayer.AddObjectCollection(lines);
 
 
         // Run painter
@@ -94,6 +93,8 @@ class Program
         {
             using (var window = new Window(_painterManager.GetRenderLayers()))
             {
+                _lineLayer.AddObjectCollection(lines);
+
                 window.Run();
                 Console.WriteLine("Display activated");
             }
@@ -111,8 +112,8 @@ class Program
 
         Thread.Sleep(1000);
 
-        //Console.WriteLine("Before Starting:");
-        //Console.WriteLine(_commandManager.GetCommandQueueAsString());
+        Console.WriteLine("Before Starting:");
+        Console.WriteLine(_commandManager.GetCommandQueueAsString());
         
         _commandManager.Start();
 
@@ -156,13 +157,12 @@ class Program
         var shutterDevice = new ShutterDevice('s', "") { DelayOff = 50, DelayOn = 50, IsOn = false };
         var shutterController = new ShutterController_Virtual("Shutter-controller");
         controller1.AddDevice(deviceX);
-        controller2.AddDevice(deviceY);
-        controller3.AddDevice(deviceZ);
+        controller1.AddDevice(deviceY);
+        controller2.AddDevice(deviceZ);
         shutterController.AddDevice(shutterDevice);
 
         controllerManager.AddController(controller1);
         controllerManager.AddController(controller2);
-        controllerManager.AddController(controller3);
         controllerManager.AddController(shutterController);
 
         var toolPositionFunctionX = (Dictionary<char, float> positions) =>

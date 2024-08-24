@@ -15,6 +15,7 @@ namespace opentk_painter_library
 
         public OrbitalCamera Camera;
         public List<IRenderCollection> RenderCollections;
+        public bool IsGLInitialized { get; set; } = false;
         public RenderLayer(string vertexShaderSource, string fragmentShaderSource, Action preDrawAction = null)
         {
             RenderCollections = new List<IRenderCollection>();
@@ -49,6 +50,7 @@ namespace opentk_painter_library
         public void AddObjectCollection(IRenderCollection collection)
         {
             RenderCollections.Add(collection);
+            InitializeCollections();
         }
 
         public void ClearCollections()
@@ -83,37 +85,44 @@ namespace opentk_painter_library
 
         public void DrawLayer()
         {
-            _preDrawAction?.Invoke();
-
-            GL.Enable(EnableCap.DepthTest);
-            _shader.Use();
-            _shader.UpdateUniformValues();
-
-            foreach (var collection in RenderCollections)
+            if (IsGLInitialized)
             {
-                collection.InitializeDraw();
+                _preDrawAction?.Invoke();
 
-                GL.BindVertexArray(collection.VAO);
-                GL.BindBuffer(BufferTarget.ElementArrayBuffer, collection.EBO);
-                GL.BindBuffer(BufferTarget.ArrayBuffer, collection.VBO);
+                GL.Enable(EnableCap.DepthTest);
+                _shader.Use();
+                _shader.UpdateUniformValues();
 
-                GL.DrawElements(collection.PrimitiveType, collection.GetVertexCount(), DrawElementsType.UnsignedInt, 0);
-                GL.BindVertexArray(0);
-                GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
-                GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+
+                foreach (var collection in RenderCollections)
+                {
+                    collection.InitializeDraw();
+
+                    GL.BindVertexArray(collection.VAO);
+                    GL.BindBuffer(BufferTarget.ElementArrayBuffer, collection.EBO);
+                    GL.BindBuffer(BufferTarget.ArrayBuffer, collection.VBO);
+
+                    GL.DrawElements(collection.PrimitiveType, collection.GetVertexCount(), DrawElementsType.UnsignedInt, 0);
+                    GL.BindVertexArray(0);
+                    GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
+                    GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+                }
+                GL.UseProgram(0);
             }
-            GL.UseProgram(0);
         }
 
         public void DisposeBuffers()
         {
-            foreach (var collection in RenderCollections)
+            if (IsGLInitialized)
             {
-                GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-                GL.DeleteBuffer(collection.VBO);
-                GL.DeleteBuffer(collection.EBO);
-                GL.BindVertexArray(0);
-                GL.DeleteVertexArray(collection.VAO);
+                foreach (var collection in RenderCollections)
+                {
+                    GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+                    GL.DeleteBuffer(collection.VBO);
+                    GL.DeleteBuffer(collection.EBO);
+                    GL.BindVertexArray(0);
+                    GL.DeleteVertexArray(collection.VAO);
+                }
             }
         }
     }

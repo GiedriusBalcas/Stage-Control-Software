@@ -19,13 +19,13 @@ namespace standa_control_software_WPF.view_models.system_control
             }
         }
         private string _commandText = "kakams mamakakas \n mamama \n kadasda \n asjdkaskdasd";
-        public string CommandText 
+        public string InputText 
         {
             get => _commandText; 
             set 
             {
                 _commandText = value;
-                OnPropertyChanged(nameof(CommandText));
+                OnPropertyChanged(nameof(InputText));
             }
         }
 
@@ -73,7 +73,7 @@ namespace standa_control_software_WPF.view_models.system_control
                 // Save the document content to the file
                 try 
                 { 
-                    File.WriteAllText(this.FilePath, this.CommandText);
+                    File.WriteAllText(this.FilePath, this.InputText);
                 }
                 catch(Exception e)
                 {
@@ -101,7 +101,7 @@ namespace standa_control_software_WPF.view_models.system_control
             {
                 this.FilePath = saveFileDialog.FileName;
                 this.Name = Path.GetFileNameWithoutExtension(saveFileDialog.FileName);
-                File.WriteAllText(saveFileDialog.FileName, CommandText);
+                File.WriteAllText(saveFileDialog.FileName, InputText);
             }
         }
     }

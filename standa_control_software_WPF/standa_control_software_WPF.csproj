@@ -72,4 +72,9 @@
     <ProjectReference Include="..\ToolDependancyBuilder\ToolDependancyBuilder.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="view_models\system_control\information\" />
+    <Folder Include="view_models\system_control\properties\" />
+  </ItemGroup>
+
 </Project>

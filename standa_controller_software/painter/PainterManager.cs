@@ -14,8 +14,8 @@ namespace standa_controller_software.painter
 {
     public class PainterManager
     {
-        private CommandManager _commandManager;
-        private ControllerManager _controllerManager;
+        private readonly CommandManager _commandManager;
+        private readonly ControllerManager _controllerManager;
 
 
         private OrbitalCamera _camera;
@@ -74,12 +74,18 @@ namespace standa_controller_software.painter
         public void UpdateToolPointLayer()
         {
             _controllerManager.ToolInformation.RecalculateToolPosition() ; // Recalculate positions before drawing
-            _toolPointLayer.ClearCollections() ;
-            var pointCollection = new PointObjectCollection();
-            pointCollection.AddPoint(_controllerManager.ToolInformation.Position, 50, _controllerManager.ToolInformation.IsOn ? new Vector4(1,0,0,1) : new Vector4(1,1,0,1));
-            _toolPointLayer.AddObjectCollection(pointCollection);
-            //_toolPointLayer.UpdateUniforms();
-            _toolPointLayer.InitializeCollections();
+
+            var toolIndeces = _toolPointLayer.RenderCollections.FirstOrDefault()?.GetIndices();
+            Vector3 currentPointPos = toolIndeces is not null && toolIndeces.Length == 3 ? new Vector3(toolIndeces[0], toolIndeces[1], toolIndeces[2]) : new Vector3(0, 0, 0);
+            if (_controllerManager.ToolInformation.Position != currentPointPos)
+            {
+                _toolPointLayer.ClearCollections() ;
+                var pointCollection = new PointObjectCollection();
+                pointCollection.AddPoint(_controllerManager.ToolInformation.Position, 50, _controllerManager.ToolInformation.IsOn ? new Vector4(1,0,0,1) : new Vector4(1,1,0,1));
+                _toolPointLayer.AddObjectCollection(pointCollection);
+                //_toolPointLayer.UpdateUniforms();
+                _toolPointLayer.InitializeCollections();
+            }
         }
 
         public void AddLine(Vector3 start, Vector3 end)
@@ -102,6 +108,9 @@ namespace standa_controller_software.painter
             var vertexShaderSource = "C:\\Users\\giedr\\OneDrive\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\ConsoleApplication_For_Tests\\Shaders\\LineDrawingLayer\\VertexShader.vert";
 
             var fragmentShaderSource = "C:\\Users\\giedr\\OneDrive\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\ConsoleApplication_For_Tests\\Shaders\\LineDrawingLayer\\FragmentShader.frag";
+
+            var renderLayer = new RenderLayer(vertexShaderSource, fragmentShaderSource);
+            renderLayer.AddObjectCollection(_lineCollection);
 
             return new RenderLayer(vertexShaderSource, fragmentShaderSource);
         }
@@ -142,7 +151,7 @@ namespace standa_controller_software.painter
 
             return renderObjects;
         }
-        public void PaintCommandQueue()
+        public void PaintCommandQueue(IEnumerable<Command[]> commandLines)
         {
             var rules = new Dictionary<Type, Type>
             {
@@ -152,7 +161,7 @@ namespace standa_controller_software.painter
             var controllerManager_virtual = _controllerManager.CreateACopy(rules);
             var commandManager_virtual = new CommandManager(controllerManager_virtual);
 
-            var commandLines = _commandManager.GetCommandQueueList();
+            //var commandLines = _commandManager.GetCommandQueueList();
             var renderObjects = new LineObjectCollection();
 
             bool wasEngaged = false;
@@ -176,7 +185,10 @@ namespace standa_controller_software.painter
                     renderObjects.AddLine(startPositions, endPositions, lineColor);
             }
 
+            _lineCollection.ClearCollection();
             _lineCollection = renderObjects;
+            _commandLayer.ClearCollections();
+            _commandLayer.AddObjectCollection(_lineCollection);
         }
 
         private void ToolInformation_EngagedStateChanged()

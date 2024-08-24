@@ -17,13 +17,13 @@ namespace text_parser_library
         {
             try
             {
-            var inputStream = new AntlrInputStream(input);
-            var lexer = new GrammarSyntaxLexer(inputStream);
-            var tokenStream = new CommonTokenStream(lexer);
-            var parser = new GrammarSyntaxParser(tokenStream);
-            var _tree = parser.program();
-            Visitor = new InputVisitor(State, DefinitionLibrary);
-            Visitor.Visit(_tree);
+                var inputStream = new AntlrInputStream(input);
+                var lexer = new GrammarSyntaxLexer(inputStream);
+                var tokenStream = new CommonTokenStream(lexer);
+                var parser = new GrammarSyntaxParser(tokenStream);
+                var _tree = parser.program();
+                Visitor = new InputVisitor(State, DefinitionLibrary);
+                Visitor.Visit(_tree);
             }
             catch (Exception ex)
             {

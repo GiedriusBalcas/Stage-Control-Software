@@ -58,7 +58,7 @@ namespace opentk_painter_library
             this.IsVisible = true;
             GL.ClearColor(new Color4(0.2f, 0.3f, 0.3f, 1.0f));
             GL.Enable(EnableCap.DepthTest);
-
+            _renderLayers.ForEach(layer => layer.IsGLInitialized = true);
             foreach (var layer in _renderLayers)
             {
                 layer.InitializeCollections();

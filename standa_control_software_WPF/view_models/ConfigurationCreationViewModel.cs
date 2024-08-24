@@ -17,7 +17,6 @@ namespace standa_control_software_WPF.view_models
     public class ConfigurationCreationViewModel : ViewModelBase
     {
         private readonly Action _onInitializationComple;
-        private ControllerManager _controllerManager;
 
         public ObservableCollection<ConfigurationViewModel> Configurations { get; set; }
         public ConfigurationViewModel Configuration
@@ -74,7 +73,6 @@ namespace standa_control_software_WPF.view_models
         {
             _onInitializationComplete = onInitializationCompleted;
 
-            _controllerManager = new ControllerManager();
             Configurations = new ObservableCollection<ConfigurationViewModel> { new ConfigurationViewModel(this) };
 
             _configurationData = new ConfigurationData();
@@ -160,10 +158,8 @@ namespace standa_control_software_WPF.view_models
                     }
                 }
 
-                _controllerManager = controllerMangerInstance;
-
-                var shutterDevice = _controllerManager.GetDevices<BaseShutterDevice>().FirstOrDefault()?? new ShutterDevice('s',"undefined");
-                var positionerDevices = _controllerManager.GetDevices<BasePositionerDevice>();
+                var shutterDevice = controllerMangerInstance.GetDevices<BaseShutterDevice>().FirstOrDefault()?? new ShutterDevice('s',"undefined");
+                var positionerDevices = controllerMangerInstance.GetDevices<BasePositionerDevice>();
                 var positionerNames = positionerDevices.Select(dev => dev.Name).ToList();
                 var calculator = new ToolPositionCalculator();
 
@@ -179,20 +175,20 @@ namespace standa_control_software_WPF.view_models
                     return new System.Numerics.Vector3()
                     {
                         X = funcDelegX.Invoke(positions),
-                        Y = funcDelegX.Invoke(positions),
-                        Z = funcDelegX.Invoke(positions),
+                        Y = funcDelegY.Invoke(positions),
+                        Z = funcDelegZ.Invoke(positions),
                     };
                 };
 
                 var tool = new ToolInformation(
-                    _controllerManager.GetDevices<BasePositionerDevice>(),
+                    controllerMangerInstance.GetDevices<BasePositionerDevice>(),
                     shutterDevice,
                     toolPosFunction
                     );
 
-                _controllerManager.ToolInformation = tool;
+                controllerMangerInstance.ToolInformation = tool;
 
-                _onInitializationComplete.Invoke(_controllerManager);
+                _onInitializationComplete.Invoke(controllerMangerInstance);
             }
             catch (Exception ex)
             {
