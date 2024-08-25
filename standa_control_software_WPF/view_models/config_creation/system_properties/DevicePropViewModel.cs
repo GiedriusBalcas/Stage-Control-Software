@@ -98,9 +98,12 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
 
         internal async void ConnectAsync(SemaphoreSlim semaphore)
         {
-            var controller = _systemConfig.GetDeviceController<BaseController>(_device.Name);
-            await controller.ConnectDevice(_device, semaphore);
-            OnPropertyChanged(nameof(IsConnectedText));
+            if (!_device.IsConnected)
+            {
+                var controller = _systemConfig.GetDeviceController<BaseController>(_device.Name);
+                await controller.ConnectDevice(_device, semaphore);
+                OnPropertyChanged(nameof(IsConnectedText));
+            }
         }
     }
 }

@@ -31,24 +31,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             base.AddDevice(device);
             if (device is BaseShutterDevice shutterDevice)
             {
-                var port = new SerialPort
-                {
-                    PortName = "COM14",  // Replace with your Arduino's COM port
-                    BaudRate = 115200,    // Ensure this matches the baud rate set in Arduino
-                    Parity = Parity.None,
-                    DataBits = 8,
-                    StopBits = StopBits.One,
-                    Handshake = Handshake.None,
-                    RtsEnable = true
-                };
-
-                _deviceInfo.TryAdd(shutterDevice.Name, new DeviceInformation
-                {
-                    DelayOff = shutterDevice.DelayOff,
-                    DelayOn = shutterDevice.DelayOn,
-                    SerialPort = port
-                });
-                _deviceInfo[shutterDevice.Name].SerialPort.Open();
+                _deviceInfo.TryAdd(shutterDevice.Name, new DeviceInformation());
             }
         }
 
