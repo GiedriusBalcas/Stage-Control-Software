@@ -34,8 +34,15 @@ namespace standa_controller_software.device_manager
                     Name = "Virtual Positioner Controller",
                     Type = typeof(VirtualPositionerController),
                     AllowedDevices = positionerDeviceDefinitions
+                },
+                new ControllerInfo
+                {
+                    Name = "Positioner Controller XIMC",
+                    Type = typeof(PositionerController_XIMC),
+                    AllowedDevices = positionerDeviceDefinitions
                 }
             };
+
 
 
 

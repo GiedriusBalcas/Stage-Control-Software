@@ -16,9 +16,25 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="lib\ximc\ximcnet.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <Reference Include="ximcnet">
+      <HintPath>ximcnet.dll</HintPath>
+    </Reference>
   </ItemGroup>
+	<ItemGroup>
+	  <None Update="bindy.dll">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	  <None Update="libximc.dll">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	  <None Update="ximcnet.dll">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	  <None Update="xiwrapper.dll">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	</ItemGroup>
+
+	
 
 </Project>

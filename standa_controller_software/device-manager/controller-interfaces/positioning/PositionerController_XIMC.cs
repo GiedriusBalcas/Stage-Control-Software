@@ -1,7 +1,6 @@
 ﻿using standa_controller_software.command_manager;
 using standa_controller_software.device_manager.devices;
 using System.Collections.Concurrent;
-using System.Xml.Linq;
 using ximc;
 
 namespace standa_controller_software.device_manager.controller_interfaces.positioning
