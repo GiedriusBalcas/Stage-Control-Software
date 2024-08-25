@@ -33,7 +33,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             else
                 throw new Exception($"Unable to add device: {device.Name}. Controller {this.Name} only accepts positioning devices.");
         }
-        public override void ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
+        public override Task ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
         {
             semaphore.Release();
             if (device is BaseShutterDevice shutterDevice && Devices.ContainsValue(shutterDevice))
@@ -42,6 +42,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             }
             else
                 throw new Exception($"Unable to add device: {device.Name}. Controller {this.Name} only accepts positioning devices.");
+
+            return Task.CompletedTask;
         }
 
         protected abstract Task ChangeStateOnInterval(Command command, BaseShutterDevice device, CancellationToken token);

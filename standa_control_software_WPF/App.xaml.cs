@@ -50,7 +50,7 @@ namespace standa_control_software_WPF
         {
             _controllerManager = controllerManager;
             _commandManager = new CommandManager(_controllerManager);
-            _systemPropertiesViewModel = new SystemPropertiesViewModel();
+            _systemPropertiesViewModel = new SystemPropertiesViewModel(_controllerManager);
             _systemControlViewModel = new SystemControlViewModel(_controllerManager,_commandManager);
             _systemInformationViewModel = new SystemInformtaionViewModel();
 

@@ -20,8 +20,7 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
         {
             get
             {
-                //if (_device.IsConnected)
-                if (true)
+                if (_device.IsConnected)
                         return "Connected";
                 return "Disconnected";
             }
@@ -97,10 +96,10 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
             OnPropertyChanged(nameof(Name));
         }
 
-        internal void Connect()
+        internal async void ConnectAsync(SemaphoreSlim semaphore)
         {
             var controller = _systemConfig.GetDeviceController<BaseController>(_device.Name);
-            //controller.ConnectDevice(_device.Name).GetAwaiter().GetResult();
+            await controller.ConnectDevice(_device, semaphore);
             OnPropertyChanged(nameof(IsConnectedText));
         }
     }

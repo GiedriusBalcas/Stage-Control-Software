@@ -50,7 +50,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 _deviceInfo.TryAdd(positioningDevice.Name, new DeviceInformation());
             }
         }
-        public override void ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
+        public override Task ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
         {
             if (device is BasePositionerDevice positioningDevice && _deviceInfo.TryGetValue(positioningDevice.Name, out DeviceInformation deviceInfo))
             {
@@ -92,7 +92,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 deviceInfo.moveSettings_t.Decel = Math.Min(positioningDevice.Deceleration, positioningDevice.MaxDeceleration);
                 CallResponse = API.set_move_settings_calb(deviceInfo.id, ref deviceInfo.moveSettings_t, ref deviceInfo.calibration_t);
             }
-            base.ConnectDevice(device, semaphore);
+            
+            return base.ConnectDevice(device, semaphore);
         }
         public override BaseController GetCopy()
         {

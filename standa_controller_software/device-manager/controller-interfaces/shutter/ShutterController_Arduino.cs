@@ -52,7 +52,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             }
         }
 
-        public override void ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
+        public override Task ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
         {
             if (device is BaseShutterDevice shutterDevice && _deviceInfo.TryGetValue(shutterDevice.Name, out var deviceInformation))
             {
@@ -73,7 +73,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
                 deviceInformation.SerialPort.Open();
 
             }
-            base.ConnectDevice(device, semaphore);
+
+            return base.ConnectDevice(device, semaphore);
         }
 
         public override BaseController GetCopy()

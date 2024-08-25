@@ -34,7 +34,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             else
                 throw new Exception($"Unable to add device: {device.Name}. Controller {this.Name} only accepts positioning devices.");
         }
-        public override void ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
+        public override Task ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
         {
             semaphore.Release();
             if (device is BasePositionerDevice positioningDevice && Devices.ContainsValue(positioningDevice))
@@ -43,6 +43,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             }
             else
                 throw new Exception($"Unable to add device: {device.Name}. Controller {this.Name} only accepts positioning devices.");
+            
+            return Task.CompletedTask;
         }
 
         public override async Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
