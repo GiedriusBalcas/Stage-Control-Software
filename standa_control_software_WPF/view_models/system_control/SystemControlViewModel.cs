@@ -4,6 +4,7 @@ using standa_controller_software.custom_functions;
 using standa_controller_software.device_manager;
 using standa_controller_software.painter;
 using System.Collections.ObjectModel;
+using System.Drawing;
 using System.IO;
 using System.Windows.Input;
 using text_parser_library;
@@ -78,19 +79,6 @@ namespace standa_control_software_WPF.view_models.system_control
             private set { _highlightedLineNumber = value; }
         }
 
-        //private bool _isTrackingTool;
-        //private bool _isOrthographicView;
-        //private Vector4 _lineColorEngaged = new Vector4(1,0,0,0.5f);
-        //private Vector4 _lineColorNotEngaged = new Vector4(0,1,0,0.05f);
-        //private bool _IsRendering;//private readonly Painter _painter;
-        //private TextParserViewModel _configParser;
-        //private TextParserViewModel _virtualParser;
-        //private SystemConfig _painterConfig;
-        //private TextParserViewModel _painterParser;
-        //private DebuggerViewModel _debugger;
-        //private Vector4 _toolColor;
-        //private Vector4 _lineColor;
-        //private Vector4 _defaultToolColor = new Vector4(0.3411764705882353f, 0.4117647058823529f, 0.8352941176470589f, 0.8f);
 
         public SystemControlViewModel(ControllerManager controllerManager, standa_controller_software.command_manager.CommandManager commandManager)
         {
@@ -117,6 +105,27 @@ namespace standa_control_software_WPF.view_models.system_control
             Task.Run(() => _commandManager.UpdateStatesAsync());
         }
 
+        private void SaveLog()
+        {
+            var content = string.Join("\n", _commandManager.GetLog()); 
+            // The name of the file where the content will be saved
+            string fileName = "log.txt";
+
+            // Path to save the file in the same project directory
+            string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
+
+            try
+            {
+                // Write the string to the file
+                File.WriteAllText(filePath, content);
+                Console.WriteLine("File saved successfully at " + filePath);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("An error occurred: " + ex.Message);
+            }
+        }
+
         private async void ExecuteCommandsQueueAsync()
         {
             _commandManager.ClearQueue();
@@ -124,7 +133,13 @@ namespace standa_control_software_WPF.view_models.system_control
             {
                 _commandManager.EnqueueCommandLine(commandLine);
             }
-            Task.Run(() => _commandManager.Start());
+            await Task.Run(() => _commandManager.Start());
+            
+            while(_commandManager.CurrentState == CommandManagerState.Processing)
+            {
+                await Task.Delay(1000);
+            }
+            SaveLog();
         }
 
         private async void CreateCommandQueueFromInputAsync()

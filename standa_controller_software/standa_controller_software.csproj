@@ -15,4 +15,10 @@
     <ProjectReference Include="..\text_parser_library\text_parser_library.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="lib\ximc\ximcnet.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

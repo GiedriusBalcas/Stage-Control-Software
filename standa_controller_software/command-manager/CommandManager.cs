@@ -74,6 +74,10 @@ namespace standa_controller_software.command_manager
             _commandQueue.Enqueue(commands);
         }
 
+        public IEnumerable<string> GetLog()
+        {
+            return _log;
+        }
         public void Start()
         {
             _running = true;
@@ -92,6 +96,7 @@ namespace standa_controller_software.command_manager
                     // Wait for all commands to complete
                 }
             }
+            CurrentState = CommandManagerState.Waiting;
         }
 
 

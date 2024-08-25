@@ -34,6 +34,16 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             else
                 throw new Exception($"Unable to add device: {device.Name}. Controller {this.Name} only accepts positioning devices.");
         }
+        public override void ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
+        {
+            semaphore.Release();
+            if (device is BasePositionerDevice positioningDevice && Devices.ContainsValue(positioningDevice))
+            {
+                positioningDevice.IsConnected = true;
+            }
+            else
+                throw new Exception($"Unable to add device: {device.Name}. Controller {this.Name} only accepts positioning devices.");
+        }
 
         public override async Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
@@ -80,12 +90,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
         public override abstract Task UpdateStateAsync(ConcurrentQueue<string> log);
 
-        protected virtual Task MoveAbsolute(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore) 
-        {
-            device.CurrentPosition = (float)command.Parameters[0];
-            semaphore.Release();
-            return Task.CompletedTask;
-        }
+        protected abstract Task MoveAbsolute(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore);
         protected abstract Task UpdateMoveSettings(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore);
         protected abstract Task WaitUntilStop(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore);
 

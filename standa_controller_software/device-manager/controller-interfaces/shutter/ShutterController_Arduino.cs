@@ -52,6 +52,30 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             }
         }
 
+        public override void ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
+        {
+            if (device is BaseShutterDevice shutterDevice && _deviceInfo.TryGetValue(shutterDevice.Name, out var deviceInformation))
+            {
+                var port = new SerialPort
+                {
+                    PortName = device.ID,  // Replace with your Arduino's COM port
+                    BaudRate = 115200,    // Ensure this matches the baud rate set in Arduino
+                    Parity = Parity.None,
+                    DataBits = 8,
+                    StopBits = StopBits.One,
+                    Handshake = Handshake.None,
+                    RtsEnable = true
+                };
+
+                deviceInformation.SerialPort = port;
+                deviceInformation.DelayOn = shutterDevice.DelayOn;
+                deviceInformation.DelayOff = shutterDevice.DelayOff;
+                deviceInformation.SerialPort.Open();
+
+            }
+            base.ConnectDevice(device, semaphore);
+        }
+
         public override BaseController GetCopy()
         {
             var controller = new ShutterController_Virtual(Name);
@@ -184,5 +208,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
 
             return builder.ToString().Trim();
         }
+
+       
     }
 }

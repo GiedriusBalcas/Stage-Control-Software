@@ -21,6 +21,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
         public abstract Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
         public abstract Task UpdateStateAsync(ConcurrentQueue<string> log);
         public abstract void AddDevice(BaseDevice device);
+        public abstract void ConnectDevice(BaseDevice device, SemaphoreSlim semaphore);
         public abstract List<BaseDevice> GetDevices();
         public abstract BaseController GetCopy();
 

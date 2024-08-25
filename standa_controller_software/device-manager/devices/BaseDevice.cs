@@ -14,6 +14,7 @@ namespace standa_controller_software.device_manager.devices
         public char Name { get; }
         [DisplayPropertyAttribute]
         public string ID { get; }
+        public bool IsConnected { get; set; } = false;
         public abstract BaseDevice GetCopy();
         public BaseDevice(char name, string id)
         {

@@ -24,12 +24,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             Devices = new Dictionary<char, BaseShutterDevice>();
             //methodMap["UpdateStates"] = UpdateStatesCall;
         }
-
-        protected abstract Task ChangeStateOnInterval(Command command, BaseShutterDevice device, CancellationToken token);
-        protected abstract Task SetDelayAsync(Command command, BaseShutterDevice device, CancellationToken token);
-
-        protected abstract Task ChangeState(Command command, BaseShutterDevice device, CancellationToken token);
-
         public override void AddDevice(BaseDevice device)
         {
             if (device is BaseShutterDevice shutterDevice)
@@ -39,6 +33,22 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             else
                 throw new Exception($"Unable to add device: {device.Name}. Controller {this.Name} only accepts positioning devices.");
         }
+        public override void ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
+        {
+            semaphore.Release();
+            if (device is BaseShutterDevice shutterDevice && Devices.ContainsValue(shutterDevice))
+            {
+                shutterDevice.IsConnected = true;
+            }
+            else
+                throw new Exception($"Unable to add device: {device.Name}. Controller {this.Name} only accepts positioning devices.");
+        }
+
+        protected abstract Task ChangeStateOnInterval(Command command, BaseShutterDevice device, CancellationToken token);
+        protected abstract Task SetDelayAsync(Command command, BaseShutterDevice device, CancellationToken token);
+
+        protected abstract Task ChangeState(Command command, BaseShutterDevice device, CancellationToken token);
+
 
         public override async Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {

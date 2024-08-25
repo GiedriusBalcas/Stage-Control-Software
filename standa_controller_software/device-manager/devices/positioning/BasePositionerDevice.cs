@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -22,7 +23,8 @@ namespace standa_controller_software.device_manager.devices
         [DisplayPropertyAttribute]
         [DynamicPropertyAttribute]
         public virtual float MaxDeceleration { get; set; }
-
+        [DisplayPropertyAttribute]
+        public float StepSize { get; set; }
         public virtual float CurrentPosition { get; set; }
         public virtual float CurrentSpeed { get; set; }
         public virtual float Acceleration { get; set; }

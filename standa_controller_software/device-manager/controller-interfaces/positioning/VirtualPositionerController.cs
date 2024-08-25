@@ -37,23 +37,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             }
             public float CurrentPosition { get; set; } = 0;
             public uint MoveStatus { get; set; } = 0;
-            [DynamicPropertyAttribute]
-            [DisplayPropertyAttribute]
             public string Name { get; set; }
             public float CurrentSpeed { get; set; } = 0;
-            [DynamicPropertyAttribute]
-            [DisplayPropertyAttribute]
             public float MaxAcceleration { get; set; } = 10000;
-            [DynamicPropertyAttribute]
-            [DisplayPropertyAttribute]
             public float MaxDeceleration { get; set; } = 10000;
-            [DynamicPropertyAttribute]
-            [DisplayPropertyAttribute]
             public float MaxSpeed { get; set; } = 1000;
         }
         private ConcurrentDictionary<char, DeviceInformation> _deviceInfo = new ConcurrentDictionary<char, DeviceInformation>();
-        // name | id
-        private Dictionary<char, string> _deviceIDs;
         //---------------------------------------------------
 
 

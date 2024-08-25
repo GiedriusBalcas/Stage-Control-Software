@@ -89,9 +89,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             {
                 controller.AddDevice(device.Value);
             }
-
             return controller;
         }
 
+        protected override Task MoveAbsolute(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore)
+        {
+            device.CurrentPosition = (float)command.Parameters[0];
+            semaphore.Release();
+            return Task.CompletedTask;
+         }
     }
 }
