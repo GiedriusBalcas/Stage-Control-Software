@@ -147,6 +147,29 @@ namespace standa_controller_software.custom_functions.helpers
                     positionerMovementInfo.ToDictionary(positionerInfo => positionerInfo.Key, kvp => kvp.Value.TargetPosition)
                 );
 
+            if(startToolPoint == endToolPoint)
+            {
+                allocatedTime = 0f;
+                foreach (char name in deviceNames)
+                {
+                    if (controllerManager.TryGetDevice<BasePositionerDevice>(name, out var positioner))
+                    {
+                        positionerMovementInfo[name].CurrentPosition = positioner.CurrentPosition;
+                        positionerMovementInfo[name].CurrentSpeed = positioner.CurrentSpeed;
+                        positionerMovementInfo[name].MaxAcceleration = positioner.MaxAcceleration;
+                        positionerMovementInfo[name].MaxDeceleration = positioner.MaxDeceleration;
+                        positionerMovementInfo[name].MaxSpeed = positioner.MaxSpeed;
+                        positionerMovementInfo[name].TargetAcceleration = positioner.MaxAcceleration;
+                        positionerMovementInfo[name].TargetDeceleration= positioner.MaxDeceleration;
+                        positionerMovementInfo[name].TargetSpeed= positioner.MaxSpeed;
+
+                    }
+                    else
+                        throw new Exception($"Unable retrieve positioner device {name}.");
+                }
+                return true;
+            }
+
             // Calculate trajectory length and allocate time
             float trajectoryLength = (endToolPoint - startToolPoint).Length();
             allocatedTime = trajectoryLength / trajectorySpeed;

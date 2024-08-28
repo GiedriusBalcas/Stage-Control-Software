@@ -158,11 +158,11 @@ namespace standa_control_software_WPF.view_models.system_control
 
             await Task.Run(() => _commandManager.Start());
             
-            while(_commandManager.CurrentState == CommandManagerState.Processing)
-            {
-                await Task.Delay(1000);
-                SaveLog();
-            }
+            //while(_commandManager.CurrentState == CommandManagerState.Processing)
+            //{
+            //    await Task.Delay(1000);
+            //    SaveLog();
+            //}
             SaveLog();
         }
 

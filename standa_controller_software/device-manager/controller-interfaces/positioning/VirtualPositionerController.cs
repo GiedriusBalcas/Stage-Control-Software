@@ -126,7 +126,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                         (
                             async () => 
                             {
-                                //await Task.Delay(1);
+                                await Task.Delay(1);
                                 bool boolCheck = _deviceInfo[device.Name].MoveStatus != 0;
                                 var currentPosition = _deviceInfo[device.Name].CurrentPosition;
                                 device.CurrentPosition = currentPosition;
@@ -142,7 +142,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                         (
                             async () =>
                             {
-                                //await Task.Delay(1);
+                                await Task.Delay(1);
                                 var moveStatus = _deviceInfo[device.Name].MoveStatus != 0;
                                 var currentPosition = _deviceInfo[device.Name].CurrentPosition;
                                 device.CurrentPosition = currentPosition;
