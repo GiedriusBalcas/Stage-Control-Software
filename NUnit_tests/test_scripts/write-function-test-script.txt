@@ -7,3 +7,7 @@ write("labas");
 write("labas");
 
 d = 5;
+
+
+moveA.WaitUntil("xyz",0,0,10);
+moveA("xyz",10,20,30);

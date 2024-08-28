@@ -42,9 +42,9 @@ namespace standa_controller_software.custom_functions.definitions
                 {
                     Action = CommandDefinitionsLibrary.ChangeShutterState.ToString(),
                     Await = true,
-                    Parameters = [turnOn],
+                    Parameters = [[turnOn]],
                     TargetController = shutterController.Name,
-                    TargetDevice = devName
+                    TargetDevices = [devName]
                 },
             ];
 

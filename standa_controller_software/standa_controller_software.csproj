@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="custom-functions\definitions\ShutterOnIntervalFunction.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="System.IO.Ports" Version="8.0.0" />
   </ItemGroup>
 

@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
+using ximc;
 
 namespace standa_controller_software.command_manager
 {
@@ -115,6 +116,7 @@ namespace standa_controller_software.command_manager
                 await _controllerManager.ControllerLocks[controllerName].WaitAsync();
             }
             // Execute all commands for each controller group
+
             var executeTasks = controllerNames.Select(async controllerName =>
             {
                 var commands = commandsByController[controllerName];
@@ -130,17 +132,13 @@ namespace standa_controller_software.command_manager
         {
             for (int i = 0; i < commands.Length; i++)
             {
+                // if this one is not quanle but last one is, then lets wait for the previous to finish.
+                // await controller.QueueLoop
                 if (i > 0)
                 {
-                    // Reacquire the semaphore for subsequent commands
-
-                    //if (semaphore.CurrentCount == 0)
-                    //await semaphore.WaitAsync();
-
-
-                    await semaphore.WaitAsync();
+                    if (semaphore.CurrentCount != 0)
+                        await semaphore.WaitAsync();
                 }
-
                 try
                 {
                     // Execute the command
@@ -153,8 +151,9 @@ namespace standa_controller_software.command_manager
                     Console.WriteLine($"{DateTime.Now}: Error executing command on controller {controllerName}: {ex.Message}");
                     throw;
                 }
-                // The semaphore will be released by the controller after this command
             }
+            if (semaphore.CurrentCount == 0)
+                semaphore.Release();
         }
 
 
@@ -432,7 +431,7 @@ namespace standa_controller_software.command_manager
 
                         var task = Task.Run(async () =>
                         {
-                            await controller.UpdateStateAsync(_log);
+                            await controller.UpdateStatesAsync(_log);
                             //if (semaphore.CurrentCount == 0)
                             //    semaphore.Release();
                         });
@@ -475,7 +474,7 @@ namespace standa_controller_software.command_manager
                 for (int i = 0; i < commandArray.Length; i++)
                 {
                     var command = commandArray[i];
-                    csvStringBuilder.Append($"{command.TargetController},{command.TargetDevice},{command.Action},{string.Join(" ", command.Parameters)}");
+                    csvStringBuilder.Append($"{command.TargetController},{string.Join(" ", command.TargetDevices)},{command.Action},{FormatParameters(command.Parameters)}");
 
                     if (i < commandArray.Length - 1)
                     {
@@ -490,6 +489,21 @@ namespace standa_controller_software.command_manager
             }
 
             return csvStringBuilder.ToString();
+        }
+
+        private string FormatParameters(object[][] parameters)
+        {
+            var formattedParameters = parameters
+                .Select(paramArray =>
+                {
+                    if (paramArray == null)
+                    {
+                        return "[null]";
+                    }
+                    return $"[{string.Join(", ", paramArray.Select(p => p?.ToString() ?? "null"))}]";
+                });
+
+            return string.Join(" ", formattedParameters); // Join all sub-arrays with a space
         }
 
         public IEnumerable<Command[]> GetCommandQueueList()

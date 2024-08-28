@@ -107,9 +107,29 @@ namespace standa_control_software_WPF.view_models.system_control
 
         private void SaveLog()
         {
-            var content = string.Join("\n", _commandManager.GetLog()); 
+            var content = string.Join("\n", _commandManager.GetLog());
             // The name of the file where the content will be saved
             string fileName = "log.txt";
+
+            // Path to save the file in the same project directory
+            string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
+
+            try
+            {
+                // Write the string to the file
+                File.WriteAllText(filePath, content);
+                Console.WriteLine("File saved successfully at " + filePath);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("An error occurred: " + ex.Message);
+            }
+        }
+        private void SaveCommandLog()
+        {
+            var content = string.Join("\n", _commandManager.GetCommandQueueAsString());
+            // The name of the file where the content will be saved
+            string fileName = "command_log.txt";
 
             // Path to save the file in the same project directory
             string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
@@ -133,11 +153,15 @@ namespace standa_control_software_WPF.view_models.system_control
             {
                 _commandManager.EnqueueCommandLine(commandLine);
             }
+            SaveCommandLog();
+
+
             await Task.Run(() => _commandManager.Start());
             
             while(_commandManager.CurrentState == CommandManagerState.Processing)
             {
                 await Task.Delay(1000);
+                SaveLog();
             }
             SaveLog();
         }

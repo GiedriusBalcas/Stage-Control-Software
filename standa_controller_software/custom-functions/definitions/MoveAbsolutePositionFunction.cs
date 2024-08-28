@@ -6,6 +6,8 @@ using text_parser_library;
 using standa_controller_software.device_manager.devices;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.controller_interfaces.shutter;
+using System.ComponentModel;
+using System.Xml.Linq;
 
 namespace standa_controller_software.custom_functions
 {
@@ -25,20 +27,21 @@ namespace standa_controller_software.custom_functions
 
         public override object? Execute(params object[] args)
         {
-            if (!TryParseArguments(args, out char[] devNames, out float[] positions))
+            if (!TryParseArguments(args, out char[] deviceNames, out float[] positions, out float[] waitUntil))
                 throw new ArgumentException("Argument pasrsing was unsuccesfull. Wrong types.");
 
-            Command[] commandsMovementParameters = new Command[devNames.Length];
-            Command[] commandsMovement;
-            if (this.TryGetProperty("Shutter", out object isOn))
-                commandsMovement = (bool)isOn ? new Command[devNames.Length + 1] : new Command[devNames.Length];
-            else
-                commandsMovement = new Command[devNames.Length];
-            Command[] commandsWaitForStop = new Command[devNames.Length];
+            List<Command> commandsMovementParameters = new List<Command>();
+            List<Command> commandsMovement = new List<Command>();
+            List<Command> commandsWaitForStop = new List<Command>();
+
+            //if (this.TryGetProperty("Shutter", out object isOn))
+            //    commandsMovement = (bool)isOn ? new Command[deviceNames.Length + 1] : new Command[deviceNames.Length];
+            //else
+            //    commandsMovement = new Command[deviceNames.Length];
 
 
             this.TryGetProperty("Speed", out object trajSpeed);
-            
+
             float trajectorySpeed = 1000f; // Default value
 
             if (trajSpeed != null)
@@ -53,100 +56,162 @@ namespace standa_controller_software.custom_functions
                 }
             }
 
+            var positionerMovementInformations = deviceNames.ToDictionary(name => name, name => new PositionerMovementInformation() { TargetPosition = positions[Array.IndexOf(deviceNames, name)] });
 
-            //CustomFunctionHelper.GetLineKinParameters(devNames, positions, trajectorySpeed, _controllerManager, out float[] speedValuesOut, out float[] accelValuesOut, out float[] decelValuesOut, out float allocatedTime);
+            if (!CustomFunctionHelper.TryGetLineKinParameters(positionerMovementInformations, trajectorySpeed, _controllerManager, out float allocatedTime))
+                throw new Exception("Failed to create line kinematic parameters");
 
-            if (!CustomFunctionHelper.TryGetLineKinParameters(devNames, positions, trajectorySpeed, _controllerManager, out float[] speedValuesOut, out float[] accelValuesOut, out float[] decelValuesOut, out float allocatedTime))
-                return null;
-            
-            for (int i = 0; i < devNames.Length; i++)
+            var devices = deviceNames
+                .Select(name =>
+                {
+                    _controllerManager.TryGetDevice(name, out BasePositionerDevice device);
+                    return device;
+                })
+                .Where(device => device != null)
+                .ToList();
+
+            var controllers = devices
+                .ToDictionary(device => device, device =>
+                {
+                    _controllerManager.TryGetDeviceController<BasePositionerController>(device.Name, out BasePositionerController controller);
+                    return controller;
+                });
+
+            var groupedDevicesByController = devices
+                .GroupBy(device => controllers[device])
+                .ToDictionary(group => group.Key, group => group.ToList());
+
+            foreach (var controllerGroup in groupedDevicesByController)
             {
-                if (float.IsNaN(speedValuesOut[i]) || float.IsNaN(accelValuesOut[i]) || float.IsNaN(decelValuesOut[i]))
-                    throw new ArgumentNullException("Failed to create kinematics parameters");
-                var controller = _controllerManager.GetDeviceController<BasePositionerController>(devNames[i]);
+                var groupedDeviceNames = controllerGroup.Value.Select(device => device.Name).ToArray();
+                var controlerName = controllerGroup.Key.Name;
 
-                commandsMovementParameters[i] =
+                object[][] parameters = new object[groupedDeviceNames.Length][];
+
+                for (int i = 0; i < groupedDeviceNames.Length; i++)
+                {
+                    var deviceName = groupedDeviceNames[i];
+                    parameters[i] = new object[]
+                    {
+                        positionerMovementInformations[deviceName].TargetSpeed < 10 ? 10 : positionerMovementInformations[deviceName].TargetSpeed,
+                        positionerMovementInformations[deviceName].TargetAcceleration,
+                        positionerMovementInformations[deviceName].TargetDeceleration
+                    };
+                }
+
+                commandsMovementParameters.Add(
                     new Command()
                     {
                         Action = "UpdateMoveSettings",
                         Await = true,
-                        Parameters = [speedValuesOut[i], accelValuesOut[i], decelValuesOut[i]],
-                        TargetController = controller.Name,
-                        TargetDevice = devNames[i]
-                    };
-            }
-            _commandManager.EnqueueCommandLine(commandsMovementParameters);
-
-            for (int i = 0; i< devNames.Length; i++) {
-
-                var controller = _controllerManager.GetDeviceController<BasePositionerController>(devNames[i]);
-
-                commandsMovement[i] =
-                    new Command()
-                    {
-                        Action = "MoveAbsolute",
-                        //Await = i == devNames.Length - 1,
-                        Await = false,
-                        Parameters = [positions[i]],
-                        TargetController = controller.Name,
-                        TargetDevice = devNames[i]
-                    };
+                        Parameters = parameters,
+                        TargetController = controlerName,
+                        TargetDevices = groupedDeviceNames
+                    }
+                );
             }
 
-            if ((bool)isOn)
+            _commandManager.EnqueueCommandLine(commandsMovementParameters.ToArray());
+
+            foreach (var controllerGroup in groupedDevicesByController)
             {
-                var shutterDevice = _controllerManager.GetDevices<BaseShutterDevice>().FirstOrDefault();
-                if (shutterDevice is null)
-                    throw new Exception("Trying to use non existing shutter device");
+                var groupedDeviceNames = controllerGroup.Value.Select(device => device.Name).ToArray();
+                var controlerName = controllerGroup.Key.Name;
 
-                var controller = _controllerManager.GetDeviceController<BaseShutterController>(shutterDevice.Name);
+                object[][] parameters = new object[groupedDeviceNames.Length][];
 
-                commandsMovement[commandsMovement.Length-1] = 
+                for (int i = 0; i < groupedDeviceNames.Length; i++)
+                {
+                    var deviceName = groupedDeviceNames[i];
+                    parameters[i] =
+                    [
+                        positionerMovementInformations[deviceName].TargetPosition
+                    ];
+                }
+
+                commandsMovement.Add(
                     new Command()
                     {
-                        Action = CommandDefinitionsLibrary.ChangeShutterStateOnInterval.ToString(),
+                        Action = CommandDefinitionsLibrary.MoveAbsolute.ToString(),
                         Await = false,
-                        Parameters = [allocatedTime],
-                        TargetController = controller.Name,
-                        TargetDevice = shutterDevice.Name
-                    };
-                
+                        Parameters = parameters,
+                        TargetController = controlerName,
+                        TargetDevices = groupedDeviceNames
+                    }
+                );
             }
-            _commandManager.EnqueueCommandLine(commandsMovement);
 
+            _commandManager.EnqueueCommandLine(commandsMovement.ToArray());
 
-            for (int i = 0; i < devNames.Length; i++)
+            //if ((bool)isOn)
+            //{
+            //    var shutterDevice = _controllerManager.GetDevices<BaseShutterDevice>().FirstOrDefault();
+            //    if (shutterDevice is null)
+            //        throw new Exception("Trying to use non existing shutter device");
+
+            //    var controller = _controllerManager.GetDeviceController<BaseShutterController>(shutterDevice.Name);
+
+            //    commandsMovement[commandsMovement.Length - 1] =
+            //        new Command()
+            //        {
+            //            Action = CommandDefinitionsLibrary.ChangeShutterStateOnInterval.ToString(),
+            //            Await = false,
+            //            Parameters = [allocatedTime],
+            //            TargetController = controller.Name,
+            //            TargetDevice = shutterDevice.Name
+            //        };
+
+            //}
+
+            foreach (var controllerGroup in groupedDevicesByController)
             {
-                if (float.IsNaN(speedValuesOut[i]) || float.IsNaN(accelValuesOut[i]) || float.IsNaN(decelValuesOut[i]))
-                    throw new ArgumentNullException("Failed to create kinematics parameters");
-                var controller = _controllerManager.GetDeviceController<BasePositionerController>(devNames[i]);
+                var groupedDeviceNames = controllerGroup.Value.Select(device => device.Name).ToArray();
+                var controlerName = controllerGroup.Key.Name;
 
-                commandsWaitForStop[i] =
+                object[][] parameters = new object[groupedDeviceNames.Length][];
+                if(waitUntil.Length == deviceNames.Length)
+                    for (int i = 0; i < groupedDeviceNames.Length; i++)
+                    {
+                        var deviceName = groupedDeviceNames[i];
+                        bool direction = positionerMovementInformations[deviceName].TargetPosition > positionerMovementInformations[deviceName].CurrentPosition;
+                        float targetPosition = direction
+                            ? positionerMovementInformations[deviceName].TargetPosition - waitUntil[i]
+                            : positionerMovementInformations[deviceName].TargetPosition + waitUntil[i]
+                            ;
+                        parameters[i] =
+                        [
+                             targetPosition, direction
+                        ];
+                    }
+
+                commandsWaitForStop.Add(
                     new Command()
                     {
-                        Action = "WaitUntilStop",
+                        Action = CommandDefinitionsLibrary.WaitUntilStop.ToString(),
                         Await = true,
-                        Parameters = [],
-                        TargetController = controller.Name,
-                        TargetDevice = devNames[i]
-                    };
+                        Parameters = parameters,
+                        TargetController = controlerName,
+                        TargetDevices = groupedDeviceNames
+                    }
+                );
             }
-            _commandManager.EnqueueCommandLine(commandsWaitForStop);
 
+            _commandManager.EnqueueCommandLine(commandsWaitForStop.ToArray());
 
-            _commandManager.ExecuteCommandLine(commandsMovementParameters);
-            _commandManager.ExecuteCommandLine(commandsMovement);
-            _commandManager.ExecuteCommandLine(commandsWaitForStop);
+            _commandManager.ExecuteCommandLine(commandsMovementParameters.ToArray()).GetAwaiter().GetResult();
+            _commandManager.ExecuteCommandLine(commandsMovement.ToArray()).GetAwaiter().GetResult();
+            _commandManager.ExecuteCommandLine(commandsWaitForStop.ToArray()).GetAwaiter().GetResult();
 
 
             return null;
         }
 
-        public bool TryParseArguments(object?[] arguments, out char[] devNames, out float[] positions)
+        public bool TryParseArguments(object?[] arguments, out char[] devNames, out float[] positions, out float[] waitUntil)
         {
             var firstArg = string.Empty; // Default value
             devNames = Array.Empty<char>();
             positions = Array.Empty<float>(); // Default value
+            waitUntil = Array.Empty<float>(); // Default value
 
             if (arguments == null || arguments.Length == 0)
             {
@@ -162,26 +227,27 @@ namespace standa_controller_software.custom_functions
             {
                 return false; // First argument is not a string or is null
             }
+            
+            devNames = firstArg.ToCharArray();
 
-            // Initialize the rest of the arguments as a float array
             // Start with an empty list to collect the float values
-            var floatList = new List<float>();
+            var positionsList = new List<float>();
 
             // Start from index 1 since index 0 is the string argument
-            for (int i = 1; i < arguments.Length; i++)
+            for (int i = 1; i < 1 + devNames.Length; i++)
             {
                 // Attempt to parse each object as float
                 if (arguments[i] is float f)
                 {
-                    floatList.Add(f);
+                    positionsList.Add(f);
                 }
                 else if (arguments[i] is double d) // Handle double to float conversion
                 {
-                    floatList.Add((float)d);
+                    positionsList.Add((float)d);
                 }
                 else if (arguments[i] is int integer) // Handle int to float conversion
                 {
-                    floatList.Add(integer);
+                    positionsList.Add(integer);
                 }
                 else
                 {
@@ -189,7 +255,7 @@ namespace standa_controller_software.custom_functions
                     object? arg = arguments[i];
                     if (arg != null && float.TryParse(arg.ToString(), out float parsedFloat))
                     {
-                        floatList.Add(parsedFloat);
+                        positionsList.Add(parsedFloat);
                     }
                     else
                     {
@@ -199,8 +265,43 @@ namespace standa_controller_software.custom_functions
                 }
             }
 
-            positions = floatList.ToArray(); // Convert the list to an array
-            devNames = firstArg.ToCharArray();
+            positions = positionsList.ToArray(); // Convert the list to an array
+
+            var waitUntilList = new List<float>();
+
+            if(arguments.Length == 1 + positions.Length * 2)
+                for (int i = 1 + positions.Length; i < arguments.Length; i++)
+                {
+                    // Attempt to parse each object as float
+                    if (arguments[i] is float f)
+                    {
+                        waitUntilList.Add(f);
+                    }
+                    else if (arguments[i] is double d) // Handle double to float conversion
+                    {
+                        waitUntilList.Add((float)d);
+                    }
+                    else if (arguments[i] is int integer) // Handle int to float conversion
+                    {
+                        waitUntilList.Add(integer);
+                    }
+                    else
+                    {
+                        // Try to parse as float from string or other convertible types
+                        object? arg = arguments[i];
+                        if (arg != null && float.TryParse(arg.ToString(), out float parsedFloat))
+                        {
+                            waitUntilList.Add(parsedFloat);
+                        }
+                        else
+                        {
+                            // Could not parse argument as float
+                            return false;
+                        }
+                    }
+                }
+
+            waitUntil = waitUntilList.ToArray(); // Convert the list to an array
 
             return true; // Successfully parsed all arguments
         }

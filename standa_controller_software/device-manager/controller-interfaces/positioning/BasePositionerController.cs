@@ -13,7 +13,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
     {
 
         private ConcurrentDictionary<char, CancellationTokenSource> deviceCancellationTokens = new ConcurrentDictionary<char, CancellationTokenSource>();
-        private Dictionary<string, Func<Command, BasePositionerDevice, CancellationToken, SemaphoreSlim, Task>> _methodMap = new Dictionary<string, Func<Command, BasePositionerDevice, CancellationToken, SemaphoreSlim, Task>>();
+        private Dictionary<string, Func<Command, List<BasePositionerDevice>, Dictionary<char, CancellationToken>, SemaphoreSlim, Task>> _methodMap = new Dictionary<string, Func<Command, List<BasePositionerDevice>, Dictionary<char, CancellationToken>, SemaphoreSlim, Task>>();
         protected Dictionary<char, BasePositionerDevice> Devices { get; }
 
         public BasePositionerController(string name) : base(name)
@@ -47,42 +47,68 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return Task.CompletedTask;
         }
 
+
+        private string FormatParameters(object[][] parameters)
+        {
+            var formattedParameters = parameters
+                .Select(paramArray =>
+                {
+                    if (paramArray == null)
+                    {
+                        return "[null]";
+                    }
+                    return $"[{string.Join(", ", paramArray.Select(p => p?.ToString() ?? "null"))}]";
+                });
+
+            return string.Join(" ", formattedParameters); // Join all sub-arrays with a space
+        }
         public override async Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
-            if (Devices.TryGetValue(command.TargetDevice, out BasePositionerDevice device))
+            log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {command.Action} command on device {string.Join(' ', command.TargetDevices)}, parameters: {FormatParameters(command.Parameters)}");
+
+            List<BasePositionerDevice> devices = new List<BasePositionerDevice> ();
+            Dictionary<char, CancellationToken> cancelationTokens = new Dictionary<char, CancellationToken>();
+
+            foreach (var deviceName in command.TargetDevices) 
             {
-                log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {command.Action} command on device {device.Name}, parameters: {string.Join(" ", command.Parameters)}");
+                if (Devices.TryGetValue(deviceName, out BasePositionerDevice device))
+                {
+                    devices.Add(device);
+                }
+                else
+                {
+                    log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Device {deviceName} not found in controller {command.TargetController}");
+                }
+                
 
                 var tokenSource = new CancellationTokenSource();
-
-                if (deviceCancellationTokens.ContainsKey(device.Name) && command.Action == "MoveAbsolute")
+                if (deviceCancellationTokens.ContainsKey(deviceName) && command.Action == CommandDefinitionsLibrary.MoveAbsolute.ToString())
                 {
-                    deviceCancellationTokens[device.Name].Cancel();
-                    deviceCancellationTokens[device.Name] = tokenSource;
+                    deviceCancellationTokens[deviceName].Cancel();
+                    deviceCancellationTokens[deviceName] = tokenSource;
                 }
                 else
                 {
-                    deviceCancellationTokens.TryAdd(device.Name, tokenSource);
+                    deviceCancellationTokens.TryAdd(deviceName, tokenSource);
                 }
+                cancelationTokens.Add(deviceName, tokenSource.Token);
 
-                if (_methodMap.TryGetValue(command.Action, out var method))
-                {
-                    if (command.Await)
-                        await method(command, device, tokenSource.Token, semaphore);
-                    else
-                        _ = method(command, device, tokenSource.Token, semaphore); // Start method without awaiting
-                }
-                else
-                {
-                    throw new InvalidOperationException("Invalid action");
-                }
+                
+            }
+
+            if (_methodMap.TryGetValue(command.Action, out var method))
+            {
                 if (command.Await)
-                    log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Completed {command.Action} command on device {device.Name}");
+                    await method(command, devices, cancelationTokens, semaphore);
+                else
+                    _ = method(command, devices, cancelationTokens, semaphore); // Start method without awaiting
             }
             else
             {
-                log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Device {command.TargetDevice} not found in controller {command.TargetController}");
+                throw new InvalidOperationException("Invalid action");
             }
+            
+            log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Completed {command.Action} command on device {string.Join(' ', command.TargetDevices)}");
         }
 
         public override List<BaseDevice> GetDevices()
@@ -90,11 +116,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return Devices.Values.Cast<BaseDevice>().ToList();
         }
 
-        public override abstract Task UpdateStateAsync(ConcurrentQueue<string> log);
+        public override abstract Task UpdateStatesAsync(ConcurrentQueue<string> log);
 
-        protected abstract Task MoveAbsolute(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore);
-        protected abstract Task UpdateMoveSettings(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore);
-        protected abstract Task WaitUntilStop(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore);
+        protected abstract Task MoveAbsolute(Command command, List<BasePositionerDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore);
+        protected abstract Task UpdateMoveSettings(Command command, List<BasePositionerDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore);
+        protected abstract Task WaitUntilStop(Command command, List<BasePositionerDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore);
 
         public override abstract BaseController GetCopy();
     }

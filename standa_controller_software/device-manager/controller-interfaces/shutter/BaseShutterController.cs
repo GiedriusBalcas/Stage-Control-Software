@@ -12,7 +12,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
 {
     public abstract class BaseShutterController : BaseController
     {
-        private Dictionary<string, Func<Command, BaseShutterDevice, CancellationToken, Task>> _methodMap = new Dictionary<string, Func<Command, BaseShutterDevice, CancellationToken, Task>>();
+        private Dictionary<string, Func<Command, List<BaseShutterDevice>, Dictionary<char, CancellationToken>, SemaphoreSlim, Task>> _methodMap = new Dictionary<string, Func<Command, List<BaseShutterDevice>, Dictionary<char, CancellationToken>, SemaphoreSlim, Task>>();
+
         private ConcurrentDictionary<char, CancellationTokenSource> _deviceCancellationTokens = new ConcurrentDictionary<char, CancellationTokenSource>();
         protected Dictionary<char, BaseShutterDevice> Devices { get; }
 
@@ -46,48 +47,66 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             return Task.CompletedTask;
         }
 
-        protected abstract Task ChangeStateOnInterval(Command command, BaseShutterDevice device, CancellationToken token);
-        protected abstract Task SetDelayAsync(Command command, BaseShutterDevice device, CancellationToken token);
+        protected abstract Task ChangeStateOnInterval(Command command, List<BaseShutterDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore);
+        protected abstract Task SetDelayAsync(Command command, List<BaseShutterDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore);
 
-        protected abstract Task ChangeState(Command command, BaseShutterDevice device, CancellationToken token);
+        protected abstract Task ChangeState(Command command, List<BaseShutterDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore);
+        private string FormatParameters(object[][] parameters)
+        {
+            var formattedParameters = parameters
+                .Select(paramArray =>
+                {
+                    if (paramArray == null)
+                    {
+                        return "[null]";
+                    }
+                    return $"[{string.Join(", ", paramArray.Select(p => p?.ToString() ?? "null"))}]";
+                });
 
-
+            return string.Join(" ", formattedParameters); // Join all sub-arrays with a space
+        }
         public override async Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
-            if (Devices.TryGetValue(command.TargetDevice, out BaseShutterDevice device))
+            log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {command.Action} command on device {string.Join(' ', command.TargetDevices)}, parameters: {FormatParameters(command.Parameters)}");
+
+            Dictionary<char, CancellationToken> cancelationTokens = new Dictionary<char, CancellationToken>();
+            List<BaseShutterDevice> devices = new List<BaseShutterDevice>();
+            foreach (var deviceName in command.TargetDevices)
             {
-                log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {command.Action} command on device {device.Name}");
-
+                if (Devices.TryGetValue(deviceName, out BaseShutterDevice device))
+                {
+                    devices.Add(device);
+                }
+                else
+                {
+                    log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Device {command.TargetDevices} not found in controller {command.TargetController}");
+                }
                 var tokenSource = new CancellationTokenSource();
-
-                if (_deviceCancellationTokens.TryGetValue(device.Name, out CancellationTokenSource? token) && command.Action == "MoveAbsolute")
+                if (_deviceCancellationTokens.ContainsKey(deviceName))
                 {
-                    token.Cancel();
-                    _deviceCancellationTokens[device.Name] = tokenSource;
+                    _deviceCancellationTokens[deviceName].Cancel();
+                    _deviceCancellationTokens[deviceName] = tokenSource;
                 }
                 else
                 {
-                    _deviceCancellationTokens.TryAdd(device.Name, tokenSource);
+                    _deviceCancellationTokens.TryAdd(deviceName, tokenSource);
                 }
+                cancelationTokens.Add(deviceName, tokenSource.Token);
+            }
 
-                if (_methodMap.TryGetValue(command.Action, out var method))
-                {
-                    if (command.Await)
-                        await method(command, device, tokenSource.Token);
-                    else
-                        _ = method(command, device, tokenSource.Token); // Start method without awaiting
-                }
+            if (_methodMap.TryGetValue(command.Action, out var method))
+            {
+                if (command.Await)
+                    await method(command, devices, cancelationTokens, semaphore);
                 else
-                {
-                    throw new InvalidOperationException("Invalid action");
-                }
-
-                log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Completed {command.Action} command on device {device.Name}");
+                    _ = method(command, devices, cancelationTokens, semaphore); // Start method without awaiting
             }
             else
             {
-                log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Device {command.TargetDevice} not found in controller {command.TargetController}");
+                throw new InvalidOperationException("Invalid action");
             }
+
+            log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Completed {command.Action} command on device {command.TargetDevices}");
         }
 
         public override abstract BaseController GetCopy();
@@ -97,6 +116,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             return Devices.Values.Cast<BaseDevice>().ToList();
         }
 
-        public override abstract Task UpdateStateAsync(ConcurrentQueue<string> log);
+        public override abstract Task UpdateStatesAsync(ConcurrentQueue<string> log);
     }
 }

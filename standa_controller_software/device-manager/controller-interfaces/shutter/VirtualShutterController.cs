@@ -48,7 +48,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             return controller;
         }
 
-        public override async Task UpdateStateAsync(ConcurrentQueue<string> log)
+        public override async Task UpdateStatesAsync(ConcurrentQueue<string> log)
         {
             foreach (var device in Devices)
             {
@@ -60,27 +60,40 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             await Task.Delay(10);
         }
 
-        protected override async Task ChangeState(Command command, BaseShutterDevice device, CancellationToken token)
+        protected override async Task ChangeState(Command command, List<BaseShutterDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
         {
-            var state = (bool)command.Parameters[0];
-            _deviceInfo[device.Name]._isOn = state;
-            device.IsOn = state;
-            await Task.Delay(10, token);
+            for (int i = 0; i < devices.Count; i++)
+            {
+                var device = devices[i];
+                var state = (bool)command.Parameters[i][0];
+                await Task.Delay(2, cancellationTokens[device.Name]);
+                _deviceInfo[device.Name]._isOn = state;
+                device.IsOn = state;
+            }
         }
 
-        protected override async Task ChangeStateOnInterval(Command command, BaseShutterDevice device, CancellationToken token)
+        protected override async Task ChangeStateOnInterval(Command command, List<BaseShutterDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
         {
-            var duration = (float)command.Parameters[0] * 1000000 - device.DelayOff*1000 - device.DelayOn*1000;
-
-            var state = true;
-            await Task.Run(() => DelayMicroseconds((int)device.DelayOn*1000), token);
-
-            _deviceInfo[device.Name]._isOn = state;
+            float duration = 0;
+            var token = cancellationTokens.Values.Where(val => val != null).First();
+            
+            for (int i = 0; i < devices.Count; i++)
+            {
+                var device = devices[i];
+                duration = (float)command.Parameters[i][0] * 1000000 - device.DelayOff * 1000 - device.DelayOn * 1000;
+                var state = true;
+                await Task.Run(() => DelayMicroseconds((int)device.DelayOn * 1000), token);
+                _deviceInfo[device.Name]._isOn = state;
+            }
 
             await Task.Run(() => DelayMicroseconds((int)duration), token);
-
-            state = false;
-            _deviceInfo[device.Name]._isOn = state;
+            
+            for (int i = 0; i < devices.Count; i++)
+            {
+                var device = devices[i];
+                var state = false;
+                _deviceInfo[device.Name]._isOn = state;
+            }
 
         }
 
@@ -102,14 +115,17 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             stopwatch.Stop();
         }
 
-        protected override Task SetDelayAsync(Command command, BaseShutterDevice device, CancellationToken token)
+        protected override Task SetDelayAsync(Command command, List<BaseShutterDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
         {
-            var delayOn = (uint)command.Parameters[0];
-            var delayOff = (uint)command.Parameters[1];
+            for (int i = 0; i < devices.Count; i++)
+            {
+                var device = devices[i];
+                var delayOn = (uint)command.Parameters[i][0];
+                var delayOff = (uint)command.Parameters[i][1];
 
-            _deviceInfo[device.Name]._delayOn = (int)delayOn;
-            _deviceInfo[device.Name]._delayOff = (int)delayOff;
-
+                _deviceInfo[device.Name]._delayOn = (int)delayOn;
+                _deviceInfo[device.Name]._delayOff = (int)delayOff;
+            }
             return Task.CompletedTask;
         }
     }

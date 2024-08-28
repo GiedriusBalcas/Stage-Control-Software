@@ -71,22 +71,26 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             return controller;
         }
 
-        protected override async Task SetDelayAsync(Command command, BaseShutterDevice device, CancellationToken token)
+        protected override async Task SetDelayAsync(Command command, List<BaseShutterDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
         {
-            var delayOn = (uint)command.Parameters[0];
-            var delayOff = (uint)command.Parameters[1];
+            for (int i = 0; i < devices.Count; i++)
+            {
+                var device = devices[i];
+                var delayOn = (uint)command.Parameters[i][0];
+                var delayOff = (uint)command.Parameters[i][1];
 
-            byte[] callCommand = { 0x01 }; // SET_DELAY command
-            byte[] delayOnBytes = BitConverter.GetBytes(delayOn);
-            byte[] delayOffBytes = BitConverter.GetBytes(delayOff);
+                byte[] callCommand = { 0x01 }; // SET_DELAY command
+                byte[] delayOnBytes = BitConverter.GetBytes(delayOn);
+                byte[] delayOffBytes = BitConverter.GetBytes(delayOff);
 
-            var serialPort = _deviceInfo[device.Name].SerialPort;
-            await serialPort.BaseStream.WriteAsync(callCommand, 0, callCommand.Length);
-            await serialPort.BaseStream.WriteAsync(delayOnBytes, 0, delayOnBytes.Length);
-            await serialPort.BaseStream.WriteAsync(delayOffBytes, 0, delayOffBytes.Length);
+                var serialPort = _deviceInfo[device.Name].SerialPort;
+                await serialPort.BaseStream.WriteAsync(callCommand, 0, callCommand.Length);
+                await serialPort.BaseStream.WriteAsync(delayOnBytes, 0, delayOnBytes.Length);
+                await serialPort.BaseStream.WriteAsync(delayOffBytes, 0, delayOffBytes.Length);
+            }
         }
 
-        public override async Task UpdateStateAsync(ConcurrentQueue<string> log)
+        public override async Task UpdateStatesAsync(ConcurrentQueue<string> log)
         {
             foreach (var device in Devices)
             {
@@ -106,17 +110,21 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             }
         }
 
-        protected override async Task ChangeState(Command command, BaseShutterDevice device, CancellationToken token)
+        protected override async Task ChangeState(Command command, List<BaseShutterDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
         {
-            var state = (bool)command.Parameters[0];
+            for (int i = 0; i < devices.Count; i++)
+            {
+                var device = devices[i];
+                var state = (bool)command.Parameters[i][0];
 
-            if (state)
-            {
-                await ShutterOnAsync(device, token);
-            }
-            else
-            {
-                await ShutterOffAsync(device, token);
+                if (state)
+                {
+                    await ShutterOnAsync(device, cancellationTokens[device.Name]);
+                }
+                else
+                {
+                    await ShutterOffAsync(device, cancellationTokens[device.Name]);
+                }
             }
         }
 
@@ -151,7 +159,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             //Console.WriteLine($"ShutterOff Ack: {ackFF}");
         }
 
-        protected override async Task ChangeStateOnInterval(Command command, BaseShutterDevice device, CancellationToken token)
+        protected override async Task ChangeStateOnInterval(Command command, List<BaseShutterDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
         {
             //uint duration = (uint)((float)command.Parameters[0] * 1000000);
 

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,7 +13,7 @@ using System.Xml.Linq;
 
 namespace standa_controller_software.device_manager.controller_interfaces.positioning
 {
-    public class VirtualPositionerController : BasePositionerController
+    public partial class VirtualPositionerController : BasePositionerController
     {
         //----------Virtual axes private data---------------
         private class DeviceInformation
@@ -49,7 +50,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
         public VirtualPositionerController(string name) : base(name)
         {
-            
+
         }
         public override void AddDevice(BaseDevice device)
         {
@@ -71,25 +72,36 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             }
         }
 
-        protected override async Task MoveAbsolute(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore)
+        protected override async Task MoveAbsolute(Command command, List<BasePositionerDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
         {
-            float targetPosition = (float)(command.Parameters[0]);
+            List<Task> tasks = new List<Task>();
+            for (int i = 0; i < devices.Count; i++)
+            {
+                var device = devices[i];
+                float targetPosition = (float)(command.Parameters[i][0]);
 
-            
-            var task = UpdateCommandMoveA(device.Name, targetPosition, cancellationToken);
+                _deviceInfo[device.Name].MoveStatus = 1;
+                var task = UpdateCommandMoveA(device.Name, targetPosition, cancellationTokens[device.Name]);
+                tasks.Add(task);
+            }
             semaphore.Release();
-            await task;
+            await Task.WhenAll(tasks);
+
         }
 
-        protected override async Task UpdateMoveSettings(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore)
+        protected override async Task UpdateMoveSettings(Command command, List<BasePositionerDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
         {
-            float speedValue = (float)(command.Parameters[0]);
-            float accelValue = (float)(command.Parameters[1]);
-            float decelValue = (float)(command.Parameters[2]);
+            for (int i = 0; i < devices.Count; i++)
+            {
+                var device = devices[i];
+                float speedValue = (float)(command.Parameters[i][0]);
+                float accelValue = (float)(command.Parameters[i][1]);
+                float decelValue = (float)(command.Parameters[i][2]);
 
-            var task = UpdateMovementSettings(device.Name, speedValue, accelValue, decelValue, cancellationToken);
+                var task = UpdateMovementSettings(device.Name, speedValue, accelValue, decelValue, cancellationTokens[device.Name]);
+                await task;
+            }
             semaphore.Release();
-            await task;
         }
 
         private Task UpdateMovementSettings(char name, float speedValue, float accelValue, float decelValue, CancellationToken cancellationToken)
@@ -101,20 +113,79 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return Task.CompletedTask;
         }
 
-        protected override async Task WaitUntilStop(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore)
+        protected override async Task WaitUntilStop(Command command, List<BasePositionerDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
         {
-            var task = UpdateWaitUntilStop(device.Name, cancellationToken);
-            semaphore.Release();
-            await task;
-        }
-
-        private async Task UpdateWaitUntilStop(char name, CancellationToken cancellationToken)
-        {
-            while (_deviceInfo[name].MoveStatus != 0)
+            var queuedItems = new List<Func<Task<bool>>>();
+            
+            for (int i = 0; i < devices.Count; i++)
             {
-                //await Task.Delay(1, cancellationToken);
-                await Task.Yield();
+                var device = devices[i];
+                if (command.Parameters[i] == null || command.Parameters[i].Length == 0)
+                {
+                    queuedItems.Add
+                        (
+                            async () => 
+                            {
+                                //await Task.Delay(1);
+                                bool boolCheck = _deviceInfo[device.Name].MoveStatus != 0;
+                                var currentPosition = _deviceInfo[device.Name].CurrentPosition;
+                                device.CurrentPosition = currentPosition;
+                                return boolCheck;
+                            }
+                        ) ;
+                }
+                else
+                {
+                    float targetPosition = (float)(command.Parameters[i][0]);
+                    bool direction = (bool)(command.Parameters[i][1]);
+                    queuedItems.Add
+                        (
+                            async () =>
+                            {
+                                //await Task.Delay(1);
+                                var moveStatus = _deviceInfo[device.Name].MoveStatus != 0;
+                                var currentPosition = _deviceInfo[device.Name].CurrentPosition;
+                                device.CurrentPosition = currentPosition;
+
+                                var boolCheck = moveStatus && (direction ? currentPosition < targetPosition: currentPosition > targetPosition) ;
+                                return boolCheck;
+                            }
+                        );
+                }
             }
+            try
+            {
+                while (queuedItems.Count > 0)
+                {
+                    var itemsToRemove = new List<Func<Task<bool>>>();
+
+                    foreach (var queuedItem in queuedItems)
+                    {
+                        if (!(await queuedItem.Invoke()))
+                        {
+                            itemsToRemove.Add(queuedItem);
+                        }
+                    }
+
+                    foreach (var item in itemsToRemove)
+                    {
+                        queuedItems.Remove(item);
+                    }
+
+                    //await Task.Delay(1); // A slight delay to prevent a tight loop; adjust as needed
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Smth wrong with wait until in Virtual Positioner");
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+
+
+
         }
 
         private async Task UpdateCommandMoveA(char name, float targetPosition, CancellationToken cancellationToken)
@@ -135,10 +206,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             _deviceInfo[name].MoveStatus = 1;
             float movementPerInterval = 0 * _deviceInfo[name].CurrentSpeed;
             float accelerationPerInterval = 0 * _deviceInfo[name].Acceleration;
-            float decelerationPerInterval =  0 * _deviceInfo[name].Deceleration;
+            float decelerationPerInterval = 0 * _deviceInfo[name].Deceleration;
             bool stopFlag = false;
 
-            while ( Math.Abs( pointDifference() ) > Math.Abs( movementPerInterval ) || Math.Abs( _deviceInfo[name].CurrentSpeed ) > decelerationPerInterval )
+            while (Math.Abs(pointDifference()) > Math.Abs(movementPerInterval) || Math.Abs(_deviceInfo[name].CurrentSpeed) > decelerationPerInterval)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -234,17 +305,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             _deviceInfo[name].MoveStatus = 0;
         }
 
-
-
-
-        public override async Task UpdateStateAsync(ConcurrentQueue<string> log)
+        public override async Task UpdateStatesAsync(ConcurrentQueue<string> log)
         {
             foreach (var positioner in Devices)
             {
                 positioner.Value.CurrentPosition = _deviceInfo[positioner.Key].CurrentPosition;
                 positioner.Value.CurrentSpeed = _deviceInfo[positioner.Key].CurrentSpeed;
                 positioner.Value.Acceleration = _deviceInfo[positioner.Key].Acceleration;
-                positioner.Value.Deceleration= _deviceInfo[positioner.Key].Deceleration;
+                positioner.Value.Deceleration = _deviceInfo[positioner.Key].Deceleration;
                 positioner.Value.Speed = _deviceInfo[positioner.Key].Speed;
                 positioner.Value.MaxAcceleration = _deviceInfo[positioner.Key].MaxAcceleration;
                 positioner.Value.MaxDeceleration = _deviceInfo[positioner.Key].MaxDeceleration;

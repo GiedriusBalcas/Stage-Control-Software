@@ -7,6 +7,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 {
     public class PositionerController_XIMC : BasePositionerController
     {
+        private const uint MOVE_CMD_RUNNING = 0x80;
         private class DeviceInformation
         {
             public char name;
@@ -120,7 +121,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return controller;
         }
 
-        public override Task UpdateStateAsync(ConcurrentQueue<string> log)
+        public override Task UpdateStatesAsync(ConcurrentQueue<string> log)
         {
             foreach (var positioner in Devices)
             {
@@ -146,50 +147,110 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return Task.CompletedTask;
         }
 
-        protected override Task UpdateMoveSettings(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore)
+        protected override Task UpdateMoveSettings(Command command, List<BasePositionerDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
         {
-            float speedValue = (float)(command.Parameters[0]);
-            float accelValue = (float)(command.Parameters[1]);
-            float decelValue = (float)(command.Parameters[2]);
+            for (int i = 0; i < devices.Count; i++)
+            {
+                var device = devices[i];
+                float speedValue = (float)(command.Parameters[i][0]);
+                float accelValue = (float)(command.Parameters[i][1]);
+                float decelValue = (float)(command.Parameters[i][2]);
 
-            _deviceInfo[device.Name].moveSettings_t.Speed = speedValue;
-            _deviceInfo[device.Name].moveSettings_t.Accel = accelValue;
-            _deviceInfo[device.Name].moveSettings_t.Decel = decelValue;
+                _deviceInfo[device.Name].moveSettings_t.Speed = speedValue;
+                _deviceInfo[device.Name].moveSettings_t.Accel = accelValue;
+                _deviceInfo[device.Name].moveSettings_t.Decel = decelValue;
 
-            CallResponse = API.set_move_settings_calb(_deviceInfo[device.Name].id, ref _deviceInfo[device.Name].moveSettings_t, ref _deviceInfo[device.Name].calibration_t);
+                CallResponse = API.set_move_settings_calb(_deviceInfo[device.Name].id, ref _deviceInfo[device.Name].moveSettings_t, ref _deviceInfo[device.Name].calibration_t);
+            }
             semaphore.Release();
             return Task.CompletedTask;
         }
 
-        protected override async Task WaitUntilStop(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore)
+        protected override async Task WaitUntilStop(Command command, List<BasePositionerDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
         {
-            // Default result to not_implemented
-            Result result = Result.not_implemented;
+            var queuedItems = new List<Func<Task<bool>>>();
 
-            // Run the task asynchronously
-            await Task.Run(() =>
+            for (int i = 0; i < devices.Count; i++)
             {
-                result = API.command_wait_for_stop(_deviceInfo[device.Name].id, 1);
-            }, cancellationToken);
-            
-            // Release the semaphore after the task is done
-            semaphore.Release();
+                var device = devices[i];
+                if (command.Parameters[i].Length == 0)
+                {
+                    queuedItems.Add
+                        (
+                            async () =>
+                            {
+                                var deviceInfo = _deviceInfo[device.Name];
+                                CallResponse = API.get_status_calb(deviceInfo.id, out deviceInfo.statusCalibrated_t, ref deviceInfo.calibration_t);
+                                device.CurrentPosition = deviceInfo.statusCalibrated_t.CurPosition;
+                                bool boolCheck = (deviceInfo.statusCalibrated_t.MvCmdSts & MOVE_CMD_RUNNING) != 0;
+                                return boolCheck;
+                            }
+                        );
+                }
+                else
+                {
+                    float targetPosition = (float)(command.Parameters[i][0]);
+                    bool direction = (bool)(command.Parameters[i][1]);
+                    queuedItems.Add
+                        (
+                            async () =>
+                            {
+                                var deviceInfo = _deviceInfo[device.Name];
+                                CallResponse = API.get_status_calb(deviceInfo.id, out deviceInfo.statusCalibrated_t, ref deviceInfo.calibration_t);
+                                var moveStatus = (deviceInfo.statusCalibrated_t.MvCmdSts & MOVE_CMD_RUNNING) != 0;
+                                var currentPosition = deviceInfo.statusCalibrated_t.CurPosition; ;
+                                device.CurrentPosition = currentPosition;
 
-            // Check the result and wait until it is no longer not_implemented
-            while (result == Result.not_implemented)
-            {
-                await Task.Delay(1, cancellationToken); // Adjust delay as needed
+                                var boolCheck = moveStatus && (direction ? currentPosition < targetPosition : currentPosition > targetPosition);
+                                return boolCheck;
+                            }
+                        );
+                }
             }
 
+            try
+            {
+                while (queuedItems.Count > 0)
+                {
+                    var itemsToRemove = new List<Func<Task<bool>>>();
+
+                    foreach (var queuedItem in queuedItems)
+                    {
+                        if (!(await queuedItem.Invoke()))
+                        {
+                            itemsToRemove.Add(queuedItem);
+                        }
+                    }
+
+                    foreach (var item in itemsToRemove)
+                    {
+                        queuedItems.Remove(item);
+                    }
+
+                    //await Task.Delay(1); // A slight delay to prevent a tight loop; adjust as needed
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Smth wrong with wait until in Virtual Positioner");
+            }
+            finally
+            {
+                semaphore.Release();
+            }
         }
 
-        protected override Task MoveAbsolute(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore)
+        protected override Task MoveAbsolute(Command command, List<BasePositionerDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
         {
-            float targetPosition = (float)(command.Parameters[0]);
+            for (int i = 0; i < devices.Count; i++)
+            {
+                var device = devices[i];
+                float targetPosition = (float)(command.Parameters[i][0]);
 
-            API.command_move_calb(_deviceInfo[device.Name].id, targetPosition, ref _deviceInfo[device.Name].calibration_t);
+                API.command_move_calb(_deviceInfo[device.Name].id, targetPosition, ref _deviceInfo[device.Name].calibration_t);
+            }
+
             semaphore.Release();
-
             return Task.CompletedTask;
         }
     }

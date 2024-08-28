@@ -2,150 +2,150 @@
 using standa_controller_software.device_manager.devices;
 using System.Numerics;
 using System.Reflection.Metadata.Ecma335;
+using System.Xml.Linq;
 
 namespace standa_controller_software.custom_functions.helpers
 {
     public static class CustomFunctionHelper
     {
 
-        public static void GetLineKinParameters(char[] deviceNames, float[] endPositions, float trajectorySpeed, ControllerManager controllerManager, out float[] speedValuesOut, out float[] accelValuesOut, out float[] decelValuesOut, out float allocatedTime)
-        {
+        //public static void GetLineKinParameters(Dictionary<char, PositionerMovementInformation> positionerMovementInfo, float trajectorySpeed, ControllerManager controllerManager, out float allocatedTime)
+        //{
 
-            var devices = controllerManager.GetDevices<BasePositionerDevice>();
-            char[] devNames = deviceNames;
-
-            var newPositionDict = new Dictionary<char, float>();
-            for (int i = 0; i < devNames.Length; i++)
-            {
-                var deviceName = devNames[i];
-                var positioner = devices.FirstOrDefault(p => p.Name == deviceName) ?? throw new Exception($"Move command call on non-registered device: {deviceName}");
-                newPositionDict[devNames[i]] = positioner.CurrentPosition;
-            }
-            var startingPoint = controllerManager.ToolInformation.CalculateToolPositionUpdate(newPositionDict);
-
-            newPositionDict = new Dictionary<char, float>();
-            for (int i = 0; i < devNames.Length; i++)
-            {
-                newPositionDict[devNames[i]] = endPositions[i];
-            }
-            var endPoint = controllerManager.ToolInformation.CalculateToolPositionUpdate(newPositionDict);
-
-            float trajectoryLength = (endPoint - startingPoint).Length();
-
-            allocatedTime = trajectoryLength / trajectorySpeed;
-
-            float[] speedfactors = new float[devNames.Length];
-            float[] stopfactors = new float[devNames.Length];
-            float[] speedValues = new float[devNames.Length];
-            float[] accelValues = new float[devNames.Length];
-            float[] decelValues = new float[devNames.Length];
-            float[] maxAccelValues = new float[devNames.Length];
-            float[] maxDecelValues = new float[devNames.Length];
-            float[] intermediateValueAccel = new float[devNames.Length];
-            float[] intermediateValueDecel = new float[devNames.Length];
+        //    var devices = controllerManager.GetDevices<BasePositionerDevice>();
+        //    char[] deviceNames = positionerMovementInfo.Keys.ToArray();
 
 
-            for (int i = 0; i < devNames.Length; i++)
-            {
-                var deviceName = devNames[i];
-                var positioner = devices.FirstOrDefault(p => p.Name == deviceName) ?? throw new Exception($"Move command call on non-registered device: {deviceName}");
-                var currentPosition = positioner.CurrentPosition;
-                var targetPosition = endPositions[i];
-                var speed = Math.Abs((targetPosition - currentPosition) / allocatedTime);
-                speed = Math.Min(speed, positioner.MaxSpeed);
-                speedValues[i] = speed;
-                maxAccelValues[i] = positioner.MaxAcceleration;
-                maxDecelValues[i] = positioner.MaxDeceleration;
-            }
-            for (int i = 0; i < devNames.Length; i++)
-            {
-                var positioner = devices.FirstOrDefault(p => p.Name == devNames[i]) ?? throw new Exception($"Move command call on non-registered device: {devNames[i]}");
-                var currentPosition = positioner.CurrentPosition;
-                var targetPosition = endPositions[i];
-                var direction = Math.Sign(targetPosition - currentPosition);
-                //speedfactors[i] = Math.Abs(speedValues[i] * direction - positioner.CurrentSpeed);
-                speedfactors[i] = Math.Abs(speedValues[i] * direction);
+        //    foreach(char name in deviceNames)
+        //    {
+        //        if (controllerManager.TryGetDevice<BasePositionerDevice>(name, out var positioner))
+        //        {
+        //            positionerMovementInfo[name].CurrentPosition = positioner.CurrentPosition;
+        //            positionerMovementInfo[name].MaxAcceleration = positioner.MaxAcceleration;
+        //            positionerMovementInfo[name].MaxDeceleration = positioner.MaxDeceleration;
+        //            positionerMovementInfo[name].MaxSpeed = positioner.MaxSpeed;
 
-                stopfactors[i] = Math.Abs(speedValues[i]); ;
+        //        }
+        //        else
+        //            throw new Exception($"Unable retrieve positioner device {name}.");
+        //    }
+                
 
-            }
-            for (int i = 0; i < devNames.Length; i++)
-            {
-                speedfactors[i] = speedfactors[i] / speedfactors.Max();
-                intermediateValueAccel[i] = (maxAccelValues[i] / speedfactors[i]);
-                intermediateValueDecel[i] = (maxDecelValues[i] / speedfactors[i]);
-            }
-            for (int i = 0; i < devNames.Length; i++)
-            {
-                int minAccelIdx = Array.IndexOf(intermediateValueAccel, intermediateValueAccel.Min());
-                int minDecelIdx = Array.IndexOf(intermediateValueAccel, intermediateValueAccel.Min());
-                accelValues[i] = maxAccelValues[minAccelIdx] / speedfactors[minAccelIdx] * speedfactors[i];
-                decelValues[i] = maxDecelValues[minDecelIdx] / stopfactors[minDecelIdx] * stopfactors[i];
-                if (speedfactors[minAccelIdx] == 0 || speedfactors[minAccelIdx] is float.NaN)
-                {
-                    accelValues[i] = maxAccelValues[minAccelIdx];
-                    decelValues[i] = maxDecelValues[minDecelIdx];
-                }
+        //    var startingPoint = controllerManager.ToolInformation.CalculateToolPositionUpdate
+        //        ( 
+        //            positionerMovementInfo.ToDictionary( positionerInfo => positionerInfo.Key, kvp => kvp.Value.CurrentPosition)
+        //        );
 
-                //accelValues[i] = speedfactors[i] == 0
-                //    ? 10000
-                //    : maxAccelValues[i] / speedfactors[i];
-                //decelValues[i] = stopfactors[i] == 0
-                //    ? 10000
-                //    : maxDecelValues[i] / stopfactors[i];
-            }
+        //    var endPoint = controllerManager.ToolInformation.CalculateToolPositionUpdate
+        //        (
+        //            positionerMovementInfo.ToDictionary(positionerInfo => positionerInfo.Key, kvp => kvp.Value.TargetPosition)
+        //        );
 
-            speedValuesOut = speedValues;
-            accelValuesOut = accelValues;
-            decelValuesOut = decelValues;
-        }
+
+        //    float trajectoryLength = (endPoint - startingPoint).Length();
+
+        //    allocatedTime = trajectoryLength / trajectorySpeed;
+
+        //    float[] speedfactors = new float[deviceNames.Length];
+        //    float[] stopfactors = new float[deviceNames.Length];
+        //    float[] speedValues = new float[deviceNames.Length];
+        //    float[] accelValues = new float[deviceNames.Length];
+        //    float[] decelValues = new float[deviceNames.Length];
+        //    float[] maxAccelValues = new float[deviceNames.Length];
+        //    float[] maxDecelValues = new float[deviceNames.Length];
+        //    float[] intermediateValueAccel = new float[deviceNames.Length];
+        //    float[] intermediateValueDecel = new float[deviceNames.Length];
+
+        //    foreach (var name in deviceNames)
+        //    {
+        //        positionerMovementInfo[name].TargetSpeed = Math.Min
+        //            ( 
+        //                Math.Abs((positionerMovementInfo[name].TargetPosition - positionerMovementInfo[name].CurrentPosition) / allocatedTime)
+        //                , positionerMovementInfo[name].MaxSpeed
+        //            );
+        //    }
+
+        //    for (int i = 0; i < deviceNames.Length; i++)
+        //    {
+        //        var positioner = devices.FirstOrDefault(p => p.Name == deviceNames[i]) ?? throw new Exception($"Move command call on non-registered device: {deviceNames[i]}");
+        //        var currentPosition = positioner.CurrentPosition;
+        //        var targetPosition = endPositions[i];
+        //        var direction = Math.Sign(targetPosition - currentPosition);
+        //        //speedfactors[i] = Math.Abs(speedValues[i] * direction - positioner.CurrentSpeed);
+        //        speedfactors[i] = Math.Abs(speedValues[i] * direction);
+
+        //        stopfactors[i] = Math.Abs(speedValues[i]); ;
+
+        //    }
+        //    for (int i = 0; i < deviceNames.Length; i++)
+        //    {
+        //        speedfactors[i] = speedfactors[i] / speedfactors.Max();
+        //        intermediateValueAccel[i] = (maxAccelValues[i] / speedfactors[i]);
+        //        intermediateValueDecel[i] = (maxDecelValues[i] / speedfactors[i]);
+        //    }
+        //    for (int i = 0; i < deviceNames.Length; i++)
+        //    {
+        //        int minAccelIdx = Array.IndexOf(intermediateValueAccel, intermediateValueAccel.Min());
+        //        int minDecelIdx = Array.IndexOf(intermediateValueAccel, intermediateValueAccel.Min());
+        //        accelValues[i] = maxAccelValues[minAccelIdx] / speedfactors[minAccelIdx] * speedfactors[i];
+        //        decelValues[i] = maxDecelValues[minDecelIdx] / stopfactors[minDecelIdx] * stopfactors[i];
+        //        if (speedfactors[minAccelIdx] == 0 || speedfactors[minAccelIdx] is float.NaN)
+        //        {
+        //            accelValues[i] = maxAccelValues[minAccelIdx];
+        //            decelValues[i] = maxDecelValues[minDecelIdx];
+        //        }
+
+        //        //accelValues[i] = speedfactors[i] == 0
+        //        //    ? 10000
+        //        //    : maxAccelValues[i] / speedfactors[i];
+        //        //decelValues[i] = stopfactors[i] == 0
+        //        //    ? 10000
+        //        //    : maxDecelValues[i] / stopfactors[i];
+        //    }
+
+        //    speedValuesOut = speedValues;
+        //    accelValuesOut = accelValues;
+        //    decelValuesOut = decelValues;
+        //}
 
         public static bool TryGetLineKinParameters(
-            char[] deviceNames,
-            float[] endPositions,
-            float trajectorySpeed,
-            ControllerManager controllerManager,
-            out float[] speedValuesOut,
-            out float[] accelValuesOut,
-            out float[] decelValuesOut,
-            out float allocatedTime)
+            Dictionary<char, PositionerMovementInformation> positionerMovementInfo, 
+            float trajectorySpeed, 
+            ControllerManager controllerManager, 
+            out float allocatedTime )
         {
-            // Initialize output arrays
-            int deviceCount = deviceNames.Length;
-            speedValuesOut = new float[deviceCount];
-            accelValuesOut = new float[deviceCount];
-            decelValuesOut = new float[deviceCount];
+           
+            char[] deviceNames = positionerMovementInfo.Keys.ToArray();
 
-            // Get device information
-            var devices = controllerManager.GetDevices<BasePositionerDevice>();
-            char[] devNames = deviceNames;
-
-            var startSpeeds = new Dictionary<char, float>();
-            var startPositions = new Dictionary<char, float>();
-            var endSpeeds = new Dictionary<char, float>();
             var accelTimes = new Dictionary<char, float>();
             var decelTimes = new Dictionary<char, float>();
-            var accelValues = new Dictionary<char, float>();
-            var decelValues = new Dictionary<char, float>();
 
             // Populate initial values
-            for (int i = 0; i < deviceCount; i++)
+            foreach (char name in deviceNames)
             {
-                var deviceName = devNames[i];
-                var positioner = devices.FirstOrDefault(p => p.Name == deviceName)
-                                ?? throw new Exception($"Move command call on non-registered device: {deviceName}");
+                if (controllerManager.TryGetDevice<BasePositionerDevice>(name, out var positioner))
+                {
+                    positionerMovementInfo[name].CurrentPosition = positioner.CurrentPosition;
+                    positionerMovementInfo[name].CurrentSpeed = positioner.CurrentSpeed;
+                    positionerMovementInfo[name].MaxAcceleration = positioner.MaxAcceleration;
+                    positionerMovementInfo[name].MaxDeceleration = positioner.MaxDeceleration;
+                    positionerMovementInfo[name].MaxSpeed = positioner.MaxSpeed;
 
-                startPositions[deviceName] = positioner.CurrentPosition;
-                startSpeeds[deviceName] = positioner.CurrentSpeed;
-                accelValues[deviceName] = positioner.MaxAcceleration;
-                decelValues[deviceName] = positioner.MaxDeceleration;
+                }
+                else
+                    throw new Exception($"Unable retrieve positioner device {name}.");
             }
 
-            // Calculate the initial and final tool positions
-            var startToolPoint = controllerManager.ToolInformation.CalculateToolPositionUpdate(startPositions);
-            var endToolPoint = controllerManager.ToolInformation.CalculateToolPositionUpdate(
-                devNames.ToDictionary(name => name, name => endPositions[Array.IndexOf(devNames, name)])
-            );
+            //Calculate the initial and final tool positions
+            var startToolPoint = controllerManager.ToolInformation.CalculateToolPositionUpdate
+                (
+                    positionerMovementInfo.ToDictionary(positionerInfo => positionerInfo.Key, kvp => kvp.Value.CurrentPosition)
+                );
+
+            var endToolPoint = controllerManager.ToolInformation.CalculateToolPositionUpdate
+                (
+                    positionerMovementInfo.ToDictionary(positionerInfo => positionerInfo.Key, kvp => kvp.Value.TargetPosition)
+                );
 
             // Calculate trajectory length and allocate time
             float trajectoryLength = (endToolPoint - startToolPoint).Length();
@@ -155,51 +155,50 @@ namespace standa_controller_software.custom_functions.helpers
                 return false;
 
             // Calculate end speeds for each axis
-            foreach (var name in devNames)
+            foreach (var name in deviceNames)
             {
-                endSpeeds[name] = Math.Abs(endPositions[Array.IndexOf(devNames, name)] - startPositions[name]) / allocatedTime;
+                positionerMovementInfo[name].TargetSpeed = Math.Min
+                    (
+                        Math.Abs((positionerMovementInfo[name].TargetPosition - positionerMovementInfo[name].CurrentPosition) / allocatedTime)
+                        , positionerMovementInfo[name].MaxSpeed
+                    );
             }
 
             // Calculate acceleration and deceleration times
-            foreach (var name in devNames)
+            foreach (var name in deviceNames)
             {
-                accelTimes[name] = CalculateTime(startSpeeds[name], endSpeeds[name], accelValues[name]);
-                decelTimes[name] = CalculateTime(0, endSpeeds[name], decelValues[name]);
+                accelTimes[name] = positionerMovementInfo[name].MaxAcceleration > 0 
+                    ? Math.Abs(positionerMovementInfo[name].TargetSpeed - positionerMovementInfo[name].CurrentSpeed) / positionerMovementInfo[name].MaxAcceleration : 0;
+
+                decelTimes[name] = positionerMovementInfo[name].MaxDeceleration > 0
+                    ? Math.Abs(positionerMovementInfo[name].TargetSpeed - 0) / positionerMovementInfo[name].MaxDeceleration : 0;
+
             }
 
             // Normalize acceleration and deceleration values
-            NormalizeValues(accelTimes, accelValues, out var accelValuesNorm);
-            NormalizeValues(decelTimes, decelValues, out var decelValuesNorm);
+
+            float maxAccelTimeValue = accelTimes.Values.Where(v => v > 0).Max();
+            float maxDecelTimeValue = decelTimes.Values.Where(v => v > 0).Max();
+
+            foreach (var name in deviceNames)
+            {
+                positionerMovementInfo[name].TargetAcceleration = accelTimes[name] > 0
+                    ? positionerMovementInfo[name].MaxAcceleration * (accelTimes[name] / maxAccelTimeValue)
+                    : positionerMovementInfo[name].MaxAcceleration;
+
+                positionerMovementInfo[name].TargetDeceleration = decelTimes[name] > 0
+                    ? positionerMovementInfo[name].MaxDeceleration * (decelTimes[name] / maxDecelTimeValue)
+                    : positionerMovementInfo[name].MaxDeceleration;
+            }
+
 
             // Calculate total time and adjust speed if necessary
-            double maxAccelTime = accelValuesNorm.Values.Max();
-            double maxDecelTime = decelValuesNorm.Values.Max();
-            double calculatedTime = CalculateTotalTime(trajectoryLength, trajectorySpeed, maxAccelTime, maxDecelTime);
-
-            if (calculatedTime > allocatedTime)
-            {
-                // Adjust speeds and accelerations based on available time
-                AdjustForLimitedTime(
-                    devNames,
-                    ref endSpeeds,
-                    ref accelValuesNorm,
-                    ref decelValuesNorm,
-                    allocatedTime
-                );
-            }
-
-            // Populate output arrays
-            for (int i = 0; i < deviceCount; i++)
-            {
-                char name = devNames[i];
-                speedValuesOut[i] = endSpeeds[name];
-                accelValuesOut[i] = accelValuesNorm[name];
-                decelValuesOut[i] = decelValuesNorm[name];
-            }
+            double maxAccel = positionerMovementInfo.Max(positionerInfo => positionerInfo.Value.TargetAcceleration);
+            double maxDecel = positionerMovementInfo.Max(positionerInfo => positionerInfo.Value.TargetDeceleration);
+            double calculatedTime = CalculateTotalTime(trajectoryLength, trajectorySpeed, maxAccel, maxDecel);
 
             // Final adjustment of allocated time after speed adjustment
-            allocatedTime = (float)CalculateTotalTime(trajectoryLength, trajectorySpeed,
-                             accelValuesNorm.Values.Max(), decelValuesNorm.Values.Max());
+            allocatedTime = (float)calculatedTime;
 
             return true;
         }

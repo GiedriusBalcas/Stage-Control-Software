@@ -56,28 +56,32 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             }
         }
 
-
-        protected override Task UpdateMoveSettings(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore)
+        protected override Task UpdateMoveSettings(Command command, List<BasePositionerDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
         {
-            float speedValue = (float)(command.Parameters[0]);
-            float accelValue = (float)(command.Parameters[1]);
-            float decelValue = (float)(command.Parameters[2]);
+            for (int i = 0; i < devices.Count; i++)
+            {
+                var device = devices[i];
+
+                float speedValue = (float)(command.Parameters[i][0]);
+                float accelValue = (float)(command.Parameters[i][1]);
+                float decelValue = (float)(command.Parameters[i][2]);
             
-            device.Speed = speedValue;
-            device.Acceleration = accelValue;
-            device.Deceleration = decelValue;
+                device.Speed = speedValue;
+                device.Acceleration = accelValue;
+                device.Deceleration = decelValue;
+            }
 
             return Task.CompletedTask;
         }
 
 
-        protected override Task WaitUntilStop(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore)
+        protected override Task WaitUntilStop(Command command, List<BasePositionerDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
         {
             return Task.CompletedTask;
         }
 
 
-        public override Task UpdateStateAsync(ConcurrentQueue<string> log)
+        public override Task UpdateStatesAsync(ConcurrentQueue<string> log)
         {
             return Task.CompletedTask;
         }
@@ -92,10 +96,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return controller;
         }
 
-        protected override Task MoveAbsolute(Command command, BasePositionerDevice device, CancellationToken cancellationToken, SemaphoreSlim semaphore)
+        protected override Task MoveAbsolute(Command command, List<BasePositionerDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
         {
-            device.CurrentPosition = (float)command.Parameters[0];
-            semaphore.Release();
+            for (int i = 0; i < devices.Count; i++)
+            {
+                var device = devices[i];
+                device.CurrentPosition = (float)command.Parameters[i][0];
+            }
             return Task.CompletedTask;
          }
     }
