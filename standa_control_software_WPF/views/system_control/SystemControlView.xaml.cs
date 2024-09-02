@@ -156,6 +156,7 @@ namespace standa_control_software_WPF.views.system_control
         {
             float dr = e.Delta;
             _renderLayers[0].Camera.Distance -= dr;
+            _renderLayers[0].Camera.AspectRatio = (float)(glControl.ActualWidth / (float)glControl.ActualHeight);
         }
 
         private void avalonEditor_Loaded(object sender, RoutedEventArgs e)

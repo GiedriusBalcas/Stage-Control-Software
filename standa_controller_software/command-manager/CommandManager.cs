@@ -66,10 +66,13 @@ namespace standa_controller_software.command_manager
             private set
             {
                 _currentState = value;
-                _log.Enqueue($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}: State changed to {_currentState}");
+                //_// log.Enqueue($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}: State changed to {_currentState}");
             }
         }
-
+        public void ClearLog()
+        {
+            _log.Clear();
+        }
         public void EnqueueCommandLine(Command[] commands)
         {
             _commandQueue.Enqueue(commands);
@@ -85,7 +88,7 @@ namespace standa_controller_software.command_manager
             CurrentState = CommandManagerState.Processing;
             Task.Run(() => ProcessQueue());
         }
-        private async Task ProcessQueue()
+        public async Task ProcessQueue()
         {
             while (_commandQueue.Count > 0)
             {
@@ -136,19 +139,19 @@ namespace standa_controller_software.command_manager
                 // await controller.QueueLoop
                 if (i > 0)
                 {
-                    if (semaphore.CurrentCount != 0)
-                        await semaphore.WaitAsync();
+                    //if (semaphore.CurrentCount != 0)
+                    //    await semaphore.WaitAsync();
                 }
                 try
                 {
                     // Execute the command
                     await _controllerManager.Controllers[controllerName].ExecuteCommandAsync(commands[i], semaphore, _log);
-                    if (semaphore.CurrentCount == 0)
-                        semaphore.Release();
+                    //if (semaphore.CurrentCount == 0)
+                    //    semaphore.Release();
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"{DateTime.Now}: Error executing command on controller {controllerName}: {ex.Message}");
+                    //Console.WriteLine($"{DateTime.Now}: Error executing command on controller {controllerName}: {ex.Message}");
                     throw;
                 }
             }
@@ -440,7 +443,7 @@ namespace standa_controller_software.command_manager
 
                 }
                 await Task.WhenAll(tasks);
-                await Task.Delay(100);
+                await Task.Delay(1000);
             }
         }
 

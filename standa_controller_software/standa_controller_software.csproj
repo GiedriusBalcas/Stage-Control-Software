@@ -18,20 +18,11 @@
     <ProjectReference Include="..\openTK_painter\opentk_painter_library.csproj" />
     <ProjectReference Include="..\text_parser_library\text_parser_library.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="ximcnet">
-      <HintPath>ximcnet.dll</HintPath>
-    </Reference>
-  </ItemGroup>
 	<ItemGroup>
 	  <None Update="bindy.dll">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </None>
 	  <None Update="libximc.dll">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </None>
-	  <None Update="ximcnet.dll">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </None>
 	  <None Update="xiwrapper.dll">

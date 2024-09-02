@@ -56,7 +56,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             }
         }
 
-        protected override Task UpdateMoveSettings(Command command, List<BasePositionerDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
+        protected override Task UpdateMoveSettings(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
             for (int i = 0; i < devices.Count; i++)
             {
@@ -75,11 +75,27 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         }
 
 
-        protected override Task WaitUntilStop(Command command, List<BasePositionerDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
+        protected override Task WaitUntilStop(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
+            for (int i = 0; i < devices.Count; i++)
+            {
+                if (command.Parameters[i] != null && command.Parameters[i].Length != 0 )
+                {
+                    float targetPosition = (float)(command.Parameters[i][0]);
+                    bool direction = (bool)(command.Parameters[i][1]);
+
+                    devices[i].CurrentPosition = targetPosition;
+                }
+                
+            }
+
             return Task.CompletedTask;
         }
 
+        protected override Task WaitUntilStopPolar(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        {
+            return Task.CompletedTask;
+        }
 
         public override Task UpdateStatesAsync(ConcurrentQueue<string> log)
         {
@@ -96,7 +112,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return controller;
         }
 
-        protected override Task MoveAbsolute(Command command, List<BasePositionerDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
+        protected override Task MoveAbsolute(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
             for (int i = 0; i < devices.Count; i++)
             {

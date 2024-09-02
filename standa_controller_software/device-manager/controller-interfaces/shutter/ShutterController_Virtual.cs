@@ -52,7 +52,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
                 device.Value.IsOn = _deviceInfo[device.Key]._isOn;
                 device.Value.DelayOn = _deviceInfo[device.Key]._delayOn;
                 device.Value.DelayOff = _deviceInfo[device.Key]._delayOff;
-                log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {device.Value.Name}, State: {device.Value.IsOn}");
+                // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {device.Value.Name}, State: {device.Value.IsOn}");
             }
 
             return Task.CompletedTask;

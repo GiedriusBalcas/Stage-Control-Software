@@ -106,7 +106,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
                 //var state = ack == "1" ? true : false;
 
                 //device.Value.IsOn = state;
-                //log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Updated state for device {device.Value.Name}, State: {device.Value.IsOn}");
+                //// log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Updated state for device {device.Value.Name}, State: {device.Value.IsOn}");
             }
         }
 

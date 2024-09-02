@@ -63,6 +63,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 String enumerate_hints = "addr=192.168.1.1,172.16.2.3";
                 var device_enumeration = API.enumerate_devices(probe_flags, enumerate_hints);
                 int device_count = API.get_device_count(device_enumeration);
+
+                var kaka = new command_add_sync_in_action_t() { Time = 10, Position = 100, uPosition = 0 };
+                API.command_add_sync_in_action(0, ref kaka);
+
                 string deviceName = string.Empty;
                 for (int i = 0; i < device_count; i++)
                 {
@@ -141,13 +145,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     positioner.Value.MaxAcceleration = _deviceInfo[positioner.Key].maxAcceleration;
                     positioner.Value.MaxDeceleration = _deviceInfo[positioner.Key].maxDeceleration;
                     positioner.Value.MaxSpeed = _deviceInfo[positioner.Key].maxSpeed;
-                    log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
+                    // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
                 }
             }
             return Task.CompletedTask;
         }
 
-        protected override Task UpdateMoveSettings(Command command, List<BasePositionerDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
+        protected override Task UpdateMoveSettings(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
             for (int i = 0; i < devices.Count; i++)
             {
@@ -166,7 +170,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return Task.CompletedTask;
         }
 
-        protected override async Task WaitUntilStop(Command command, List<BasePositionerDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
+        protected override async Task WaitUntilStop(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
             var queuedItems = new List<Func<Task<bool>>>();
 
@@ -240,7 +244,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             }
         }
 
-        protected override Task MoveAbsolute(Command command, List<BasePositionerDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
+        protected override Task WaitUntilStopPolar(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        {
+            return Task.CompletedTask;
+        }
+
+        protected override Task MoveAbsolute(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
             for (int i = 0; i < devices.Count; i++)
             {
@@ -249,7 +258,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
                 API.command_move_calb(_deviceInfo[device.Name].id, targetPosition, ref _deviceInfo[device.Name].calibration_t);
             }
-
+            
             semaphore.Release();
             return Task.CompletedTask;
         }

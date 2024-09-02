@@ -67,7 +67,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         }
         public override async Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
-            log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {command.Action} command on device {string.Join(' ', command.TargetDevices)}, parameters: {FormatParameters(command.Parameters)}");
+            // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {command.Action} command on device {string.Join(' ', command.TargetDevices)}, parameters: {FormatParameters(command.Parameters)}");
 
             Dictionary<char, CancellationToken> cancelationTokens = new Dictionary<char, CancellationToken>();
             List<BaseShutterDevice> devices = new List<BaseShutterDevice>();
@@ -79,7 +79,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
                 }
                 else
                 {
-                    log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Device {command.TargetDevices} not found in controller {command.TargetController}");
+                    // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Device {command.TargetDevices} not found in controller {command.TargetController}");
                 }
                 var tokenSource = new CancellationTokenSource();
                 if (_deviceCancellationTokens.ContainsKey(deviceName))
@@ -106,7 +106,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
                 throw new InvalidOperationException("Invalid action");
             }
 
-            log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Completed {command.Action} command on device {command.TargetDevices}");
+            // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Completed {command.Action} command on device {command.TargetDevices}");
         }
 
         public override abstract BaseController GetCopy();
