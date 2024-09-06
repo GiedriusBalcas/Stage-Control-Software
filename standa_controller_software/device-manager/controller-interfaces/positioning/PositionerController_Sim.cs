@@ -11,10 +11,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
 using System.Xml.Linq;
+using ximc;
 
 namespace standa_controller_software.device_manager.controller_interfaces.positioning
 {
-    public partial class VirtualPositionerController : BasePositionerController
+    public partial class PositionerController_Sim : BasePositionerController
     {
         //----------Virtual axes private data---------------
         private class DeviceInformation
@@ -46,12 +47,39 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             public float MaxSpeed { get; set; } = 1000;
         }
         private ConcurrentDictionary<char, DeviceInformation> _deviceInfo = new ConcurrentDictionary<char, DeviceInformation>();
+        private struct SyncInAction
+        {
+            public float TargetPosition;
+            public float AllocatedTime;
+        }
+        private Dictionary<char, Queue<SyncInAction>> _buffer = new Dictionary<char, Queue<SyncInAction>>();
         //---------------------------------------------------
 
+        public event Action<char> OnSyncOut;
+        public event  Action<char> OnSyncIn;
 
-        public VirtualPositionerController(string name) : base(name)
+        public PositionerController_Sim(string name) : base(name)
         {
+            _methodMap[CommandDefinitionsLibrary.AddSyncInAction] = new MethodInformation()
+            {
+                MethodHandle = AddSyncInAction,
+                Quable = false,
+                State = MethodState.Free,
+            };
 
+            OnSyncIn += (char name) => _ = OnSyncInAction(name);
+        }
+
+        public int CheckBufferFreeSpace()
+        {
+            var maxItemSize = 6;
+            var currentSize = _buffer.Count;
+
+            return maxItemSize - currentSize;
+        }
+        public void InvokeSynIn(char deviceName)
+        {
+            OnSyncIn?.Invoke(deviceName);
         }
         public override void AddDevice(BaseDevice device)
         {
@@ -73,12 +101,39 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             }
         }
 
-        protected override async Task MoveAbsolute(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        private Task AddSyncInAction(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        {
+            var deviceNames = command.TargetDevices;
+            for (int i = 0; i < deviceNames.Length; i++)
+            {
+                var deviceName = deviceNames[i];
+                var targetPosition = (float)command.Parameters[i][0];
+                var allocatedTime = (float)command.Parameters[i][1];
+
+                var syncInAction = new SyncInAction()
+                {
+                    TargetPosition = targetPosition,
+                    AllocatedTime = allocatedTime
+                };
+
+                _buffer[deviceName].Enqueue(syncInAction);
+            }
+            return Task.CompletedTask;
+        }
+
+        private async Task OnSyncInAction(char name)
+        {
+            //_ = MoveAbsolute(command, semaphore, log);
+
+        }
+
+        protected override async Task MoveAbsolute(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
             // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: move start");
+            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
 
             List<Task> tasks = new List<Task>();
-            for (int i = 0; i < devices.Count; i++)
+            for (int i = 0; i < devices.Length; i++)
             {
                 var device = devices[i];
                 if (deviceCancellationTokens[device.Name].IsCancellationRequested)
@@ -108,12 +163,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
         }
 
-        protected override async Task UpdateMoveSettings(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override async Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
             // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: upd start");
+            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
 
 
-            for (int i = 0; i < devices.Count; i++)
+            for (int i = 0; i < devices.Length; i++)
             {
                 var device = devices[i];
                 float speedValue = (float)(command.Parameters[i][0]);
@@ -138,14 +194,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return Task.CompletedTask;
         }
 
-        protected override async Task WaitUntilStop(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override async Task WaitUntilStop(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
             // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: wait start");
 
-
+            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
             var queuedItems = new List<Func<Task<bool>>>();
             
-            for (int i = 0; i < devices.Count; i++)
+            for (int i = 0; i < devices.Length; i++)
             {
                 var device = devices[i];
                 if (command.Parameters[i] == null || command.Parameters[i].Length == 0)
@@ -223,13 +279,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
 
 
-        protected override async Task WaitUntilStopPolar(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override async Task WaitUntilStopPolar(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
             // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: wait start");
             // only works for a device pair.
 
+            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
 
-            try 
+            try
             { 
                 if (command.Parameters[0] == null || command.Parameters[0].Length == 0)
                 {
@@ -447,6 +504,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             _deviceInfo[name].CurrentPosition = targetPosition;
             _deviceInfo[name].CurrentSpeed = 0;
             _deviceInfo[name].MoveStatus = 0;
+
+            OnSyncOut?.Invoke(name);
         }
 
         public override async Task UpdateStatesAsync(ConcurrentQueue<string> log)
@@ -468,14 +527,18 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
         public override BaseController GetCopy()
         {
-            var controller = new VirtualPositionerController(Name);
+            var controller = new PositionerController_Sim(Name);
             foreach (var device in Devices)
             {
                 controller.AddDevice(device.Value.GetCopy());
             }
-
+            controller.MasterController = this.MasterController;
             return controller;
         }
 
+        public override void AddSlaveController(BaseController controller)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

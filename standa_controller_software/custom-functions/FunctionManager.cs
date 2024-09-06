@@ -1,6 +1,7 @@
 ﻿using standa_controller_software.command_manager;
 using standa_controller_software.custom_functions.definitions;
 using standa_controller_software.device_manager;
+using standa_controller_software.device_manager.controller_interfaces.master_controller;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.controller_interfaces.shutter;
 using text_parser_library;
@@ -28,14 +29,15 @@ namespace standa_controller_software.custom_functions
             var rules = new Dictionary<Type, Type>
             {
                 { typeof(BasePositionerController), typeof(PositionerController_Virtual) },
-                { typeof(BaseShutterController), typeof(ShutterController_Virtual) }
+                { typeof(BaseShutterController), typeof(ShutterController_Virtual) },
+                { typeof(PositionAndShutterController_Sim), typeof(PositionAndShutterController_Virtual)}
             };
             _controllerManager_virtual = _controllerManager.CreateACopy(rules);
             _commandManager_virtual = new CommandManager(_controllerManager_virtual);
 
             Definitions.AddFunction("moveA", new MoveAbsolutePositionFunction(_commandManager_virtual, _controllerManager_virtual));
-            Definitions.AddFunction("arcA", new MoveArcAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual));
-            Definitions.AddFunction("shutter", new ChangeShutterStateFunction(_commandManager_virtual, _controllerManager_virtual));
+            //Definitions.AddFunction("arcA", new MoveArcAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual));
+            //Definitions.AddFunction("shutter", new ChangeShutterStateFunction(_commandManager_virtual, _controllerManager_virtual));
             Definitions.AddVariable("PI", (float)Math.PI);
         }
 

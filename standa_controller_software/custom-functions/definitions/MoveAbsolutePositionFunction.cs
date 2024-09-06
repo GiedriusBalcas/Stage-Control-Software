@@ -9,7 +9,7 @@ using standa_controller_software.device_manager.controller_interfaces.shutter;
 using System.ComponentModel;
 using System.Xml.Linq;
 
-namespace standa_controller_software.custom_functions
+namespace standa_controller_software.custom_functions.definitions
 {
     public class MoveAbsolutePositionFunction : CustomFunction
     {
@@ -102,7 +102,7 @@ namespace standa_controller_software.custom_functions
                 commandsMovementParameters.Add(
                     new Command()
                     {
-                        Action = "UpdateMoveSettings",
+                        Action = CommandDefinitionsLibrary.UpdateMoveSettings,
                         Await = true,
                         Parameters = parameters,
                         TargetController = controlerName,
@@ -111,7 +111,7 @@ namespace standa_controller_software.custom_functions
                 );
             }
 
-            _commandManager.EnqueueCommandLine(commandsMovementParameters.ToArray());
+            //_commandManager.EnqueueCommandLine(commandsMovementParameters.ToArray());
 
             foreach (var controllerGroup in groupedDevicesByController)
             {
@@ -132,7 +132,7 @@ namespace standa_controller_software.custom_functions
                 commandsMovement.Add(
                     new Command()
                     {
-                        Action = CommandDefinitionsLibrary.MoveAbsolute.ToString(),
+                        Action = CommandDefinitionsLibrary.MoveAbsolute,
                         Await = false,
                         Parameters = parameters,
                         TargetController = controlerName,
@@ -187,7 +187,7 @@ namespace standa_controller_software.custom_functions
                 commandsWaitForStop.Add(
                     new Command()
                     {
-                        Action = CommandDefinitionsLibrary.WaitUntilStop.ToString(),
+                        Action = CommandDefinitionsLibrary.WaitUntilStop,
                         Await = true,
                         Parameters = parameters,
                         TargetController = controlerName,
@@ -198,7 +198,7 @@ namespace standa_controller_software.custom_functions
 
             _commandManager.EnqueueCommandLine(commandsWaitForStop.ToArray());
 
-            _commandManager.ExecuteCommandLine(commandsMovementParameters.ToArray()).GetAwaiter().GetResult();
+            //_commandManager.ExecuteCommandLine(commandsMovementParameters.ToArray()).GetAwaiter().GetResult();
             _commandManager.ExecuteCommandLine(commandsMovement.ToArray()).GetAwaiter().GetResult();
             _commandManager.ExecuteCommandLine(commandsWaitForStop.ToArray()).GetAwaiter().GetResult();
 

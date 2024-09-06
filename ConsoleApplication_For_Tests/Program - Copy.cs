@@ -17,6 +17,7 @@ using opentk_painter_library.render_objects;
 using System.Runtime.CompilerServices;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using System.Timers;
+using standa_controller_software.device_manager.controller_interfaces.master_controller;
 class Program
 {
     private static ControllerManager _controllerManager;
@@ -75,7 +76,7 @@ class Program
     private static void ReadText()
     {
 
-        string filePath = "C:\\Users\\giedr\\OneDrive\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\NUnit_tests\\test_scripts\\cube-moveA-function-test-script.txt";
+        string filePath = "C:\\Users\\giedr\\OneDrive\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\NUnit_tests\\test_scripts\\masterController-test-script.txt";
         var inputText = File.ReadAllText(filePath);
         
         try
@@ -94,7 +95,7 @@ class Program
     private static async void ExecuteCommandQueue()
     {
 
-        Thread.Sleep(2000);
+        Thread.Sleep(500);
 
         Console.WriteLine("Before Starting:");
         Console.WriteLine(_commandManager.GetCommandQueueAsString());
@@ -133,29 +134,32 @@ class Program
 
     private static ControllerManager SetupSystemControllers()
     {
-        var controllerManager = new ControllerManager();
 
-        var controller1 = new PositionerController_Sim("FirstController");
-        controller1.
-        var controller2 = new PositionerController_Sim("SecondController");
-        var deviceX = new LinearPositionerDevice('x',"") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 1000000000000, MaxDeceleration = 1000000000000, MaxSpeed = 10000000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0};
-        var deviceY = new LinearPositionerDevice('y', "") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 1000000000000, MaxDeceleration = 1000000000000, MaxSpeed = 10000000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
-        var deviceZ = new LinearPositionerDevice('z', "") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 1000000000000, MaxDeceleration = 1000000000000, MaxSpeed = 10000000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
 
-        //var deviceX = new LinearPositionerDevice("x") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
-        //var deviceY = new LinearPositionerDevice("y") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
-        //var deviceZ = new LinearPositionerDevice("z") { Acceleration = 1000000, Deceleration = 1000000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 1000000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; ;
+        var deviceX = new LinearPositionerDevice('x', "") { Acceleration = 100000, Deceleration = 100000, MaxAcceleration = 100000, MaxDeceleration = 100000, MaxSpeed = 5000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
+        var deviceY = new LinearPositionerDevice('y', "") { Acceleration = 100000, Deceleration = 100000, MaxAcceleration = 100000, MaxDeceleration = 100000, MaxSpeed = 5000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; 
+        var deviceZ = new LinearPositionerDevice('z', "") { Acceleration = 100000, Deceleration = 100000, MaxAcceleration = 100000, MaxDeceleration = 100000, MaxSpeed = 5000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; 
 
         var shutterDevice = new ShutterDevice('s', "") { DelayOff = 50, DelayOn = 50, IsOn = false };
+
+        var masterController = new PositionAndShutterController_Sim("master") { IsQuable = true };
+        var posController1 = new PositionerController_Sim("FirstController") { MasterController = masterController };
+        var posController2 = new PositionerController_Sim("SecondController") { MasterController = masterController };
         var shutterController = new ShutterController_Virtual("Shutter-controller");
-        controller1.AddDevice(deviceX);
-        controller1.AddDevice(deviceY);
-        controller2.AddDevice(deviceZ);
+
+        posController1.AddDevice(deviceX);
+        posController1.AddDevice(deviceY);
+        posController2.AddDevice(deviceZ);
         shutterController.AddDevice(shutterDevice);
 
-        controllerManager.AddController(controller1);
-        controllerManager.AddController(controller2);
+        masterController.AddSlaveController(posController1);
+        masterController.AddSlaveController(posController2);
+
+        var controllerManager = new ControllerManager();
+        controllerManager.AddController(posController1);
+        controllerManager.AddController(posController2);
         controllerManager.AddController(shutterController);
+        controllerManager.AddController(masterController);
 
         var toolPositionFunctionX = (Dictionary<char, float> positions) =>
         {

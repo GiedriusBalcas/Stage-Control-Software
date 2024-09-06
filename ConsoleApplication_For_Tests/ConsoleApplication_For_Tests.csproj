@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Program.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\openTK_painter\opentk_painter_library.csproj" />
     <ProjectReference Include="..\standa_controller_software\standa_controller_software.csproj" />
   </ItemGroup>

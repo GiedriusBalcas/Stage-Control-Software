@@ -56,9 +56,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             }
         }
 
-        protected override Task UpdateMoveSettings(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
-            for (int i = 0; i < devices.Count; i++)
+            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
+
+            for (int i = 0; i < devices.Length; i++)
             {
                 var device = devices[i];
 
@@ -75,9 +77,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         }
 
 
-        protected override Task WaitUntilStop(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override Task WaitUntilStop(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
-            for (int i = 0; i < devices.Count; i++)
+            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
+
+            for (int i = 0; i < devices.Length; i++)
             {
                 if (command.Parameters[i] != null && command.Parameters[i].Length != 0 )
                 {
@@ -92,7 +96,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return Task.CompletedTask;
         }
 
-        protected override Task WaitUntilStopPolar(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override Task WaitUntilStopPolar(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
             return Task.CompletedTask;
         }
@@ -104,7 +108,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
         public override BaseController GetCopy()
         {
-            var controller = new VirtualPositionerController(Name);
+            var controller = new PositionerController_Sim(Name);
             foreach (var device in Devices)
             {
                 controller.AddDevice(device.Value);
@@ -112,14 +116,21 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return controller;
         }
 
-        protected override Task MoveAbsolute(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override Task MoveAbsolute(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
-            for (int i = 0; i < devices.Count; i++)
+            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
+
+            for (int i = 0; i < command.TargetDevices.Length; i++)
             {
                 var device = devices[i];
                 device.CurrentPosition = (float)command.Parameters[i][0];
             }
             return Task.CompletedTask;
          }
+
+        public override void AddSlaveController(BaseController controller)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

@@ -12,16 +12,29 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
     public abstract class BasePositionerController : BaseController
     {
 
-        private Dictionary<string, Func<Command, List<BasePositionerDevice>, SemaphoreSlim, ConcurrentQueue<string>, Task>> _methodMap = 
-            new Dictionary<string, Func<Command, List<BasePositionerDevice>, SemaphoreSlim, ConcurrentQueue<string>, Task>>();
         protected ConcurrentDictionary<char, CancellationTokenSource> deviceCancellationTokens = new ConcurrentDictionary<char, CancellationTokenSource>();
         protected Dictionary<char, BasePositionerDevice> Devices { get; }
 
         public BasePositionerController(string name) : base(name)
         {
-            _methodMap["MoveAbsolute"] = MoveAbsolute;
-            _methodMap["UpdateMoveSettings"] = UpdateMoveSettings;
-            _methodMap["WaitUntilStop"] = WaitUntilStop;
+            _methodMap[CommandDefinitionsLibrary.MoveAbsolute] = new MethodInformation()
+            {
+                MethodHandle = MoveAbsolute,
+                Quable = false,
+                State = MethodState.Free,
+            };
+            _methodMap[CommandDefinitionsLibrary.UpdateMoveSettings] = new MethodInformation()
+            {
+                MethodHandle = UpdateMoveSettings,
+                Quable = false,
+                State = MethodState.Free,
+            };
+            _methodMap[CommandDefinitionsLibrary.WaitUntilStop] = new MethodInformation()
+            {
+                MethodHandle = WaitUntilStop,
+                Quable = false,
+                State = MethodState.Free,
+            };
             Devices = new Dictionary<char, BasePositionerDevice>();
             //methodMap["UpdateStates"] = UpdateStatesCall;
         }
@@ -67,8 +80,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         {
             // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {command.Action} command on device {string.Join(' ', command.TargetDevices)}, parameters: {FormatParameters(command.Parameters)}");
 
-            List<BasePositionerDevice> devices = new List<BasePositionerDevice> ();
             Dictionary<char, CancellationToken> cancelationTokens = new Dictionary<char, CancellationToken>();
+            List<BasePositionerDevice> devices = new List<BasePositionerDevice> ();
 
             foreach (var deviceName in command.TargetDevices) 
             {
@@ -81,17 +94,17 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Device {deviceName} not found in controller {command.TargetController}");
                 }
 
-                var tokenSource = new CancellationTokenSource();
-                if (deviceCancellationTokens.ContainsKey(deviceName) && command.Action == CommandDefinitionsLibrary.MoveAbsolute.ToString())
-                {
-                    deviceCancellationTokens[deviceName].Cancel();
-                    deviceCancellationTokens[deviceName] = tokenSource;
-                }
-                else
-                {
-                    deviceCancellationTokens.TryAdd(deviceName, tokenSource);
-                }
-                cancelationTokens.Add(deviceName, tokenSource.Token);
+                //var tokenSource = new CancellationTokenSource();
+                //if (deviceCancellationTokens.ContainsKey(deviceName) && command.Action == CommandDefinitionsLibrary.MoveAbsolute.ToString())
+                //{
+                //    deviceCancellationTokens[deviceName].Cancel();
+                //    deviceCancellationTokens[deviceName] = tokenSource;
+                //}
+                //else
+                //{
+                //    deviceCancellationTokens.TryAdd(deviceName, tokenSource);
+                //}
+                //cancelationTokens.Add(deviceName, tokenSource.Token);
 
 
 
@@ -100,9 +113,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             if (_methodMap.TryGetValue(command.Action, out var method))
             {
                 if (command.Await)
-                    await method(command, devices, semaphore, log);
+                    await method.MethodHandle(command, semaphore, log);
                 else
-                    _ = method(command, devices, semaphore, log);
+                    _ = method.MethodHandle(command, semaphore, log);
             }
             else
             {
@@ -119,10 +132,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
         public override abstract Task UpdateStatesAsync(ConcurrentQueue<string> log);
 
-        protected abstract Task MoveAbsolute(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
-        protected abstract Task UpdateMoveSettings(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
-        protected abstract Task WaitUntilStop(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
-        protected abstract Task WaitUntilStopPolar(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
+        protected abstract Task MoveAbsolute(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
+        protected abstract Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
+        protected abstract Task WaitUntilStop(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
+        protected abstract Task WaitUntilStopPolar(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
 
         public override abstract BaseController GetCopy();
     }

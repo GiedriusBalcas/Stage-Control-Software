@@ -12,15 +12,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
 {
     public abstract class BaseShutterController : BaseController
     {
-        private Dictionary<string, Func<Command, List<BaseShutterDevice>, Dictionary<char, CancellationToken>, SemaphoreSlim, Task>> _methodMap = new Dictionary<string, Func<Command, List<BaseShutterDevice>, Dictionary<char, CancellationToken>, SemaphoreSlim, Task>>();
-
         private ConcurrentDictionary<char, CancellationTokenSource> _deviceCancellationTokens = new ConcurrentDictionary<char, CancellationTokenSource>();
         protected Dictionary<char, BaseShutterDevice> Devices { get; }
 
         protected BaseShutterController(string name) : base(name)
         {
-            _methodMap[CommandDefinitionsLibrary.ChangeShutterState.ToString()] = ChangeState;
-            _methodMap[CommandDefinitionsLibrary.ChangeShutterStateOnInterval.ToString()] = ChangeStateOnInterval;
+            //_methodMap[CommandDefinitionsLibrary.ChangeShutterState.ToString()] = ChangeState;
+            //_methodMap[CommandDefinitionsLibrary.ChangeShutterStateOnInterval.ToString()] = ChangeStateOnInterval;
 
             Devices = new Dictionary<char, BaseShutterDevice>();
             //methodMap["UpdateStates"] = UpdateStatesCall;
@@ -47,10 +45,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             return Task.CompletedTask;
         }
 
-        protected abstract Task ChangeStateOnInterval(Command command, List<BaseShutterDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore);
-        protected abstract Task SetDelayAsync(Command command, List<BaseShutterDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore);
+        protected abstract Task ChangeStateOnInterval(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
+        protected abstract Task SetDelayAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
 
-        protected abstract Task ChangeState(Command command, List<BaseShutterDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore);
+        protected abstract Task ChangeState(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
         private string FormatParameters(object[][] parameters)
         {
             var formattedParameters = parameters
@@ -97,9 +95,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             if (_methodMap.TryGetValue(command.Action, out var method))
             {
                 if (command.Await)
-                    await method(command, devices, cancelationTokens, semaphore);
+                    await method.MethodHandle(command, semaphore, log);
                 else
-                    _ = method(command, devices, cancelationTokens, semaphore); // Start method without awaiting
+                    _ = method.MethodHandle(command, semaphore, log);// Start method without awaiting
             }
             else
             {

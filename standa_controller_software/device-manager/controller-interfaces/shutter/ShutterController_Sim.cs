@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace standa_controller_software.device_manager.controller_interfaces.shutter
 {
-    public class VirtualShutterController : BaseShutterController
+    public class ShutterController_Sim : BaseShutterController
     {
 
         private class DeviceInformation
@@ -21,7 +21,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         }
         private ConcurrentDictionary<char, DeviceInformation> _deviceInfo = new ConcurrentDictionary<char, DeviceInformation>();
 
-        public VirtualShutterController(string name) : base(name)
+        public ShutterController_Sim(string name) : base(name)
         {
             
         }
@@ -60,35 +60,40 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             await Task.Delay(10);
         }
 
-        protected override async Task ChangeState(Command command, List<BaseShutterDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
+        protected override async Task ChangeState(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
-            for (int i = 0; i < devices.Count; i++)
+            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
+
+            for (int i = 0; i < devices.Length; i++)
             {
                 var device = devices[i];
                 var state = (bool)command.Parameters[i][0];
-                await Task.Delay(2, cancellationTokens[device.Name]);
+                await Task.Delay(2);
                 _deviceInfo[device.Name]._isOn = state;
                 device.IsOn = state;
             }
         }
 
-        protected override async Task ChangeStateOnInterval(Command command, List<BaseShutterDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
+        protected override async Task ChangeStateOnInterval(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
+            // TODO: implement cancelation tokens.
+            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
+
             float duration = 0;
-            var token = cancellationTokens.Values.Where(val => val != null).First();
+            //var token = cancellationTokens.Values.Where(val => val != null).First();
             
-            for (int i = 0; i < devices.Count; i++)
+            for (int i = 0; i < devices.Length; i++)
             {
                 var device = devices[i];
                 duration = (float)command.Parameters[i][0] * 1000000 - device.DelayOff * 1000 - device.DelayOn * 1000;
                 var state = true;
-                await Task.Run(() => DelayMicroseconds((int)device.DelayOn * 1000), token);
+                await Task.Run(() => DelayMicroseconds((int)device.DelayOn * 1000));
                 _deviceInfo[device.Name]._isOn = state;
             }
 
-            await Task.Run(() => DelayMicroseconds((int)duration), token);
+            await Task.Run(() => DelayMicroseconds((int)duration));
             
-            for (int i = 0; i < devices.Count; i++)
+            for (int i = 0; i < devices.Length; i++)
             {
                 var device = devices[i];
                 var state = false;
@@ -115,9 +120,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             stopwatch.Stop();
         }
 
-        protected override Task SetDelayAsync(Command command, List<BaseShutterDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
+        protected override Task SetDelayAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
-            for (int i = 0; i < devices.Count; i++)
+            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
+
+            for (int i = 0; i < devices.Length; i++)
             {
                 var device = devices[i];
                 var delayOn = (uint)command.Parameters[i][0];
@@ -127,6 +134,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
                 _deviceInfo[device.Name]._delayOff = (int)delayOff;
             }
             return Task.CompletedTask;
+        }
+
+        public override void AddSlaveController(BaseController controller)
+        {
+            throw new NotImplementedException();
         }
     }
 }

@@ -13,6 +13,8 @@ namespace standa_controller_software.command_manager
         WaitUntilStop,
         UpdateMoveSettings,
         ChangeShutterStateOnInterval,
-        WaitUntilStopPolar
+        WaitUntilStopPolar,
+        AddSyncInAction,
+        OnSyncIn
     }
 }

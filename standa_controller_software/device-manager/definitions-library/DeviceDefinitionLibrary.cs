@@ -32,15 +32,15 @@ namespace standa_controller_software.device_manager
                 new ControllerInfo
                 {
                     Name = "Virtual Positioner Controller",
-                    Type = typeof(VirtualPositionerController),
+                    Type = typeof(PositionerController_Sim),
                     AllowedDevices = positionerDeviceDefinitions
                 },
-                new ControllerInfo
-                {
-                    Name = "Positioner Controller XIMC",
-                    Type = typeof(PositionerController_XIMC),
-                    AllowedDevices = positionerDeviceDefinitions
-                }
+                //new ControllerInfo
+                //{
+                //    Name = "Positioner Controller XIMC",
+                //    Type = typeof(PositionerController_XIMC),
+                //    AllowedDevices = positionerDeviceDefinitions
+                //}
             };
 
 
@@ -56,16 +56,16 @@ namespace standa_controller_software.device_manager
                 new ControllerInfo
                 {
                     Name = "Virtual Shutter Controller",
-                    Type = typeof(VirtualShutterController),
+                    Type = typeof(ShutterController_Sim),
                     AllowedDevices = shutterDeviceDefinitions
                 },
 
-                new ControllerInfo
-                {
-                    Name = "Arduino Shutter Controller",
-                    Type = typeof(ShutterController_Arduino),
-                    AllowedDevices = shutterDeviceDefinitions
-                }
+                //new ControllerInfo
+                //{
+                //    Name = "Arduino Shutter Controller",
+                //    Type = typeof(ShutterController_Arduino),
+                //    AllowedDevices = shutterDeviceDefinitions
+                //}
             };
 
             ControllerDefinitions.Add(typeof(BasePositionerController), positionerControllerTypeDefinitions);

@@ -76,7 +76,7 @@ namespace standa_controller_software.device_manager
 
         public ControllerManager CreateACopy(Dictionary<Type, Type> typeConversionDictionary = null)
         {
-            var controllerManager = new ControllerManager();
+            var controllerManager_copy = new ControllerManager();
 
             foreach (var controllerEntry in Controllers)
             {
@@ -120,7 +120,7 @@ namespace standa_controller_software.device_manager
                 if (newController is not null)
                 {
                     // Add the new controller to the new manager
-                    controllerManager.AddController(newController);
+                    controllerManager_copy.AddController(newController);
                 }
                 else
                 {
@@ -128,13 +128,27 @@ namespace standa_controller_software.device_manager
                 }
             }
 
+            List<BaseController> masterControllers_copy = controllerManager_copy.Controllers.Values.Where
+                (
+                    controller => Controllers[controller.Name].SlaveControllers.Count > 0
+                ).ToList();
 
-            ToolInformation toolInfo = new ToolInformation(controllerManager.GetDevices<BasePositionerDevice>(), new ShutterDevice('u', "undefined"), this.ToolInformation.PositionCalcFunctions);
-            if (controllerManager.TryGetDevice<BaseShutterDevice>(this.ToolInformation.Name, out BaseShutterDevice shutterDevice))
-                toolInfo = new ToolInformation(controllerManager.GetDevices<BasePositionerDevice>(), shutterDevice, this.ToolInformation.PositionCalcFunctions);
-            controllerManager.ToolInformation = toolInfo;
+            foreach (var masterController_copy in masterControllers_copy)
+            {
+                var controllerToCopy = Controllers[masterController_copy.Name];
+                foreach (var (slaveControllerName, slaveController) in controllerToCopy.SlaveControllers)
+                {
+                    masterController_copy.AddSlaveController(controllerManager_copy.Controllers[slaveControllerName]);
+                    controllerManager_copy.Controllers[slaveControllerName].MasterController = masterController_copy;
+                }
+            }
 
-            return controllerManager;
+            ToolInformation toolInfo = new ToolInformation(controllerManager_copy.GetDevices<BasePositionerDevice>(), new ShutterDevice('u', "undefined"), this.ToolInformation.PositionCalcFunctions);
+            if (controllerManager_copy.TryGetDevice<BaseShutterDevice>(this.ToolInformation.Name, out BaseShutterDevice shutterDevice))
+                toolInfo = new ToolInformation(controllerManager_copy.GetDevices<BasePositionerDevice>(), shutterDevice, this.ToolInformation.PositionCalcFunctions);
+            controllerManager_copy.ToolInformation = toolInfo;
+
+            return controllerManager_copy;
         }
     }
 }

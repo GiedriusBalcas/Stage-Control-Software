@@ -10,6 +10,7 @@ using NUnit.Framework.Internal.Commands;
 using System.Numerics;
 using standa_controller_software.device_manager.devices.shutter;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
+using standa_controller_software.custom_functions.definitions;
 
 namespace NUnit_tests
 {

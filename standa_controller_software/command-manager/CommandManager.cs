@@ -54,6 +54,7 @@ namespace standa_controller_software.command_manager
         private ConcurrentQueue<string> _log = new ConcurrentQueue<string>();
         private bool _running = true;
         private CommandManagerState _currentState = CommandManagerState.Waiting;
+        private string _currentQueueController = string.Empty;
 
         public CommandManager(ControllerManager manager)
         {
@@ -98,7 +99,20 @@ namespace standa_controller_software.command_manager
 
                     await ExecuteCommandLine(commandLine);
                     // Wait for all commands to complete
+                   
                 }
+            }
+            if (!(_currentQueueController == string.Empty || _currentQueueController is null))
+            {
+                // TODO: only await needed semaphores.
+                Dictionary<string, SemaphoreSlim> controllerSemaphores = new Dictionary<string, SemaphoreSlim>();
+
+                foreach (var (controllerName, semaphoreSlim) in _controllerManager.ControllerLocks)
+                {
+                    await _controllerManager.ControllerLocks[controllerName].WaitAsync();
+                    controllerSemaphores[controllerName] = _controllerManager.ControllerLocks[controllerName];
+                }
+                await _controllerManager.Controllers[_currentQueueController].AwaitQueuedItems(controllerSemaphores[_currentQueueController], _log);
             }
             CurrentState = CommandManagerState.Waiting;
         }
@@ -114,17 +128,42 @@ namespace standa_controller_software.command_manager
             var controllerNames = commandsByController.Keys.ToList();
 
             // Wait for and acquire all necessary semaphores for the controllers
+            Dictionary<string, SemaphoreSlim> controllerSemaphores = new Dictionary<string, SemaphoreSlim>();
+            
             foreach (var controllerName in controllerNames)
             {
                 await _controllerManager.ControllerLocks[controllerName].WaitAsync();
+                controllerSemaphores[controllerName] = _controllerManager.ControllerLocks[controllerName];
             }
             // Execute all commands for each controller group
 
-            var executeTasks = controllerNames.Select(async controllerName =>
+
+            var commandsByMasterController = commandLine
+                        .GroupBy
+                        ( 
+                        kvp => 
+                            _controllerManager.Controllers[ kvp.TargetController ].MasterController == null 
+                                ? kvp.TargetController 
+                                : _controllerManager.Controllers[kvp.TargetController].MasterController.Name
+                        )
+                        .ToDictionary(g => g.Key, g => g.ToArray());
+
+            var masterControllerNames = commandsByMasterController.Keys.ToList();
+
+
+            var executeTasks = masterControllerNames.Select(async controllerName =>
             {
-                var commands = commandsByController[controllerName];
+                var commands = commandsByMasterController[controllerName];
                 var semaphore = _controllerManager.ControllerLocks[controllerName];
                 await ExecuteCommandsForControllerAsync(commands, controllerName, semaphore);
+                if (semaphore.CurrentCount == 0)
+                    semaphore.Release();
+
+                foreach (string slaveControllerName in commands.Select(command => command.TargetController).Distinct())
+                {
+                    if (controllerSemaphores[slaveControllerName].CurrentCount == 0)
+                        controllerSemaphores[slaveControllerName].Release();
+                }
             });
 
             await Task.WhenAll(executeTasks);
@@ -133,6 +172,13 @@ namespace standa_controller_software.command_manager
 
         private async Task ExecuteCommandsForControllerAsync(Command[] commands, string controllerName, SemaphoreSlim semaphore)
         {
+            if (_controllerManager.Controllers[controllerName].IsQuable)
+            {
+                if ( _currentQueueController != string.Empty && _currentQueueController != controllerName)
+                    await _controllerManager.Controllers[_currentQueueController].AwaitQueuedItems(semaphore, _log);
+                _currentQueueController = controllerName;
+            }
+
             for (int i = 0; i < commands.Length; i++)
             {
                 // if this one is not quanle but last one is, then lets wait for the previous to finish.
@@ -155,8 +201,6 @@ namespace standa_controller_software.command_manager
                     throw;
                 }
             }
-            if (semaphore.CurrentCount == 0)
-                semaphore.Release();
         }
 
 
