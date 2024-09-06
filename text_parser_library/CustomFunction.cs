@@ -9,9 +9,9 @@ namespace text_parser_library
     public abstract class CustomFunction
     {
 
-        private readonly Dictionary<string, object> _properties = new Dictionary<string, object>();
+        private readonly Dictionary<string, object?> _properties = new Dictionary<string, object?>();
 
-        public void SetProperty(string name, object value)
+        public void SetProperty(string name, object? value)
         {
             _properties[name] = value;
         }

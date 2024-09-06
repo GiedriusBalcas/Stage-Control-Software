@@ -39,6 +39,7 @@ namespace standa_controller_software.custom_functions
             //Definitions.AddFunction("arcA", new MoveArcAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual));
             //Definitions.AddFunction("shutter", new ChangeShutterStateFunction(_commandManager_virtual, _controllerManager_virtual));
             Definitions.AddVariable("PI", (float)Math.PI);
+            Definitions.AddVariable("null", null);
         }
 
         public IEnumerable<Command[]> ExtractCommands()

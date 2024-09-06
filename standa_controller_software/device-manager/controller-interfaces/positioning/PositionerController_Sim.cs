@@ -60,7 +60,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
         public PositionerController_Sim(string name) : base(name)
         {
-            _methodMap[CommandDefinitionsLibrary.AddSyncInAction] = new MethodInformation()
+            _methodMap[CommandDefinitions.AddSyncInAction] = new MethodInformation()
             {
                 MethodHandle = AddSyncInAction,
                 Quable = false,

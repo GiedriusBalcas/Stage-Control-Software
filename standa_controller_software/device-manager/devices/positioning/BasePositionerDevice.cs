@@ -19,6 +19,9 @@ namespace standa_controller_software.device_manager.devices
         public virtual float MaxSpeed { get; set; }
         [DisplayPropertyAttribute]
         [DynamicPropertyAttribute]
+        public virtual float DefaultSpeed { get; set; }
+        [DisplayPropertyAttribute]
+        [DynamicPropertyAttribute]
         public virtual float MaxAcceleration { get; set; }
         [DisplayPropertyAttribute]
         [DynamicPropertyAttribute]

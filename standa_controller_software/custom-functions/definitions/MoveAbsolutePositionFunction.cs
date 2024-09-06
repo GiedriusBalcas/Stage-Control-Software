@@ -8,6 +8,7 @@ using standa_controller_software.device_manager.controller_interfaces.positionin
 using standa_controller_software.device_manager.controller_interfaces.shutter;
 using System.ComponentModel;
 using System.Xml.Linq;
+using standa_controller_software.command_manager.command_parameter_library;
 
 namespace standa_controller_software.custom_functions.definitions
 {
@@ -17,12 +18,29 @@ namespace standa_controller_software.custom_functions.definitions
         private CommandManager _commandManager;
         private ControllerManager _controllerManager;
 
+        /// move command will bring:
+        ///      traj:
+        ///         isLine
+        ///      shutter:
+        ///          target state
+        ///          delay on (not the intrinsic one)
+        ///          delay off
+        ///      positioner:
+        ///          target position
+        ///          target speed
+        ///          allocated time
+        ///          acceleration
+        ///          deceleration
+        
         public MoveAbsolutePositionFunction(CommandManager commandManager, ControllerManager controllerManager)
         {
             _commandManager = commandManager;
             _controllerManager = controllerManager;
-            this.SetProperty("Speed", 1000f);
+            this.SetProperty("Speed", null);
             this.SetProperty("Shutter", false);
+            this.SetProperty("LeadIn", false);
+            this.SetProperty("LeadOut", false);
+            this.SetProperty("Line", true);
         }
 
         public override object? Execute(params object[] args)
@@ -30,7 +48,6 @@ namespace standa_controller_software.custom_functions.definitions
             if (!TryParseArguments(args, out char[] deviceNames, out float[] positions, out float[] waitUntil))
                 throw new ArgumentException("Argument pasrsing was unsuccesfull. Wrong types.");
 
-            List<Command> commandsMovementParameters = new List<Command>();
             List<Command> commandsMovement = new List<Command>();
             List<Command> commandsWaitForStop = new List<Command>();
 
@@ -42,24 +59,12 @@ namespace standa_controller_software.custom_functions.definitions
 
             this.TryGetProperty("Speed", out object trajSpeed);
 
-            float trajectorySpeed = 1000f; // Default value
+            float? trajectorySpeed = null; // Default value
 
-            if (trajSpeed != null)
+            if (trajSpeed != null && trajSpeed is float trajSpeedFloat)
             {
-                if (trajSpeed is float)
-                {
-                    trajectorySpeed = (float)trajSpeed > 0 ? (float)trajSpeed : 1000f;
-                }
-                else if (trajSpeed is int)
-                {
-                    trajectorySpeed = (int)trajSpeed > 0 ? Convert.ToSingle(trajSpeed) : 1000f;
-                }
+                trajectorySpeed = trajSpeedFloat;
             }
-
-            var positionerMovementInformations = deviceNames.ToDictionary(name => name, name => new PositionerMovementInformation() { TargetPosition = positions[Array.IndexOf(deviceNames, name)] });
-
-            if (!CustomFunctionHelper.TryGetLineKinParameters(positionerMovementInformations, trajectorySpeed, _controllerManager, out float allocatedTime))
-                throw new Exception("Failed to create line kinematic parameters");
 
             var devices = deviceNames
                 .Select(name =>
@@ -81,35 +86,102 @@ namespace standa_controller_software.custom_functions.definitions
                 .GroupBy(device => controllers[device])
                 .ToDictionary(group => group.Key, group => group.ToList());
 
-            foreach (var controllerGroup in groupedDevicesByController)
+            var positionerMovementInformations = deviceNames.ToDictionary(name => name, name => new PositionerMovementInformation() { TargetPosition = positions[Array.IndexOf(deviceNames, name)] });
+
+            if (!CustomFunctionHelper.TryGetLineKinParameters(positionerMovementInformations, trajectorySpeed, _controllerManager, out float allocatedTime))
+                throw new Exception("Failed to create line kinematic parameters");
+
+
+            if (!TryGetProperty("Line", out object IsLine))
+                throw new Exception();
+            if (!TryGetProperty("Shutter", out object IsShutterUsed))
+                throw new Exception();
+            if (!TryGetProperty("LeadIn", out object IsLeadInUsed))
+                throw new Exception();
+            if (!TryGetProperty("LeadOut", out object IsLeadOutUsed))
+                throw new Exception();
+
+            var moveAbsoluteParameters = new MoveAbsoluteParameters
             {
-                var groupedDeviceNames = controllerGroup.Value.Select(device => device.Name).ToArray();
-                var controlerName = controllerGroup.Key.Name;
-
-                object[][] parameters = new object[groupedDeviceNames.Length][];
-
-                for (int i = 0; i < groupedDeviceNames.Length; i++)
-                {
-                    var deviceName = groupedDeviceNames[i];
-                    parameters[i] = new object[]
+                AllocatedTime = allocatedTime,
+                Devices = deviceNames,
+                IsLine = (bool)IsLine,
+                IsShutterUsed = (bool)IsShutterUsed,
+                IsLeadInUsed = (bool)IsLeadInUsed,
+                IsLeadOutUsed = (bool)IsLeadOutUsed,
+                ShutterInfo = (bool)IsShutterUsed
+                    ? new ShutterInfo
                     {
-                        positionerMovementInformations[deviceName].TargetSpeed < 10 ? 10 : positionerMovementInformations[deviceName].TargetSpeed,
-                        positionerMovementInformations[deviceName].TargetAcceleration,
-                        positionerMovementInformations[deviceName].TargetDeceleration
-                    };
-                }
-
-                commandsMovementParameters.Add(
-                    new Command()
-                    {
-                        Action = CommandDefinitionsLibrary.UpdateMoveSettings,
-                        Await = true,
-                        Parameters = parameters,
-                        TargetController = controlerName,
-                        TargetDevices = groupedDeviceNames
+                        DelayOff = 0f,
+                        DelayOn = 0f,
                     }
-                );
+                    : null,
+            };
+
+
+            /// Check if kinematic parameters dont need to be changed.
+            /// If so, then our quable controllers will be forced to execute their buffers before this.
+
+            bool UpdateSeetingsNeeded = false;
+            foreach(var deviceName in deviceNames)
+            {
+                var deviceInfo = positionerMovementInformations[deviceName];
+
+                if (deviceInfo.TargetAcceleration != deviceInfo.CurrentAcceleration
+                    || deviceInfo.TargetDeceleration != deviceInfo.CurrentDeceleration
+                    || deviceInfo.TargetSpeed != deviceInfo.CurrentSpeed)
+                    UpdateSeetingsNeeded = true;
             }
+
+            if (UpdateSeetingsNeeded)
+            {
+                List<Command> UpdatePrametersCommandLine = new List<Command>();
+
+                foreach (var controllerGroup in groupedDevicesByController)
+                {
+                    var groupedDeviceNames = controllerGroup.Value.Select(device => device.Name).ToArray();
+                    var controlerName = controllerGroup.Key.Name;
+
+                    var movementSettings = new Dictionary<char, MovementSettingsInfo>();
+                    foreach (var deviceName in groupedDeviceNames)
+                    {
+                        var deviceInfo = positionerMovementInformations[deviceName];
+
+                        movementSettings[deviceName].TargetAcceleration = deviceInfo.TargetAcceleration;
+                        movementSettings[deviceName].TargetDeceleration = deviceInfo.TargetDeceleration;
+                        movementSettings[deviceName].TargetSpeed = deviceInfo.TargetSpeed;
+                    }
+
+                    var commandParameters = new UpdateMovementSettingsParameters
+                    {
+                        MovementSettingsInformation = movementSettings
+                    };
+
+                    UpdatePrametersCommandLine.Add(
+                        new Command()
+                        {
+                            Action = CommandDefinitions.UpdateMoveSettings,
+                            Await = true,
+                            Parameters = commandParameters,
+                            TargetController = controlerName,
+                            TargetDevices = groupedDeviceNames
+                        }
+                    );
+                }
+            }
+
+
+            var kakaCommand = new Command()
+            {
+                Action = CommandDefinitions.UpdateMoveSettings,
+                Await = true,
+                Parameters = moveAbsoluteParameters,
+                TargetController = "controller_name",
+                TargetDevices = ['x', 'y']
+            };
+
+            var parameters = kakaCommand.Parameters as MoveAbsoluteParameters;
+
 
             //_commandManager.EnqueueCommandLine(commandsMovementParameters.ToArray());
 
@@ -132,7 +204,7 @@ namespace standa_controller_software.custom_functions.definitions
                 commandsMovement.Add(
                     new Command()
                     {
-                        Action = CommandDefinitionsLibrary.MoveAbsolute,
+                        Action = CommandDefinitions.MoveAbsolute,
                         Await = false,
                         Parameters = parameters,
                         TargetController = controlerName,
@@ -187,7 +259,7 @@ namespace standa_controller_software.custom_functions.definitions
                 commandsWaitForStop.Add(
                     new Command()
                     {
-                        Action = CommandDefinitionsLibrary.WaitUntilStop,
+                        Action = CommandDefinitions.WaitUntilStop,
                         Await = true,
                         Parameters = parameters,
                         TargetController = controlerName,

@@ -110,7 +110,7 @@ namespace standa_controller_software.custom_functions.helpers
 
         public static bool TryGetLineKinParameters(
             Dictionary<char, PositionerMovementInformation> positionerMovementInfo, 
-            float trajectorySpeed, 
+            float? trajectorySpeed, 
             ControllerManager controllerManager, 
             out float allocatedTime )
         {
@@ -127,6 +127,8 @@ namespace standa_controller_software.custom_functions.helpers
                 {
                     positionerMovementInfo[name].CurrentPosition = positioner.CurrentPosition;
                     positionerMovementInfo[name].CurrentSpeed = positioner.CurrentSpeed;
+                    positionerMovementInfo[name].CurrentAcceleration = positioner.Acceleration;
+                    positionerMovementInfo[name].CurrentDeceleration = positioner.Deceleration;
                     positionerMovementInfo[name].MaxAcceleration = positioner.MaxAcceleration;
                     positionerMovementInfo[name].MaxDeceleration = positioner.MaxDeceleration;
                     positionerMovementInfo[name].MaxSpeed = positioner.MaxSpeed;
@@ -170,9 +172,13 @@ namespace standa_controller_software.custom_functions.helpers
                 return true;
             }
 
+            // TODO: calculate the speed according to DefaultSpeed of positioners used.
+
+            float trajectorySpeedCalculated = (float)((trajectorySpeed is null) ? 100f : trajectorySpeed);
+
             // Calculate trajectory length and allocate time
             float trajectoryLength = (endToolPoint - startToolPoint).Length();
-            allocatedTime = trajectoryLength / trajectorySpeed;
+            allocatedTime = trajectoryLength / trajectorySpeedCalculated;
 
             if (allocatedTime <= 0 || float.IsNaN(allocatedTime))
                 return false;
@@ -184,6 +190,12 @@ namespace standa_controller_software.custom_functions.helpers
                     (
                         Math.Abs((positionerMovementInfo[name].TargetPosition - positionerMovementInfo[name].CurrentPosition) / allocatedTime)
                         , positionerMovementInfo[name].MaxSpeed
+                    ); 
+                
+                positionerMovementInfo[name].TargetSpeed = Math.Min
+                    (
+                        positionerMovementInfo[name].TargetSpeed
+                        , 10f
                     );
             }
 
@@ -218,7 +230,7 @@ namespace standa_controller_software.custom_functions.helpers
             // Calculate total time and adjust speed if necessary
             double maxAccel = positionerMovementInfo.Max(positionerInfo => positionerInfo.Value.TargetAcceleration);
             double maxDecel = positionerMovementInfo.Max(positionerInfo => positionerInfo.Value.TargetDeceleration);
-            double calculatedTime = CalculateTotalTime(trajectoryLength, trajectorySpeed, maxAccel, maxDecel);
+            double calculatedTime = CalculateTotalTime(trajectoryLength, trajectorySpeedCalculated, maxAccel, maxDecel);
 
             // Final adjustment of allocated time after speed adjustment
             allocatedTime = (float)calculatedTime;

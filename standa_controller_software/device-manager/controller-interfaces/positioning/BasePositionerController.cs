@@ -17,19 +17,19 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
         public BasePositionerController(string name) : base(name)
         {
-            _methodMap[CommandDefinitionsLibrary.MoveAbsolute] = new MethodInformation()
+            _methodMap[CommandDefinitions.MoveAbsolute] = new MethodInformation()
             {
                 MethodHandle = MoveAbsolute,
                 Quable = false,
                 State = MethodState.Free,
             };
-            _methodMap[CommandDefinitionsLibrary.UpdateMoveSettings] = new MethodInformation()
+            _methodMap[CommandDefinitions.UpdateMoveSettings] = new MethodInformation()
             {
                 MethodHandle = UpdateMoveSettings,
                 Quable = false,
                 State = MethodState.Free,
             };
-            _methodMap[CommandDefinitionsLibrary.WaitUntilStop] = new MethodInformation()
+            _methodMap[CommandDefinitions.WaitUntilStop] = new MethodInformation()
             {
                 MethodHandle = WaitUntilStop,
                 Quable = false,

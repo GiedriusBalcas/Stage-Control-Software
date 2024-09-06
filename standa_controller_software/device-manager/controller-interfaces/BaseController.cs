@@ -28,7 +28,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
             public MethodState State = MethodState.Free;
         }
 
-        protected Dictionary<CommandDefinitionsLibrary, MethodInformation> _methodMap = new Dictionary<CommandDefinitionsLibrary, MethodInformation>();
+        protected Dictionary<CommandDefinitions, MethodInformation> _methodMap = new Dictionary<CommandDefinitions, MethodInformation>();
 
         public BaseController? MasterController { get; set; } = null;
         public Dictionary<string, BaseController> SlaveControllers { get; set; } = new Dictionary<string, BaseController>();
