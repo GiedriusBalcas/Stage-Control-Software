@@ -20,7 +20,9 @@ namespace standa_controller_software.command_manager.command_parameter_library
     public class PositionerInfo
     {
         public float TargetPosition { get; set; }
+        public float TargetSpeed { get; set; }
         public float? WaitUntil { get; set; }
+        public bool Direction {  get; set; }
         public LeadInfo? LeadInformation { get; set; }
 
     }
@@ -36,6 +38,8 @@ namespace standa_controller_software.command_manager.command_parameter_library
         public float LeadInStartPos { get; set; }
         public float LeadInEndPos { get; set; }
         public float LeadOutEndPos { get; set; }
+        public float LeadInAllocatedTime { get; set; }
+        public float LeadOutAllocatedTime { get; set; }
     }
 
 }
