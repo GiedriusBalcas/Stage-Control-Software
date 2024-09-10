@@ -1,4 +1,5 @@
 ﻿using standa_controller_software.command_manager;
+using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
@@ -59,15 +60,19 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         protected override Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
-
+            var movementParams = command.Parameters as UpdateMovementSettingsParameters;
             for (int i = 0; i < devices.Length; i++)
             {
                 var device = devices[i];
 
-                float speedValue = (float)(command.Parameters[i][0]);
-                float accelValue = (float)(command.Parameters[i][1]);
-                float decelValue = (float)(command.Parameters[i][2]);
-            
+                float speedValue = movementParams.MovementSettingsInformation[device.Name].TargetSpeed;
+                float accelValue = movementParams.MovementSettingsInformation[device.Name].TargetAcceleration;
+                float decelValue = movementParams.MovementSettingsInformation[device.Name].TargetDeceleration;
+
+                //float speedValue = (float)(command.Parameters[i][0]);
+                //float accelValue = (float)(command.Parameters[i][1]);
+                //float decelValue = (float)(command.Parameters[i][2]);
+
                 device.Speed = speedValue;
                 device.Acceleration = accelValue;
                 device.Deceleration = decelValue;
@@ -81,17 +86,17 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
 
-            for (int i = 0; i < devices.Length; i++)
-            {
-                if (command.Parameters[i] != null && command.Parameters[i].Length != 0 )
-                {
-                    float targetPosition = (float)(command.Parameters[i][0]);
-                    bool direction = (bool)(command.Parameters[i][1]);
+            //for (int i = 0; i < devices.Length; i++)
+            //{
+            //    if (command.Parameters[i] != null && command.Parameters[i].Length != 0 )
+            //    {
+            //        float targetPosition = (float)(command.Parameters[i][0]);
+            //        bool direction = (bool)(command.Parameters[i][1]);
 
-                    devices[i].CurrentPosition = targetPosition;
-                }
+            //        devices[i].CurrentPosition = targetPosition;
+            //    }
                 
-            }
+            //}
 
             return Task.CompletedTask;
         }
@@ -119,12 +124,89 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         protected override Task MoveAbsolute(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
+            var movementParams = command.Parameters as MoveAbsoluteParameters;
 
-            for (int i = 0; i < command.TargetDevices.Length; i++)
+            // TODO: if there's no waitUntil, cause for that one, we'll need update the speeds differently.
+            if(movementParams.PositionerInfo.First().Value.WaitUntil == null)
             {
-                var device = devices[i];
-                device.CurrentPosition = (float)command.Parameters[i][0];
+                for (int i = 0; i < command.TargetDevices.Length; i++)
+                {
+                    var device = devices[i];
+                    device.CurrentPosition = movementParams.PositionerInfo[device.Name].TargetPosition;
+                    device.CurrentSpeed = 0f;
+                }
             }
+            else
+            {
+                for (int i = 0; i < command.TargetDevices.Length; i++)
+                {
+                    var device = devices[i];
+                    var posInfo = movementParams.PositionerInfo[device.Name];
+                    var direction = posInfo.Direction ? 1 : -1;
+                    var targetSpeed = posInfo.TargetSpeed;
+                    var initialSpeed = device.CurrentSpeed;
+                    var totalDistance = Math.Abs(posInfo.TargetPosition - device.CurrentPosition);
+
+
+                    if (Math.Sign(initialSpeed) != Math.Sign(targetSpeed))
+                    {
+                        var decelToZeroDistance = Math.Pow(initialSpeed, 2) / (2 * device.Deceleration);
+
+                        // Adjust totalDistance by subtracting the distance used for decelerating to zero
+                        totalDistance += (float)decelToZeroDistance;
+                    }
+
+
+                    // Phase 1: Calculate the acceleration distance (distance to reach the target speed from the initial speed)
+                    double accelDistance = (Math.Pow(targetSpeed, 2) - Math.Pow(device.CurrentSpeed, 2)) / (2 * device.Acceleration);
+
+                    // Phase 3: Calculate the deceleration distance (distance to decelerate from the target speed to 0)
+                    double decelDistance = Math.Pow(targetSpeed, 2) / (2 * device.Deceleration);
+
+                    // Check if the total distance is long enough to reach the target speed
+                    if (accelDistance + decelDistance > totalDistance)
+                    {
+                        // No constant speed phase; adjust the target speed so it can only accelerate and decelerate within the total distance
+                        double maxSpeedReached = Math.Sqrt((2 * device.Acceleration * totalDistance * device.Deceleration) / (device.Acceleration + device.Deceleration));
+
+                        // Adjust targetSpeed to maxSpeedReached if total distance is not enough to reach the original target speed
+                        targetSpeed = (float)maxSpeedReached;
+
+                        // Recalculate the acceleration and deceleration distances for this adjusted target speed
+                        accelDistance = (Math.Pow(targetSpeed, 2) - Math.Pow(device.CurrentSpeed, 2)) / (2 * device.Acceleration);
+                        decelDistance = Math.Pow(targetSpeed, 2) / (2 * device.Deceleration);
+                    }
+
+                    // Phase 2: Calculate the constant speed phase distance (if applicable)
+                    double constantSpeedDistance = totalDistance - accelDistance - decelDistance;
+                    var endVelocity = 0f;
+                    var position = Math.Abs((double)(posInfo.WaitUntil - device.CurrentPosition));
+
+                    if (position <= accelDistance)
+                    {
+                        // In the acceleration phase: use the equation v^2 = v0^2 + 2 * a * d
+                        endVelocity = (float)Math.Sqrt(Math.Pow(device.CurrentSpeed, 2) + 2 * device.Acceleration * position);
+                    }
+                    else if(position > accelDistance + constantSpeedDistance)
+                    {
+                        // In the deceleration phase: calculate the position in the deceleration phase
+                        double decelPosition = position - accelDistance - constantSpeedDistance;
+                        endVelocity = (float)Math.Sqrt(Math.Pow(targetSpeed, 2) - 2 * device.Deceleration * decelPosition);
+                    }
+                    else
+                    {
+                        // In the constant speed phase
+                        endVelocity = targetSpeed;
+                    }
+
+                    device.CurrentSpeed = 0f;
+                    device.CurrentSpeed = endVelocity * direction;
+
+                }
+
+                throw new NotImplementedException();
+            }
+
             return Task.CompletedTask;
          }
 

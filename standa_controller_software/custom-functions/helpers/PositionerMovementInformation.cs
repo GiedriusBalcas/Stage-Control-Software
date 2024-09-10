@@ -14,6 +14,7 @@ namespace standa_controller_software.custom_functions.helpers
         public float StartingDeceleration { get; set; }
         public float TargetPosition { get; set; }
         public float TargetSpeed { get; set; }
+        public float CurrentTargetSpeed { get; set; }
         public float TargetAcceleration { get; set; }
         public float TargetDeceleration { get; set; }
         public bool TargetDirection { get; set; }

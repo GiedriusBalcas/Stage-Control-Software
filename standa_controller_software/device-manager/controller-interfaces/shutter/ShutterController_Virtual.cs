@@ -63,13 +63,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
 
-            for (int i = 0; i < devices.Length; i++)
-            {
-                var device = devices[i];
-                var state = (bool)command.Parameters[i][0];
-                _deviceInfo[device.Name]._isOn = state;
-                device.IsOn = state;
-            }
+            //for (int i = 0; i < devices.Length; i++)
+            //{
+            //    var device = devices[i];
+            //    var state = (bool)command.Parameters[i][0];
+            //    _deviceInfo[device.Name]._isOn = state;
+            //    device.IsOn = state;
+            //}
             return Task.CompletedTask;
         }
 
@@ -99,15 +99,15 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
 
-            for (int i = 0; i < devices.Length; i++)
-            {
-                var device = devices[i];
-                var delayOn = (uint)command.Parameters[i][0];
-                var delayOff = (uint)command.Parameters[i][1];
+            //for (int i = 0; i < devices.Length; i++)
+            //{
+            //    var device = devices[i];
+            //    var delayOn = (uint)command.Parameters[i][0];
+            //    var delayOff = (uint)command.Parameters[i][1];
 
-                _deviceInfo[device.Name]._delayOn = (int)delayOn;
-                _deviceInfo[device.Name]._delayOff = (int)delayOff;
-            }
+            //    _deviceInfo[device.Name]._delayOn = (int)delayOn;
+            //    _deviceInfo[device.Name]._delayOff = (int)delayOff;
+            //}
             return Task.CompletedTask;
         }
 

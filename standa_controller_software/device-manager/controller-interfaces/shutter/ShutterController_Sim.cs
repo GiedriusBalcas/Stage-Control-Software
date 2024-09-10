@@ -64,14 +64,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
 
-            for (int i = 0; i < devices.Length; i++)
-            {
-                var device = devices[i];
-                var state = (bool)command.Parameters[i][0];
-                await Task.Delay(2);
-                _deviceInfo[device.Name]._isOn = state;
-                device.IsOn = state;
-            }
+            //for (int i = 0; i < devices.Length; i++)
+            //{
+            //    var device = devices[i];
+            //    var state = (bool)command.Parameters[i][0];
+            //    await Task.Delay(2);
+            //    _deviceInfo[device.Name]._isOn = state;
+            //    device.IsOn = state;
+            //}
         }
 
         protected override async Task ChangeStateOnInterval(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
@@ -80,25 +80,25 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
 
             float duration = 0;
-            //var token = cancellationTokens.Values.Where(val => val != null).First();
+            ////var token = cancellationTokens.Values.Where(val => val != null).First();
             
-            for (int i = 0; i < devices.Length; i++)
-            {
-                var device = devices[i];
-                duration = (float)command.Parameters[i][0] * 1000000 - device.DelayOff * 1000 - device.DelayOn * 1000;
-                var state = true;
-                await Task.Run(() => DelayMicroseconds((int)device.DelayOn * 1000));
-                _deviceInfo[device.Name]._isOn = state;
-            }
+            //for (int i = 0; i < devices.Length; i++)
+            //{
+            //    var device = devices[i];
+            //    duration = (float)command.Parameters[i][0] * 1000000 - device.DelayOff * 1000 - device.DelayOn * 1000;
+            //    var state = true;
+            //    await Task.Run(() => DelayMicroseconds((int)device.DelayOn * 1000));
+            //    _deviceInfo[device.Name]._isOn = state;
+            //}
 
-            await Task.Run(() => DelayMicroseconds((int)duration));
+            //await Task.Run(() => DelayMicroseconds((int)duration));
             
-            for (int i = 0; i < devices.Length; i++)
-            {
-                var device = devices[i];
-                var state = false;
-                _deviceInfo[device.Name]._isOn = state;
-            }
+            //for (int i = 0; i < devices.Length; i++)
+            //{
+            //    var device = devices[i];
+            //    var state = false;
+            //    _deviceInfo[device.Name]._isOn = state;
+            //}
 
         }
 
@@ -124,15 +124,15 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
 
-            for (int i = 0; i < devices.Length; i++)
-            {
-                var device = devices[i];
-                var delayOn = (uint)command.Parameters[i][0];
-                var delayOff = (uint)command.Parameters[i][1];
+            //for (int i = 0; i < devices.Length; i++)
+            //{
+            //    var device = devices[i];
+            //    var delayOn = (uint)command.Parameters[i][0];
+            //    var delayOff = (uint)command.Parameters[i][1];
 
-                _deviceInfo[device.Name]._delayOn = (int)delayOn;
-                _deviceInfo[device.Name]._delayOff = (int)delayOff;
-            }
+            //    _deviceInfo[device.Name]._delayOn = (int)delayOn;
+            //    _deviceInfo[device.Name]._delayOff = (int)delayOff;
+            //}
             return Task.CompletedTask;
         }
 

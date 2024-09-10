@@ -1,0 +1,21 @@
+﻿width = 500;
+length = 150;
+height = 100;
+
+kiekx = 100;
+kiekz = 10;
+
+moveA.Speed = 1000.01;
+moveA.Line = false;
+
+dl = 50;
+radius = 100;
+dtheta = asin(dl/radius);
+
+for(theta = 0; theta <= 2*PI *10; theta += dtheta)
+{
+	xas = sin(theta)*radius;
+	yas = cos(theta)*radius;
+	zas = theta;
+	moveA("xyz", xas, yas,zas);
+}

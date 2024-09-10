@@ -2,15 +2,15 @@
 length = 150;
 height = 100;
 
-kiekx = 3;
-kiekz = 3;
+kiekx = 100;
+kiekz = 10;
 
-moveA.Speed = 1000;
+moveA.Speed = 1000000.01;
+moveA.Line = true;
 
-
-for( k=1; k<kiekz; k++)
+for( k=0; k<kiekz; k++)
 {
-	for( i=1; i<kiekx; i++)
+	for( i=0; i<kiekx; i++)
 	{
 		direction = (-1)^i;
 		

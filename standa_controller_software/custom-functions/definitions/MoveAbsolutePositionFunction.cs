@@ -46,7 +46,7 @@ namespace standa_controller_software.custom_functions.definitions
 
         public override object? Execute(params object[] args)
         {
-            if (!TryParseArguments(args, out char[] deviceNames, out float[] positions, out float[] waitUntil))
+            if (!TryParseArguments(args, out char[] parsedDeviceNames, out float[] parsedPositions, out float[] parsedWaitUntil))
                 throw new ArgumentException("Argument pasrsing was unsuccesfull. Wrong types.");
 
 
@@ -57,6 +57,25 @@ namespace standa_controller_software.custom_functions.definitions
 
             // TODO: I should filter out devices, which dont change their position somewhere.
 
+            List<char> deviceNameList = new List<char>();
+            List<float> positionsList = new List<float>();
+            List<float> waitUntilList = new List<float>();
+            for (int i = 0; i < parsedDeviceNames.Length; i++)
+            {
+                if (_controllerManager.TryGetDevice<BasePositionerDevice>(parsedDeviceNames[i], out var positioner))
+                {
+                    if (positioner.CurrentPosition != parsedPositions[i])
+                    {
+                        deviceNameList.Add(parsedDeviceNames[i]);
+                        positionsList.Add(parsedPositions[i]);
+                        if(parsedWaitUntil.Length > i)
+                            waitUntilList.Add(parsedWaitUntil[i]);
+                    }
+                }
+            }
+            char[] deviceNames = deviceNameList.ToArray();
+            float[] positions = positionsList.ToArray();
+            float[] waitUntil = waitUntilList.ToArray();
 
             this.TryGetProperty("Speed", out object trajSpeed);
 
@@ -98,7 +117,7 @@ namespace standa_controller_software.custom_functions.definitions
                 throw new Exception();
 
 
-
+            var kakaIsLine = (bool)IsLine;
 
             var positionerMovementInformations = new Dictionary<char, PositionerMovementInformation>();
             // Populate initial values
@@ -106,16 +125,20 @@ namespace standa_controller_software.custom_functions.definitions
             {
                 if (_controllerManager.TryGetDevice<BasePositionerDevice>(name, out var positioner))
                 {
-                    positionerMovementInformations[name].TargetPosition = positions[Array.IndexOf(deviceNames, name)];
-                    positionerMovementInformations[name].TargetDistance = Math.Abs(positionerMovementInformations[name].TargetPosition - positioner.CurrentPosition);
-                    positionerMovementInformations[name].TargetDirection = positionerMovementInformations[name].TargetPosition > positioner.CurrentPosition;
-                    positionerMovementInformations[name].StartingPosition = positioner.CurrentPosition;
-                    positionerMovementInformations[name].StartingSpeed = positioner.CurrentSpeed;
-                    positionerMovementInformations[name].StartingAcceleration = positioner.Acceleration;
-                    positionerMovementInformations[name].StartingDeceleration = positioner.Deceleration;
-                    positionerMovementInformations[name].MaxAcceleration = positioner.MaxAcceleration;
-                    positionerMovementInformations[name].MaxDeceleration = positioner.MaxDeceleration;
-                    positionerMovementInformations[name].MaxSpeed = positioner.MaxSpeed;
+                    positionerMovementInformations[name] = new PositionerMovementInformation
+                    {
+                        TargetPosition = positions[Array.IndexOf(deviceNames, name)],
+                        TargetDistance = Math.Abs(positions[Array.IndexOf(deviceNames, name)] - positioner.CurrentPosition),
+                        TargetDirection = positions[Array.IndexOf(deviceNames, name)] > positioner.CurrentPosition,
+                        StartingPosition = positioner.CurrentPosition,
+                        StartingSpeed = positioner.CurrentSpeed,
+                        CurrentTargetSpeed = positioner.Speed,
+                        StartingAcceleration = positioner.Acceleration,
+                        StartingDeceleration = positioner.Deceleration,
+                        MaxAcceleration = positioner.MaxAcceleration,
+                        MaxDeceleration = positioner.MaxDeceleration,
+                        MaxSpeed = positioner.MaxSpeed,
+                    };
                 }
                 else
                     throw new Exception($"Unable retrieve positioner device {name}.");
@@ -140,7 +163,7 @@ namespace standa_controller_software.custom_functions.definitions
             if (positionerMovementInformations.Values.Any(deviceInfo =>
                 (deviceInfo.TargetAcceleration != deviceInfo.StartingAcceleration
                 || deviceInfo.TargetDeceleration != deviceInfo.StartingDeceleration
-                || deviceInfo.TargetSpeed != deviceInfo.StartingSpeed))
+                || deviceInfo.TargetSpeed != deviceInfo.CurrentTargetSpeed))
                 )
             {
                 List<Command> UpdatePrametersCommandLine = new List<Command>();
@@ -154,10 +177,13 @@ namespace standa_controller_software.custom_functions.definitions
                     foreach (var deviceName in groupedDeviceNames)
                     {
                         var deviceInfo = positionerMovementInformations[deviceName];
+                        movementSettings[deviceName] = new MovementSettingsInfo
+                        {
+                            TargetAcceleration = deviceInfo.TargetAcceleration,
+                            TargetDeceleration = deviceInfo.TargetDeceleration,
+                            TargetSpeed = deviceInfo.TargetSpeed,
 
-                        movementSettings[deviceName].TargetAcceleration = deviceInfo.TargetAcceleration;
-                        movementSettings[deviceName].TargetDeceleration = deviceInfo.TargetDeceleration;
-                        movementSettings[deviceName].TargetSpeed = deviceInfo.TargetSpeed;
+                        };
                     }
 
                     var commandParameters = new UpdateMovementSettingsParameters
@@ -182,7 +208,6 @@ namespace standa_controller_software.custom_functions.definitions
             }
 
 
-
             if ((bool)IsLeadInUsed && (bool)IsLeadOutUsed)
             {
                 // LEAD-IN PHASE
@@ -193,16 +218,19 @@ namespace standa_controller_software.custom_functions.definitions
                 {
                     if (_controllerManager.TryGetDevice<BasePositionerDevice>(name, out var positioner))
                     {
-                        positionerMovementInformations_LeadIn[name].TargetPosition = positions[Array.IndexOf(deviceNames, name)];
-                        positionerMovementInformations_LeadIn[name].TargetDistance = Math.Abs(positionerMovementInformations_LeadIn[name].TargetPosition - positioner.CurrentPosition);
-                        positionerMovementInformations_LeadIn[name].TargetDirection = positionerMovementInformations_LeadIn[name].TargetPosition > positioner.CurrentPosition;
-                        positionerMovementInformations_LeadIn[name].StartingPosition = positioner.CurrentPosition;
-                        positionerMovementInformations_LeadIn[name].StartingSpeed = positioner.CurrentSpeed;
-                        positionerMovementInformations_LeadIn[name].StartingAcceleration = positioner.Acceleration;
-                        positionerMovementInformations_LeadIn[name].StartingDeceleration = positioner.Deceleration;
-                        positionerMovementInformations_LeadIn[name].MaxAcceleration = positioner.MaxAcceleration;
-                        positionerMovementInformations_LeadIn[name].MaxDeceleration = positioner.MaxDeceleration;
-                        positionerMovementInformations_LeadIn[name].MaxSpeed = positioner.MaxSpeed;
+                        positionerMovementInformations_LeadIn[name] = new PositionerMovementInformation
+                        {
+                            TargetPosition = positions[Array.IndexOf(deviceNames, name)],
+                            TargetDistance = Math.Abs(positions[Array.IndexOf(deviceNames, name)] - positioner.CurrentPosition),
+                            TargetDirection = positions[Array.IndexOf(deviceNames, name)] > positioner.CurrentPosition,
+                            StartingPosition = positioner.CurrentPosition,
+                            StartingSpeed = positioner.CurrentSpeed,
+                            StartingAcceleration = positioner.Acceleration,
+                            StartingDeceleration = positioner.Deceleration,
+                            MaxAcceleration = positioner.MaxAcceleration,
+                            MaxDeceleration = positioner.MaxDeceleration,
+                            MaxSpeed = positioner.MaxSpeed,
+                        };
                     }
                     else
                         throw new Exception($"Unable retrieve positioner device {name}.");
@@ -218,16 +246,19 @@ namespace standa_controller_software.custom_functions.definitions
                 {
                     if (_controllerManager.TryGetDevice<BasePositionerDevice>(name, out var positioner))
                     {
-                        positionerMovementInformations_Constant[name].TargetPosition = positions[Array.IndexOf(deviceNames, name)];
-                        positionerMovementInformations_Constant[name].TargetDistance = Math.Abs(positionerMovementInformations_Constant[name].TargetPosition - positioner.CurrentPosition);
-                        positionerMovementInformations_Constant[name].TargetDirection = positionerMovementInformations_Constant[name].TargetPosition > positioner.CurrentPosition;
-                        positionerMovementInformations_Constant[name].StartingPosition = positioner.CurrentPosition;
-                        positionerMovementInformations_Constant[name].StartingSpeed = positioner.CurrentSpeed;
-                        positionerMovementInformations_Constant[name].StartingAcceleration = positioner.Acceleration;
-                        positionerMovementInformations_Constant[name].StartingDeceleration = positioner.Deceleration;
-                        positionerMovementInformations_Constant[name].MaxAcceleration = positioner.MaxAcceleration;
-                        positionerMovementInformations_Constant[name].MaxDeceleration = positioner.MaxDeceleration;
-                        positionerMovementInformations_Constant[name].MaxSpeed = positioner.MaxSpeed;
+                        positionerMovementInformations_Constant[name] = new PositionerMovementInformation
+                        {
+                            TargetPosition = positions[Array.IndexOf(deviceNames, name)],
+                            TargetDistance = Math.Abs(positions[Array.IndexOf(deviceNames, name)] - positioner.CurrentPosition),
+                            TargetDirection = positions[Array.IndexOf(deviceNames, name)] > positioner.CurrentPosition,
+                            StartingPosition = positioner.CurrentPosition,
+                            StartingSpeed = positioner.CurrentSpeed,
+                            StartingAcceleration = positioner.Acceleration,
+                            StartingDeceleration = positioner.Deceleration,
+                            MaxAcceleration = positioner.MaxAcceleration,
+                            MaxDeceleration = positioner.MaxDeceleration,
+                            MaxSpeed = positioner.MaxSpeed,
+                        };
                     }
                     else
                         throw new Exception($"Unable retrieve positioner device {name}.");
@@ -243,16 +274,19 @@ namespace standa_controller_software.custom_functions.definitions
                 {
                     if (_controllerManager.TryGetDevice<BasePositionerDevice>(name, out var positioner))
                     {
-                        positionerMovementInformations_LeadOut[name].TargetPosition = positions[Array.IndexOf(deviceNames, name)];
-                        positionerMovementInformations_LeadOut[name].TargetDistance = Math.Abs(positionerMovementInformations_LeadOut[name].TargetPosition - positioner.CurrentPosition);
-                        positionerMovementInformations_LeadOut[name].TargetDirection = positionerMovementInformations_LeadOut[name].TargetPosition > positioner.CurrentPosition;
-                        positionerMovementInformations_LeadOut[name].StartingPosition = positioner.CurrentPosition;
-                        positionerMovementInformations_LeadOut[name].StartingSpeed = positioner.CurrentSpeed;
-                        positionerMovementInformations_LeadOut[name].StartingAcceleration = positioner.Acceleration;
-                        positionerMovementInformations_LeadOut[name].StartingDeceleration = positioner.Deceleration;
-                        positionerMovementInformations_LeadOut[name].MaxAcceleration = positioner.MaxAcceleration;
-                        positionerMovementInformations_LeadOut[name].MaxDeceleration = positioner.MaxDeceleration;
-                        positionerMovementInformations_LeadOut[name].MaxSpeed = positioner.MaxSpeed;
+                        positionerMovementInformations_LeadOut[name] = new PositionerMovementInformation
+                        {
+                            TargetPosition = positions[Array.IndexOf(deviceNames, name)],
+                            TargetDistance = Math.Abs(positions[Array.IndexOf(deviceNames, name)] - positioner.CurrentPosition),
+                            TargetDirection = positions[Array.IndexOf(deviceNames, name)] > positioner.CurrentPosition,
+                            StartingPosition = positioner.CurrentPosition,
+                            StartingSpeed = positioner.CurrentSpeed,
+                            StartingAcceleration = positioner.Acceleration,
+                            StartingDeceleration = positioner.Deceleration,
+                            MaxAcceleration = positioner.MaxAcceleration,
+                            MaxDeceleration = positioner.MaxDeceleration,
+                            MaxSpeed = positioner.MaxSpeed,
+                        };
                     }
                     else
                         throw new Exception($"Unable retrieve positioner device {name}.");
@@ -269,16 +303,19 @@ namespace standa_controller_software.custom_functions.definitions
                 {
                     if (_controllerManager.TryGetDevice<BasePositionerDevice>(name, out var positioner))
                     {
-                        positionerMovementInformations_LeadInStart[name].StartingPosition = positioner.CurrentPosition;
-                        positionerMovementInformations_LeadInStart[name].TargetPosition = positionerMovementInformations_LeadIn[name].StartingPosition;
-                        positionerMovementInformations_LeadInStart[name].TargetDistance = Math.Abs(positionerMovementInformations_LeadInStart[name].TargetPosition - positionerMovementInformations_LeadInStart[name].StartingPosition);
-                        positionerMovementInformations_LeadInStart[name].TargetDirection = positionerMovementInformations_LeadInStart[name].TargetPosition > positionerMovementInformations_LeadInStart[name].StartingPosition;
-                        positionerMovementInformations_LeadInStart[name].StartingSpeed = positioner.CurrentSpeed;
-                        positionerMovementInformations_LeadInStart[name].StartingAcceleration = positioner.Acceleration;
-                        positionerMovementInformations_LeadInStart[name].StartingDeceleration = positioner.Deceleration;
-                        positionerMovementInformations_LeadInStart[name].MaxAcceleration = positioner.MaxAcceleration;
-                        positionerMovementInformations_LeadInStart[name].MaxDeceleration = positioner.MaxDeceleration;
-                        positionerMovementInformations_LeadInStart[name].MaxSpeed = positioner.MaxSpeed;
+                        positionerMovementInformations_LeadInStart[name] = new PositionerMovementInformation
+                        {
+                            TargetPosition = positionerMovementInformations_LeadIn[name].StartingPosition,
+                            TargetDistance = Math.Abs(positionerMovementInformations_LeadInStart[name].TargetPosition - positionerMovementInformations_LeadInStart[name].StartingPosition),
+                            TargetDirection = positionerMovementInformations_LeadInStart[name].TargetPosition > positionerMovementInformations_LeadInStart[name].StartingPosition,
+                            StartingPosition = positioner.CurrentPosition,
+                            StartingSpeed = positioner.CurrentSpeed,
+                            StartingAcceleration = positioner.Acceleration,
+                            StartingDeceleration = positioner.Deceleration,
+                            MaxAcceleration = positioner.MaxAcceleration,
+                            MaxDeceleration = positioner.MaxDeceleration,
+                            MaxSpeed = positioner.MaxSpeed,
+                        };
                     }
                     else
                         throw new Exception($"Unable retrieve positioner device {name}.");
@@ -455,7 +492,7 @@ namespace standa_controller_software.custom_functions.definitions
                             WaitUntil = waitUntilPos,
                             TargetSpeed = positionerMovementInformations[deviceName].TargetSpeed,
                             Direction = positionerMovementInformations[deviceName].TargetPosition >= positionerMovementInformations[deviceName].StartingPosition,
-                            TargetPosition = 0f,
+                            TargetPosition = positionerMovementInformations[deviceName].TargetPosition,
                         };
                     }
 

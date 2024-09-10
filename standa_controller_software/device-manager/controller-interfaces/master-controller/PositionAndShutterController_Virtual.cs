@@ -11,18 +11,18 @@ using System.Threading.Tasks;
 
 namespace standa_controller_software.device_manager.controller_interfaces.master_controller
 {
-    public class PositionAndShutterController_Virtual : BaseController
+    public class PositionAndShutterController_Virtual : BaseMasterController
     {
         
         public PositionAndShutterController_Virtual(string name) : base(name)
         {
-            _methodMap[CommandDefinitions.MoveAbsolute] = new MethodInformation()
+            _methodMap_multiControntroller[CommandDefinitions.MoveAbsolute] = new MultiControllerMethodInformation()
             {
                 MethodHandle = MoveAbsolute,
                 Quable = true,
                 State = MethodState.Free,
             };
-            _methodMap[CommandDefinitions.UpdateMoveSettings] = new MethodInformation()
+            _methodMap_multiControntroller[CommandDefinitions.UpdateMoveSettings] = new MultiControllerMethodInformation()
             {
                 MethodHandle = UpdateMoveSettings,
                 Quable = true,
@@ -41,12 +41,17 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             //_methodMap["WaitUntilStop"] = WaitUntilStop;
         }
 
-        private async Task UpdateMoveSettings(Command command, SemaphoreSlim slim, ConcurrentQueue<string> log)
+        private async Task UpdateMoveSettings(Command[] commands, Dictionary<string, SemaphoreSlim> semaphors, ConcurrentQueue<string> log)
         {
-            var targetControllerName = command.TargetController;
-            if (SlaveControllers.TryGetValue(targetControllerName, out BaseController positionerController))
+            foreach (Command command in commands)
             {
-                await positionerController.ExecuteCommandAsync(command, slim, log);
+                if (SlaveControllers.TryGetValue(command.TargetController, out var slaveController))
+                {
+                    await slaveController.ExecuteCommandAsync(command, semaphors[command.TargetController], log);
+                }
+                else
+                    throw new Exception($"Slave controller {command.TargetController} was not found.");
+
             }
         }
 
@@ -59,14 +64,16 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             }
         }
 
-        private async Task MoveAbsolute(Command command, SemaphoreSlim slim, ConcurrentQueue<string> log)
+        private async Task MoveAbsolute(Command[] commands, Dictionary<string, SemaphoreSlim> semaphors, ConcurrentQueue<string> log)
         {
-            var targetControllerName = command.TargetController;
-            if (SlaveControllers.TryGetValue(targetControllerName, out BaseController positionerController))
+            foreach(Command command in commands)
             {
-                await positionerController.ExecuteCommandAsync(command, slim, log);
+                var targetController = command.TargetController;
+                if (SlaveControllers.TryGetValue(targetController, out BaseController positionerController))
+                {
+                    await positionerController.ExecuteCommandAsync(command, semaphors[targetController], log);
+                }
             }
-                // add_sync_in_action( Position, Time )
 
         }
 
@@ -154,5 +161,27 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             return Task.CompletedTask;
         }
 
+        public override async Task ExecuteSlaveCommandsAsync(Command[] commands, Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log)
+        {
+            log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {string.Join(' ', commands.Select(command => command.Action).ToArray())} command on device {string.Join(' ', commands.SelectMany(command => command.TargetDevices).ToArray())}");
+
+            var command = commands.First();
+            if (_methodMap_multiControntroller.TryGetValue(commands.First().Action, out var method))
+            {
+                if (command.Await)
+                    await method.MethodHandle(commands, semaphores, log);
+                else
+                    _ = method.MethodHandle(commands, semaphores, log);
+            }
+            else
+            {
+                throw new InvalidOperationException("Invalid action");
+            }
+        }
+
+        public override Task AwaitQueuedItems(Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

@@ -15,6 +15,19 @@ namespace standa_controller_software.command_manager.command_parameter_library
         public float AllocatedTime { get; set; }
         public Dictionary<char, PositionerInfo> PositionerInfo { get; set; } = new Dictionary<char, PositionerInfo>();
         public ShutterInfo? ShutterInfo { get; set; }
+
+        public override string ToString()
+        {
+            string constructedString = string.Empty;
+            constructedString += $"time: {AllocatedTime}";
+            foreach (var deviceName in PositionerInfo.Keys)
+            {
+                var info = PositionerInfo[deviceName];
+                constructedString += $"; {deviceName}[{info.TargetPosition}, {info.TargetSpeed}]";
+            }
+
+            return constructedString;
+        }
     }
 
     public class PositionerInfo

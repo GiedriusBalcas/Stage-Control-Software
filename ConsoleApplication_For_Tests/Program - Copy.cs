@@ -136,9 +136,14 @@ class Program
     {
 
 
-        var deviceX = new LinearPositionerDevice('x', "") { Acceleration = 100000, Deceleration = 100000, MaxAcceleration = 100000, MaxDeceleration = 100000, MaxSpeed = 5000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
-        var deviceY = new LinearPositionerDevice('y', "") { Acceleration = 100000, Deceleration = 100000, MaxAcceleration = 100000, MaxDeceleration = 100000, MaxSpeed = 5000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; 
-        var deviceZ = new LinearPositionerDevice('z', "") { Acceleration = 100000, Deceleration = 100000, MaxAcceleration = 100000, MaxDeceleration = 100000, MaxSpeed = 5000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 }; 
+        var deviceX = new LinearPositionerDevice('x', "") { Acceleration = 1000, Deceleration = 1000, MaxAcceleration = 1000, MaxDeceleration = 1000, MaxSpeed = 5000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
+        var deviceY = new LinearPositionerDevice('y', "") { Acceleration = 1000, Deceleration = 1000, MaxAcceleration = 1000, MaxDeceleration = 1000, MaxSpeed = 5000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
+        var deviceZ = new LinearPositionerDevice('z', "") { Acceleration = 1000, Deceleration = 1000, MaxAcceleration = 1000, MaxDeceleration = 1000, MaxSpeed = 5000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
+
+
+        //var deviceX = new LinearPositionerDevice('x', "") { Acceleration = 10000000000, Deceleration = 10000000000, MaxAcceleration = 10000000000, MaxDeceleration = 10000000000, MaxSpeed = 10000000000, Speed = 10000000000, CurrentPosition = 0, CurrentSpeed = 0 };
+        //var deviceY = new LinearPositionerDevice('y', "") { Acceleration = 10000000000, Deceleration = 10000000000, MaxAcceleration = 10000000000, MaxDeceleration = 10000000000, MaxSpeed = 10000000000, Speed = 10000000000, CurrentPosition = 0, CurrentSpeed = 0 };
+        //var deviceZ = new LinearPositionerDevice('z', "") { Acceleration = 10000000000, Deceleration = 10000000000, MaxAcceleration = 10000000000, MaxDeceleration = 10000000000, MaxSpeed = 10000000000, Speed = 10000000000, CurrentPosition = 0, CurrentSpeed = 0 };
 
         var shutterDevice = new ShutterDevice('s', "") { DelayOff = 50, DelayOn = 50, IsOn = false };
 

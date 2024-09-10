@@ -158,15 +158,33 @@ namespace standa_controller_software.custom_functions.helpers
             var projectedMaxDecelerations = new Dictionary<char, float>();
             var projectedMaxSpeeds = new Dictionary<char, float>();
 
-            // Calculate the time for completion for each axis
-            // allocatedTime will equal the slowest one.
-            // parameters will alays equal to maxAccel, maxDecell, maxSpeed? yes.
+            foreach (char name in deviceNames)
+            {
+                movementRatio[name] = trajectoryLength / positionerMovementInfo[name].TargetDistance;
+                projectedMaxAccelerations[name] = positionerMovementInfo[name].MaxAcceleration * movementRatio[name];
+                projectedMaxDecelerations[name] = positionerMovementInfo[name].MaxDeceleration * movementRatio[name];
+                projectedMaxSpeeds[name] = positionerMovementInfo[name].MaxSpeed * movementRatio[name];
+            }
+            var projectedMaxAcceleration = projectedMaxAccelerations.Min(kvp => kvp.Value);
+            var projectedMaxDeceleration = projectedMaxDecelerations.Min(kvp => kvp.Value);
+            var projectedMaxSpeed = Math.Min(trajectorySpeedCalculated, projectedMaxSpeeds.Min(kvp => kvp.Value));
 
-            var timesToComplete = new Dictionary<char, float>();
+            var targetSpeed = new Dictionary<char, float>();
 
             foreach (char name in deviceNames)
             {
-                timesToComplete[name] = (float)CalculateTotalTime(trajectoryLength, positionerMovementInfo[name].TargetDistance, positionerMovementInfo[name].MaxAcceleration, positionerMovementInfo[name].MaxDeceleration);
+                targetSpeed[name] = projectedMaxSpeed / movementRatio[name];
+            }
+
+                // Calculate the time for completion for each axis
+                // allocatedTime will equal the slowest one.
+                // parameters will alays equal to maxAccel, maxDecell, maxSpeed? yes.
+
+                var timesToComplete = new Dictionary<char, float>();
+
+            foreach (char name in deviceNames)
+            {
+                timesToComplete[name] = (float)CalculateTotalTime(trajectoryLength / movementRatio[name], targetSpeed[name], positionerMovementInfo[name].MaxAcceleration, positionerMovementInfo[name].MaxDeceleration);
             }
             
             allocatedTime = timesToComplete.Max(kvp=> kvp.Value);
