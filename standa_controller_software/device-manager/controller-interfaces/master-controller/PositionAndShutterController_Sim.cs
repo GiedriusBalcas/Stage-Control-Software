@@ -1,4 +1,5 @@
-﻿using standa_controller_software.command_manager;
+﻿using OpenTK.Compute.OpenCL;
+using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.controller_interfaces.shutter;
@@ -6,6 +7,7 @@ using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO.Ports;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -43,6 +45,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
         private Queue<MovementInformation> _buffer;
         private bool _launchPending = true;
+        private ConcurrentQueue<string>? _log;
 
         public PositionAndShutterController_Sim(string name) : base(name)
         {
@@ -67,82 +70,138 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
             _buffer = new Queue<MovementInformation>();
             _syncExecuter = new InternalSyncExecuter();
+            _syncExecuter.SendMessage += GotMessageFromSyncExecuter;
+
         }
 
-        private async Task ProcessQueue(Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log)
+
+        private void GotMessageFromSyncExecuter(string Message)
         {
-            while (_buffer.Count > 0)
+            if (Message == "0x01") // Arduino signaled buffer space is available
+            {
+                SendCommandIfAvailable();
+            }
+            else if (Message == "0x02") // Arduino signaled buffer is empty
+            {
+                Console.WriteLine("Arduino buffer is empty. All commands executed.");
+            }
+        }
+
+        private async Task SendCommandIfAvailable()
+        {
+            if (_buffer.Count > 0)
             {
                 var movementInformation = _buffer.Dequeue();
                 var PosInfoControllerGroups = movementInformation.PositionerInfoGroups;
                 var execInfo = movementInformation.ExecutionInformation;
 
-
-                // Check if the buffers arent full.
-
-                int minFreeItemCount = GetMinFreeBufferItemCount();
-
-                // if they are full, let's launch them.
-                if (minFreeItemCount < 1)
-                {
-                    log.Enqueue("-------------------Encountered Buffer shortage.----------------");
-                    _syncExecuter.ExecuteQueue(log);
-                }
-
-                while (minFreeItemCount < 0)
-                {
-                    minFreeItemCount = GetMinFreeBufferItemCount();
-                    await Task.Delay(100);
-                }
-                // wait until some buffer from both is freed up.
-
-                // Sending add_sync_in_action
-
-
-                foreach (var (controllerName, posInfoList) in PosInfoControllerGroups)
-                {
-                    var deviceNamesCurrent = posInfoList.Devices;
-                    //object[][] parameters = new object[posInfoList.Devices.Length][];
-
-                    //for (int i = 0; i < posInfoList.Devices.Length; i++)
-                    //{
-                    //    parameters[i] = [posInfoList.TargetPositions, posInfoList.AllocatedTimes];
-                    //}
-                    var parameters = new AddSyncInActionParameters
-                    {
-                        MovementInformation = new Dictionary<char, PositionTimePair>()
-                    };
-
-                    foreach (var deviceName in deviceNamesCurrent)
-                    {
-                        var index = Array.IndexOf(deviceNamesCurrent, deviceName);
-                        parameters.MovementInformation[deviceName] = new PositionTimePair
-                        {
-                            Position = posInfoList.TargetPositions[index],
-                            Time = posInfoList.AllocatedTimes[index]
-                        };
-                    }
-
-
-                    var command = new Command()
-                    {
-                        Action = CommandDefinitions.AddSyncInAction,
-                        TargetController = controllerName,
-                        TargetDevices = posInfoList.Devices,
-                        Parameters = parameters,
-                        Await = true,
-                    };
-                    await SlaveControllers[controllerName].ExecuteCommandAsync(command, semaphores[controllerName], log);
-                }
-
-                // Sending the sync_execution_info
-
-                _syncExecuter.AddBufferItem(execInfo);
-
+                await SendBufferItemToControllers(PosInfoControllerGroups, execInfo, SlaveControllersLocks, _log);
             }
 
-            await _syncExecuter.ExecuteQueue(log);
         }
+
+        private async Task ProcessQueue(Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log)
+        {
+            log.Enqueue($"-------------------Starting to flushing buffer to controllers, movement buffer count: {_buffer.Count}.----------------");
+
+            await FillControllerBuffers(semaphores, log);
+
+            //while (_buffer.Count > 0)
+            //{
+            //    var movementInformation = _buffer.Dequeue();
+            //    var PosInfoControllerGroups = movementInformation.PositionerInfoGroups;
+            //    var execInfo = movementInformation.ExecutionInformation;
+
+            //    minFreeItemCount = GetMinFreeBufferItemCount();
+
+            //    if (minFreeItemCount < 2)
+            //    {
+            //        log.Enqueue("-------------------Encountered Buffer shortage.----------------");
+            //        _ = _syncExecuter.ExecuteQueue(log);
+            //    }
+
+            //    while (minFreeItemCount < 2)
+            //    {
+            //        log.Enqueue("------------------------waiting----------------");
+
+            //        minFreeItemCount = GetMinFreeBufferItemCount();
+
+            //        await Task.Delay(100);
+            //    }
+
+
+            //    log.Enqueue("------------------------sending buffer item to controllers----------------");
+            //    await SendBufferItemToControllers(PosInfoControllerGroups, execInfo, semaphores, log);
+
+            //}
+            _launchPending = true;
+            await _syncExecuter.ExecuteQueue(log);
+
+
+            // await response from AK.
+
+
+
+        }
+
+        private async Task FillControllerBuffers(Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log)
+        {
+            int minFreeItemCount = GetMinFreeBufferItemCount();
+            int bufferCount = _buffer.Count;
+
+            for (int i = 0; i < Math.Min(minFreeItemCount, bufferCount); i++)
+            {
+                var movementInformation = _buffer.Dequeue();
+                var PosInfoControllerGroups = movementInformation.PositionerInfoGroups;
+                var execInfo = movementInformation.ExecutionInformation;
+
+                await SendBufferItemToControllers(PosInfoControllerGroups, execInfo, semaphores, log);
+            }
+        }
+
+        private async Task SendBufferItemToControllers(Dictionary<string, PositionerInfo>? PosInfoControllerGroups, ExecutionInformation execInfo, Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log)
+        {
+            foreach (var (controllerName, posInfoList) in PosInfoControllerGroups)
+            {
+                var deviceNamesCurrent = posInfoList.Devices;
+                //object[][] parameters = new object[posInfoList.Devices.Length][];
+
+                //for (int i = 0; i < posInfoList.Devices.Length; i++)
+                //{
+                //    parameters[i] = [posInfoList.TargetPositions, posInfoList.AllocatedTimes];
+                //}
+                var parameters = new AddSyncInActionParameters
+                {
+                    MovementInformation = new Dictionary<char, PositionTimePair>()
+                };
+
+                foreach (var deviceName in deviceNamesCurrent)
+                {
+                    var index = Array.IndexOf(deviceNamesCurrent, deviceName);
+                    parameters.MovementInformation[deviceName] = new PositionTimePair
+                    {
+                        Position = posInfoList.TargetPositions[index],
+                        Time = posInfoList.AllocatedTimes[index]
+                    };
+                }
+
+
+                var command = new Command()
+                {
+                    Action = CommandDefinitions.AddSyncInAction,
+                    TargetController = controllerName,
+                    TargetDevices = posInfoList.Devices,
+                    Parameters = parameters,
+                    Await = true,
+                };
+                await SlaveControllers[controllerName].ExecuteCommandAsync(command, semaphores[controllerName], log);
+            }
+
+            // Sending the sync_execution_info
+
+            _syncExecuter.AddBufferItem(execInfo);
+        }
+
 
         private int GetMinFreeBufferItemCount()
         {
@@ -207,102 +266,139 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
         private Task MoveAbsolute(Command[] commands, Dictionary<string, SemaphoreSlim> semaphors, ConcurrentQueue<string> log)
         {
+            var commandParametersFromFirstCommand = commands.FirstOrDefault().Parameters as MoveAbsoluteParameters ?? throw new Exception("Unable to retrive MoveAbsolute parameters.");
 
+            bool isLeadInUsed = commandParametersFromFirstCommand.IsLeadInUsed;
+            bool isLeadOutUsed = commandParametersFromFirstCommand.IsLeadOutUsed;
 
-            //var parameters = command.Parameters as MoveAbsoluteParameters;
-            //var deviceNames = parameters.PositionerInfo.Keys.ToArray();
+            /// if lead in is used:
+            ///     1 movement- go to lead in start.
+            ///     2 movement- go to end position and adjust the shutter delays.
+            /// if lead out is used:
+            ///     1 movement- go to lead-out end position and adjust the shutter delays.
+            ///     2 movement- go back to target location.
 
-            //var posInfo = new PositionerInfo
+            //if (isLeadInUsed)
             //{
-            //    Devices = deviceNames,
-            //    TargetPositions = parameters.PositionerInfo.Values.Select(posInformation => posInformation.TargetPosition).ToArray(),
-            //    AllocatedTimes = deviceNames.Select(a => parameters.AllocatedTime).ToArray(),
-            //};
+            //    Dictionary<string, PositionerInfo> posInfoGroups_leadIn = new Dictionary<string, PositionerInfo>();
+            //    for (int i = 0; i < commands.Length; i++)
+            //    {
+            //        var command = commands[i];
+            //        var commandParameters = command.Parameters as MoveAbsoluteParameters ?? throw new Exception("Unable to retrive MoveAbsolute parameters.");
+
+            //        posInfoGroups_leadIn[command.TargetController] = new PositionerInfo
+            //        {
+            //            Devices = command.TargetDevices,
+            //            TargetPositions = command.TargetDevices.Select(deviceName => commandParameters.PositionerInfo[deviceName].LeadInformation.LeadInStartPos).ToArray(),
+            //            AllocatedTimes = command.TargetDevices.Select(deviceName => commandParameters.PositionerInfo[deviceName].LeadInformation.LeadInAllocatedTime).ToArray(),
+            //        };
+            //    }
 
 
+            //    var executionParameters_leadIn = new ExecutionInformation()
+            //    {
+            //        Devices = commands.SelectMany(comm => comm.TargetDevices).ToArray(),
+            //        Launch = _launchPending,
+            //        Rethrow = 0f,
+            //        Shutter = false,
+            //    };
 
-            Dictionary<string, PositionerInfo> PosInfoControllerGroups = new Dictionary<string, PositionerInfo>();
-            for(int i = 0; i< commands.Length; i++)
+            //    var moveInfo_LeadIn = new MovementInformation()
+            //    {
+            //        PositionerInfoGroups = posInfoGroups_leadIn,
+            //        ExecutionInformation = executionParameters_leadIn
+            //    };
+            //    _buffer.Enqueue(moveInfo_LeadIn);
+            //    _launchPending = false;
+
+            //}
+
+
+            Dictionary<string, PositionerInfo> posInfoGroups = new Dictionary<string, PositionerInfo>();
+
+            //if (isLeadOutUsed)
+            //{
+            //    for (int i = 0; i < commands.Length; i++)
+            //    {
+            //        var command = commands[i];
+            //        var commandParameters = command.Parameters as MoveAbsoluteParameters ?? throw new Exception("Unable to retrive MoveAbsolute parameters.");
+
+            //        posInfoGroups[command.TargetController] = new PositionerInfo
+            //        {
+            //            Devices = command.TargetDevices,
+            //            TargetPositions = command.TargetDevices.Select(deviceName => commandParameters.PositionerInfo[deviceName].LeadInformation.LeadOutEndPos).ToArray(),
+            //            AllocatedTimes = command.TargetDevices.Select(deviceName => commandParameters.AllocatedTime).ToArray(),
+            //        };
+            //    }
+            //}
+            //else
+            //{
+            for (int i = 0; i < commands.Length; i++)
             {
                 var command = commands[i];
                 var commandParameters = command.Parameters as MoveAbsoluteParameters ?? throw new Exception("Unable to retrive MoveAbsolute parameters.");
-                PosInfoControllerGroups[command.TargetController] = new PositionerInfo
+
+                posInfoGroups[command.TargetController] = new PositionerInfo
                 {
                     Devices = command.TargetDevices,
                     TargetPositions = command.TargetDevices.Select(deviceName => commandParameters.PositionerInfo[deviceName].TargetPosition).ToArray(),
                     AllocatedTimes = command.TargetDevices.Select(deviceName => commandParameters.AllocatedTime).ToArray(),
                 };
             }
-
-            
-            //// Iterate over all devices in the PositionerInfo
-            //for (int i = 0; i < deviceNames.Length; i++)
-            //{
-            //    char deviceName = deviceNames[i];
-
-            //    // Find which controller owns the device
-            //    foreach (var controllerEntry in SlaveControllers)
-            //    {
-            //        var controllerName = controllerEntry.Key;
-            //        var controller = controllerEntry.Value;
-
-            //        // Check if the controller has the device
-            //        if (controller.GetDevices().Any(device => device.Name == deviceName))
-            //        {
-            //            // If the controller owns the device, add it to the group
-            //            if (!PosInfoControllerGroups.ContainsKey(controllerName))
-            //            {
-            //                // Create a new PositionerInfo for the controller if not already in the dictionary
-            //                PosInfoControllerGroups[controllerName] = new PositionerInfo()
-            //                {
-            //                    Devices = new List<char>().ToArray(),
-            //                    TargetPositions = new List<float>().ToArray(),
-            //                    AllocatedTimes = new List<float>().ToArray()
-            //                };
-            //            }
-
-            //            // Add device info to the PositionerInfo for this controller
-            //            var controllerPosInfo = PosInfoControllerGroups[controllerName];
-
-            //            // Convert arrays to lists for easy appending
-            //            var devicesList = controllerPosInfo.Devices.ToList();
-            //            var targetPositionsList = controllerPosInfo.TargetPositions.ToList();
-            //            var allocatedTimesList = controllerPosInfo.AllocatedTimes.ToList();
-
-            //            devicesList.Add(deviceName);
-            //            targetPositionsList.Add(posInfo.TargetPositions[i]);
-            //            allocatedTimesList.Add(posInfo.AllocatedTimes[i]);
-
-            //            // Convert lists back to arrays and store them back in the PositionerInfo
-            //            PosInfoControllerGroups[controllerName] = new PositionerInfo()
-            //            {
-            //                Devices = devicesList.ToArray(),
-            //                TargetPositions = targetPositionsList.ToArray(),
-            //                AllocatedTimes = allocatedTimesList.ToArray()
-            //            };
-
-            //            break; // No need to check other controllers if we found the right one
-            //        }
-            //    }
             //}
 
+            var executionParameters = new ExecutionInformation()
+            {
+                Devices = commands.SelectMany(comm => comm.TargetDevices).ToArray(),
+                Launch = _launchPending,
+                Rethrow = 0f,
+                Shutter = commandParametersFromFirstCommand.IsShutterUsed,
+                Shutter_delay_off = commandParametersFromFirstCommand.IsShutterUsed ? commandParametersFromFirstCommand.ShutterInfo.DelayOff : 0f,
+                Shutter_delay_on = commandParametersFromFirstCommand.IsShutterUsed ? commandParametersFromFirstCommand.ShutterInfo.DelayOn : 0f,
+            };
 
             var moveInfo = new MovementInformation()
             {
-                PositionerInfoGroups = PosInfoControllerGroups,
-                ExecutionInformation = new ExecutionInformation()
-                {
-                    Devices = commands.SelectMany(comm => comm.TargetDevices).ToArray(),
-                    Launch = _launchPending,
-                    Rethrow = 0f,
-                    Shutter = false,
-                    Shutter_delay_off = 0f,
-                    Shutter_delay_on = 0f,
-                }
+                PositionerInfoGroups = posInfoGroups,
+                ExecutionInformation = executionParameters
             };
             _buffer.Enqueue(moveInfo);
 
             _launchPending = false;
+
+            //if (isLeadOutUsed)
+            //{
+            //    Dictionary<string, PositionerInfo> posInfoGroups_leadOut = new Dictionary<string, PositionerInfo>();
+            //    for (int i = 0; i < commands.Length; i++)
+            //    {
+            //        var command = commands[i];
+            //        var commandParameters = command.Parameters as MoveAbsoluteParameters ?? throw new Exception("Unable to retrive MoveAbsolute parameters.");
+
+            //        posInfoGroups_leadOut[command.TargetController] = new PositionerInfo
+            //        {
+            //            Devices = command.TargetDevices,
+            //            TargetPositions = command.TargetDevices.Select(deviceName => commandParameters.PositionerInfo[deviceName].TargetPosition).ToArray(),
+            //            AllocatedTimes = command.TargetDevices.Select(deviceName => commandParameters.PositionerInfo[deviceName].LeadInformation.LeadInAllocatedTime).ToArray(),
+            //        };
+            //    }
+
+
+            //    var executionParameters_leadOut = new ExecutionInformation()
+            //    {
+            //        Devices = commands.SelectMany(comm => comm.TargetDevices).ToArray(),
+            //        Launch = _launchPending,
+            //        Rethrow = 0f,
+            //        Shutter = false,
+            //    };
+
+            //    var moveInfo_LeadIn = new MovementInformation()
+            //    {
+            //        PositionerInfoGroups = posInfoGroups_leadOut,
+            //        ExecutionInformation = executionParameters_leadOut
+            //    };
+            //    _buffer.Enqueue(moveInfo_LeadIn);
+            //    _launchPending = false;
+            //}
 
             return Task.CompletedTask;
         }
@@ -311,16 +407,21 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         {
             throw new NotImplementedException();
         }
-        public override void AddSlaveController(BaseController controller)
+        public override void AddSlaveController(BaseController controller, SemaphoreSlim controllerLock)
         {
             if (controller is ShutterController_Sim shutterController)
             {
                 SlaveControllers.Add(shutterController.Name, shutterController);
+                SlaveControllersLocks.Add(shutterController.Name, controllerLock);
+                _syncExecuter._shutterChangeState = (bool wantedState) =>
+                {
+                    _ = shutterController.ChangeStatePublic(wantedState);
+                };
             }
             else if (controller is PositionerController_Sim positionerController)
             {
                 SlaveControllers.Add(positionerController.Name, positionerController);
-
+                SlaveControllersLocks.Add(positionerController.Name, controllerLock);
 
                 foreach (var device in positionerController.GetDevices())
                 {
@@ -384,7 +485,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             var controllerCopy = new PositionAndShutterController_Virtual(this.Name);
             foreach (var slaveController in SlaveControllers)
             {
-                controllerCopy.AddSlaveController(slaveController.Value.GetCopy());
+                controllerCopy.AddSlaveController(slaveController.Value.GetCopy(), SlaveControllersLocks[slaveController.Key]);
             }
 
             return controllerCopy;
@@ -402,7 +503,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
         public override async Task ExecuteSlaveCommandsAsync(Command[] commands, Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log)
         {
-            log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {string.Join(' ',commands.Select(command => command.Action).ToArray())} command on device {string.Join(' ', commands.SelectMany(command => command.TargetDevices).ToArray())},  {string.Join(' ', commands.Select(command => command.Parameters.ToString()))}  ");
+            log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {string.Join(' ', commands.Select(command => command.Action).ToArray())} command on device {string.Join(' ', commands.SelectMany(command => command.TargetDevices).ToArray())},  {string.Join(' ', commands.Select(command => command.Parameters.ToString()))}  ");
 
             var command = commands.First();
             if (_methodMap_multiControntroller.TryGetValue(commands.First().Action, out var method))
@@ -421,7 +522,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         public override async Task AwaitQueuedItems(Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log)
         {
             /// Because I dont have the slave controllers after the constructor, I'll just create a new _syncExecuter here each time.
-            foreach(var (controllerName, semaphore)in semaphores)
+            foreach (var (controllerName, semaphore) in semaphores)
             {
                 if (semaphore.CurrentCount == 0)
                     semaphore.Release();

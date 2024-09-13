@@ -11,6 +11,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 {
     public abstract class BaseMasterController : BaseController
     {
+        public Dictionary<string, BaseController> SlaveControllers { get; set; } = new Dictionary<string, BaseController>();
+        public Dictionary<string, SemaphoreSlim> SlaveControllersLocks { get; set; } = new Dictionary<string, SemaphoreSlim>();
+
         protected class MultiControllerMethodInformation()
         {
             public Func<Command[], Dictionary<string, SemaphoreSlim>, ConcurrentQueue<string>, Task> MethodHandle;
@@ -24,7 +27,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         protected BaseMasterController(string name) : base(name)
         {
         }
-
+        public abstract void AddSlaveController(BaseController controller, SemaphoreSlim controllerLock);
         public abstract Task ExecuteSlaveCommandsAsync(Command[] commands, Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log);
         public abstract Task AwaitQueuedItems(Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log);
 

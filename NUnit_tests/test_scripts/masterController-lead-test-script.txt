@@ -5,26 +5,19 @@ height = 100;
 kiekx = 10;
 kiekz = 10;
 
-moveA.Speed = 5000.01;
+moveA.Speed = 1000.01;
 moveA.Line = true;
 
-moveA.LeadIn = true;
-moveA.LeadOut = true;
+moveA.LeadIn = false;
+moveA.LeadOut = false;
+moveA.Shutter = false;
 
-moveA.Shutter = true;
 for( k=0; k<kiekz; k++)
 {
-	if(k > 1)
-	{
-		
-		moveA.LeadIn = false;
-		moveA.LeadOut = false;
-
-	}	
-
+	
 	zas = height/kiekz*k;
-xas = 0.1;
-yas = 0.1;
+	xas = 0.1;
+	yas = 0.1;
 	moveA("xyz", xas, yas, zas);
 
 	for( i=0; i<kiekx; i++)
@@ -36,7 +29,15 @@ yas = 0.1;
 
 
 		moveA("x", xas);
+		
+		moveA.LeadIn = true;
+		moveA.LeadOut = true;
+		moveA.Shutter = true;
+
 		moveA("y", yas);
+		moveA.Shutter = false;
+		moveA.LeadIn = false;
+		moveA.LeadOut = false;
 		
 	}
 }

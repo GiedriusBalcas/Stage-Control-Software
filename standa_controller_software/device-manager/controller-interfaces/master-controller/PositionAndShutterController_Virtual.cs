@@ -81,7 +81,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         {
             throw new NotImplementedException();
         }
-        public override void AddSlaveController(BaseController controller)
+        public override void AddSlaveController(BaseController controller, SemaphoreSlim controllerLock)
         {
             if(controller is ShutterController_Virtual shutterController)
             {
@@ -145,7 +145,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             var controllerCopy = new PositionAndShutterController_Virtual(this.Name);
             foreach (var slaveController in SlaveControllers)
             {
-                controllerCopy.AddSlaveController(slaveController.Value.GetCopy());
+                controllerCopy.AddSlaveController(slaveController.Value.GetCopy(), SlaveControllersLocks[slaveController.Key]);
             }
 
             return controllerCopy;

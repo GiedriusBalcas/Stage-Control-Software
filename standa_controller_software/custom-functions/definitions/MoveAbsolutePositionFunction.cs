@@ -77,6 +77,9 @@ namespace standa_controller_software.custom_functions.definitions
             float[] positions = positionsList.ToArray();
             float[] waitUntil = waitUntilList.ToArray();
 
+            if (deviceNames.Length == 0)
+                return null;
+
             this.TryGetProperty("Speed", out object trajSpeed);
 
             float? trajectorySpeed = null; // Default value
@@ -306,8 +309,8 @@ namespace standa_controller_software.custom_functions.definitions
                         positionerMovementInformations_LeadInStart[name] = new PositionerMovementInformation
                         {
                             TargetPosition = positionerMovementInformations_LeadIn[name].StartingPosition,
-                            TargetDistance = Math.Abs(positionerMovementInformations_LeadInStart[name].TargetPosition - positionerMovementInformations_LeadInStart[name].StartingPosition),
-                            TargetDirection = positionerMovementInformations_LeadInStart[name].TargetPosition > positionerMovementInformations_LeadInStart[name].StartingPosition,
+                            TargetDistance = Math.Abs(positionerMovementInformations_LeadIn[name].StartingPosition - positioner.CurrentPosition),
+                            TargetDirection = positionerMovementInformations_LeadIn[name].StartingPosition > positioner.CurrentPosition,
                             StartingPosition = positioner.CurrentPosition,
                             StartingSpeed = positioner.CurrentSpeed,
                             StartingAcceleration = positioner.Acceleration,
@@ -320,7 +323,7 @@ namespace standa_controller_software.custom_functions.definitions
                     else
                         throw new Exception($"Unable retrieve positioner device {name}.");
                 }
-                if (!CustomFunctionHelper.TryGetMaxKinParameters(_controllerManager, trajectorySpeed, ref positionerMovementInformations_Constant, out float allocatedTime_toLeadInStart))
+                if (!CustomFunctionHelper.TryGetMaxKinParameters(_controllerManager, trajectorySpeed, ref positionerMovementInformations_LeadInStart, out float allocatedTime_toLeadInStart))
                     throw new Exception("Failed to create line kinematic parameters");
 
 
@@ -419,7 +422,7 @@ namespace standa_controller_software.custom_functions.definitions
                             WaitUntil = waitUntilPos,
                             TargetSpeed = positionerMovementInformations[deviceName].TargetSpeed,
                             Direction = positionerMovementInformations[deviceName].TargetPosition >= positionerMovementInformations[deviceName].StartingPosition,
-                            TargetPosition = positionerMovementInformations[deviceName].TargetPosition,
+                            TargetPosition = positionerMovementInformations_LeadOut[deviceName].TargetPosition,
                         };
                     }
 
@@ -433,8 +436,8 @@ namespace standa_controller_software.custom_functions.definitions
                         // TODO: shutter delays according to the lead information.
                         shutterInfo = new ShutterInfo
                         {
-                            DelayOn = 0f,
-                            DelayOff = 0f,
+                            DelayOn = allocatedTimeLeadIn,
+                            DelayOff = moveAParameters.AllocatedTime - allocatedTime_LeadOut,
                         };
                     }
                     moveAParameters.ShutterInfo = shutterInfo;
@@ -453,6 +456,91 @@ namespace standa_controller_software.custom_functions.definitions
 
                 _commandManager.EnqueueCommandLine(commandsMovement.ToArray());
                 _commandManager.ExecuteCommandLine(commandsMovement.ToArray()).GetAwaiter().GetResult();
+
+
+                // GETTING TO LEAD-OUT START PHASE
+
+                var positionerMovementInformations_LeadOutStart = new Dictionary<char, PositionerMovementInformation>();
+
+                foreach (char name in deviceNames)
+                {
+                    if (_controllerManager.TryGetDevice<BasePositionerDevice>(name, out var positioner))
+                    {
+                        positionerMovementInformations_LeadOutStart[name] = new PositionerMovementInformation
+                        {
+                            TargetPosition = positionerMovementInformations[name].TargetPosition,
+                            TargetDistance = Math.Abs(positionerMovementInformations[name].TargetPosition - positionerMovementInformations_LeadOut[name].TargetPosition),
+                            TargetDirection = positionerMovementInformations[name].TargetPosition > positionerMovementInformations_LeadOut[name].TargetPosition,
+                            StartingPosition = positioner.CurrentPosition,
+                            StartingSpeed = positioner.CurrentSpeed,
+                            StartingAcceleration = positioner.Acceleration,
+                            StartingDeceleration = positioner.Deceleration,
+                            MaxAcceleration = positioner.MaxAcceleration,
+                            MaxDeceleration = positioner.MaxDeceleration,
+                            MaxSpeed = positioner.MaxSpeed,
+                        };
+                    }
+                    else
+                        throw new Exception($"Unable retrieve positioner device {name}.");
+                }
+                if (!CustomFunctionHelper.TryGetMaxKinParameters(_controllerManager, trajectorySpeed, ref positionerMovementInformations_LeadOutStart, out float allocatedTime_toLeadOutStart))
+                    throw new Exception("Failed to create line kinematic parameters");
+
+                // MOVEA COMMAND TO LEAD-OUT START
+
+                List<Command> commandsMovement_LeadOut = new List<Command>();
+
+                foreach (var controllerGroup in groupedDevicesByController)
+                {
+                    var groupedDeviceNames = controllerGroup.Value.Select(device => device.Name).ToArray();
+                    var controlerName = controllerGroup.Key.Name;
+
+                    var moveAParameters = new MoveAbsoluteParameters();
+                    moveAParameters.IsShutterUsed = false;
+                    moveAParameters.IsLeadOutUsed = false;
+                    moveAParameters.IsLeadInUsed = false;
+                    moveAParameters.AllocatedTime = allocatedTime_toLeadInStart;
+
+                    var PositionerInfoDictionary = new Dictionary<char, PositionerInfo>();
+
+                    foreach (var deviceName in groupedDeviceNames)
+                    {
+                        LeadInfo? leadInfo = null;
+
+                        float? waitUntilPos = null;
+
+                        PositionerInfoDictionary[deviceName] = new PositionerInfo
+                        {
+                            LeadInformation = leadInfo,
+                            WaitUntil = waitUntilPos,
+                            TargetSpeed = positionerMovementInformations_LeadOutStart[deviceName].TargetSpeed,
+                            Direction = positionerMovementInformations_LeadOutStart[deviceName].TargetDirection,
+                            TargetPosition = positionerMovementInformations_LeadOutStart[deviceName].TargetPosition,
+                        };
+                    }
+
+                    moveAParameters.PositionerInfo = PositionerInfoDictionary;
+
+                    /// This delay is not the same as the intrinsic Shutter delay, described in ShutterDevice
+                    /// This delay can be used to perform timed movement where shutter state is in accordance to a lead in/out.
+                    ShutterInfo? shutterInfo = null;
+                    moveAParameters.ShutterInfo = shutterInfo;
+
+                    commandsMovement_LeadOut.Add(
+                        new Command()
+                        {
+                            Action = CommandDefinitions.MoveAbsolute,
+                            Await = true,
+                            Parameters = moveAParameters,
+                            TargetController = controlerName,
+                            TargetDevices = groupedDeviceNames
+                        }
+                    );
+                }
+
+                _commandManager.EnqueueCommandLine(commandsMovement_LeadOut.ToArray());
+                _commandManager.ExecuteCommandLine(commandsMovement_LeadOut.ToArray()).GetAwaiter().GetResult();
+
 
             }
             else
@@ -603,7 +691,7 @@ namespace standa_controller_software.custom_functions.definitions
                 positionerMovementInfo[name].TargetDeceleration = positionerMovementInfo[name].MaxDeceleration * (timesToDecel[name] / maxTimeToDecel);
             }
 
-            var projectedDistanceToAccelerate = 1 / 2 * maxTimeToAccel * maxTimeToAccel * projectedMaxAcceleration;
+            var projectedDistanceToAccelerate = maxTimeToAccel * maxTimeToAccel * projectedMaxAcceleration * 0.5f;
             var distancesToAccelerate = new Dictionary<char, float>();
             var leadPositions = new Dictionary<char, float>();
 
@@ -618,9 +706,8 @@ namespace standa_controller_software.custom_functions.definitions
             allocatedTime = maxTimeToAccel;
         }
 
-        private void GetLeadOutKinParameters(ControllerManager controllerManager, float? trajectorySpeed, ref Dictionary<char, PositionerMovementInformation> positionerMovementInformations, out float allocatedTime)
+        private void GetLeadOutKinParameters(ControllerManager controllerManager, float? trajectorySpeed, ref Dictionary<char, PositionerMovementInformation> positionerMovementInfo, out float allocatedTime)
         {
-            var positionerMovementInfo = positionerMovementInformations;
 
             char[] deviceNames = positionerMovementInfo.Keys.ToArray();
 
@@ -690,7 +777,7 @@ namespace standa_controller_software.custom_functions.definitions
                 positionerMovementInfo[name].TargetDeceleration = positionerMovementInfo[name].MaxDeceleration * (timesToDecel[name] / maxTimeToDecel);
             }
 
-            var projectedDistanceToDecelerate = 1 / 2 * maxTimeToDecel * maxTimeToDecel * projectedMaxDeceleration;
+            var projectedDistanceToDecelerate = maxTimeToDecel * maxTimeToDecel * projectedMaxDeceleration * 0.5f;
             var distancesToDecelerate = new Dictionary<char, float>();
             var leadPositions = new Dictionary<char, float>();
 

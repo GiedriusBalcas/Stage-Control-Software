@@ -111,10 +111,5 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             return Task.CompletedTask;
         }
 
-        public override void AddSlaveController(BaseController controller)
-        {
-            // TODO: implement the add SlaveController
-            SlaveControllers.Add(controller.Name, controller);
-        }
     }
 }

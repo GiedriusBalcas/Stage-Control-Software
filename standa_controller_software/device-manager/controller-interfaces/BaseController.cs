@@ -31,7 +31,6 @@ namespace standa_controller_software.device_manager.controller_interfaces
         protected Dictionary<CommandDefinitions, MethodInformation> _methodMap = new Dictionary<CommandDefinitions, MethodInformation>();
 
         public BaseController? MasterController { get; set; } = null;
-        public Dictionary<string, BaseController> SlaveControllers { get; set; } = new Dictionary<string, BaseController>();
 
         public bool IsQuable { get; set; } = false;
 
@@ -40,12 +39,10 @@ namespace standa_controller_software.device_manager.controller_interfaces
         protected BaseController(string name)
         {
             Name = name;
-            SlaveControllers = new Dictionary<string, BaseController>();
         }
         public abstract Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
         public abstract Task UpdateStatesAsync(ConcurrentQueue<string> log);
         public abstract void AddDevice(BaseDevice device);
-        public abstract void AddSlaveController(BaseController controller);
         public abstract Task ConnectDevice(BaseDevice device, SemaphoreSlim semaphore);
         public abstract List<BaseDevice> GetDevices();
         public abstract BaseController GetCopy();

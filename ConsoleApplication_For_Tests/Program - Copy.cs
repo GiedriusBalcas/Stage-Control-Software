@@ -76,7 +76,7 @@ class Program
     private static void ReadText()
     {
 
-        string filePath = "C:\\Users\\giedr\\OneDrive\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\NUnit_tests\\test_scripts\\masterController-test-script.txt";
+        string filePath = "C:\\Users\\giedr\\OneDrive\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\NUnit_tests\\test_scripts\\masterController-lead-test-script.txt";
         var inputText = File.ReadAllText(filePath);
         
         try
@@ -95,7 +95,7 @@ class Program
     private static async void ExecuteCommandQueue()
     {
 
-        Thread.Sleep(500);
+        Thread.Sleep(2000);
 
         Console.WriteLine("Before Starting:");
         Console.WriteLine(_commandManager.GetCommandQueueAsString());
@@ -136,9 +136,9 @@ class Program
     {
 
 
-        var deviceX = new LinearPositionerDevice('x', "") { Acceleration = 1000, Deceleration = 1000, MaxAcceleration = 1000, MaxDeceleration = 1000, MaxSpeed = 5000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
-        var deviceY = new LinearPositionerDevice('y', "") { Acceleration = 1000, Deceleration = 1000, MaxAcceleration = 1000, MaxDeceleration = 1000, MaxSpeed = 5000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
-        var deviceZ = new LinearPositionerDevice('z', "") { Acceleration = 1000, Deceleration = 1000, MaxAcceleration = 1000, MaxDeceleration = 1000, MaxSpeed = 5000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
+        var deviceX = new LinearPositionerDevice('x', "") { Acceleration = 1000, Deceleration = 10000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 50000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
+        var deviceY = new LinearPositionerDevice('y', "") { Acceleration = 1000, Deceleration = 10000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 50000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
+        var deviceZ = new LinearPositionerDevice('z', "") { Acceleration = 1000, Deceleration = 10000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 50000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
 
 
         //var deviceX = new LinearPositionerDevice('x', "") { Acceleration = 10000000000, Deceleration = 10000000000, MaxAcceleration = 10000000000, MaxDeceleration = 10000000000, MaxSpeed = 10000000000, Speed = 10000000000, CurrentPosition = 0, CurrentSpeed = 0 };
@@ -150,21 +150,22 @@ class Program
         var masterController = new PositionAndShutterController_Sim("master") { IsQuable = true };
         var posController1 = new PositionerController_Sim("FirstController") { MasterController = masterController };
         var posController2 = new PositionerController_Sim("SecondController") { MasterController = masterController };
-        var shutterController = new ShutterController_Virtual("Shutter-controller");
+        var shutterController = new ShutterController_Sim("Shutter-controller");
 
         posController1.AddDevice(deviceX);
         posController1.AddDevice(deviceY);
         posController2.AddDevice(deviceZ);
         shutterController.AddDevice(shutterDevice);
 
-        masterController.AddSlaveController(posController1);
-        masterController.AddSlaveController(posController2);
-
         var controllerManager = new ControllerManager();
         controllerManager.AddController(posController1);
         controllerManager.AddController(posController2);
         controllerManager.AddController(shutterController);
         controllerManager.AddController(masterController);
+
+        masterController.AddSlaveController(posController1, controllerManager.ControllerLocks[posController1.Name]);
+        masterController.AddSlaveController(posController2, controllerManager.ControllerLocks[posController2.Name]);
+        masterController.AddSlaveController(shutterController, controllerManager.ControllerLocks[shutterController.Name]);
 
         var toolPositionFunctionX = (Dictionary<char, float> positions) =>
         {

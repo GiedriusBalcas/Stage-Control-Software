@@ -1,4 +1,5 @@
 ﻿using standa_controller_software.device_manager.controller_interfaces;
+using standa_controller_software.device_manager.controller_interfaces.master_controller;
 using standa_controller_software.device_manager.devices;
 using standa_controller_software.device_manager.devices.shutter;
 using System;
@@ -128,17 +129,16 @@ namespace standa_controller_software.device_manager
                 }
             }
 
-            List<BaseController> masterControllers_copy = controllerManager_copy.Controllers.Values.Where
-                (
-                    controller => Controllers[controller.Name].SlaveControllers.Count > 0
-                ).ToList();
+            List<BaseMasterController> masterControllers_copy = controllerManager_copy.Controllers.Values
+                .OfType<BaseMasterController>() // Filters only BaseMasterController instances
+                .ToList();
 
             foreach (var masterController_copy in masterControllers_copy)
             {
-                var controllerToCopy = Controllers[masterController_copy.Name];
+                var controllerToCopy = Controllers[masterController_copy.Name] as BaseMasterController;
                 foreach (var (slaveControllerName, slaveController) in controllerToCopy.SlaveControllers)
                 {
-                    masterController_copy.AddSlaveController(controllerManager_copy.Controllers[slaveControllerName]);
+                    masterController_copy.AddSlaveController(controllerManager_copy.Controllers[slaveControllerName], controllerManager_copy.ControllerLocks[slaveControllerName]);
                     controllerManager_copy.Controllers[slaveControllerName].MasterController = masterController_copy;
                 }
             }

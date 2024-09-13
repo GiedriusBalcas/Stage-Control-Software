@@ -134,11 +134,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
             var parameters = _buffer[name].Dequeue();
 
-            var recalculatedTargetSpeed = parameters.AllocatedTime > 0f 
-                ? Math.Abs(parameters.TargetPosition - _deviceInfo[name].CurrentPosition) / parameters.AllocatedTime 
+            var distance = Math.Abs(parameters.TargetPosition - _deviceInfo[name].CurrentPosition);
+            var recalculatedTargetSpeed = parameters.AllocatedTime > 0f
+                ? distance / parameters.AllocatedTime
                 : 0f;
+            //var recalculatedTargetSpeed = CalculateTargetSpeed(parameters.AllocatedTime, distance, _deviceInfo[name].Acceleration, _deviceInfo[name].Deceleration);
 
-            _deviceInfo[name].Speed = recalculatedTargetSpeed;
+            _deviceInfo[name].Speed = (float)recalculatedTargetSpeed;
 
             float targetPosition = parameters.TargetPosition;
             
@@ -166,7 +168,30 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             _ = UpdateCommandMoveA(device.Name, targetPosition, deviceCancellationTokens[device.Name].Token);
         }
 
+        public static double CalculateTargetSpeed(double totalTime, double totalDistance, double acceleration, double deceleration)
+        {
+            // Quadratic coefficients
+            double A = 1;
+            double B = -((acceleration + deceleration) * totalTime) / 2;
+            double C = acceleration * deceleration * totalDistance;
 
+            // Calculate discriminant
+            double discriminant = B * B - 4 * A * C;
+
+            // Check for non-negative discriminant
+            if (discriminant < 0)
+            {
+                Console.WriteLine("No real solutions, check your input values.");
+                return 0;
+            }
+
+            // Calculate both possible speeds (only one will be physically meaningful)
+            double v_target1 = (-B + Math.Sqrt(discriminant)) / (2 * A);
+            double v_target2 = (-B - Math.Sqrt(discriminant)) / (2 * A);
+
+            // Return the positive, realistic target speed
+            return Math.Max(v_target1, v_target2);
+        }
 
         protected override async Task MoveAbsolute(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
@@ -588,10 +613,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return controller;
         }
 
-        public override void AddSlaveController(BaseController controller)
-        {
-            throw new NotImplementedException();
-        }
 
         protected override Task WaitUntilStop(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {

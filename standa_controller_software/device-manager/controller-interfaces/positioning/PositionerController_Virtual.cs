@@ -210,9 +210,5 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return Task.CompletedTask;
          }
 
-        public override void AddSlaveController(BaseController controller)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

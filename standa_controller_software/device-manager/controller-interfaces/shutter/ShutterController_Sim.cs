@@ -74,6 +74,23 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             //}
         }
 
+        public async Task ChangeStatePublic(bool wantedstate)
+        {
+            var device = Devices.First().Value;
+            _deviceInfo[device.Name]._isOn = wantedstate;
+            device.IsOn = wantedstate;
+
+
+            //for (int i = 0; i < devices.Length; i++)
+            //{
+            //    var device = devices[i];
+            //    var state = (bool)command.Parameters[i][0];
+            //    await Task.Delay(2);
+            //    _deviceInfo[device.Name]._isOn = state;
+            //    device.IsOn = state;
+            //}
+        }
+
         protected override async Task ChangeStateOnInterval(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
             // TODO: implement cancelation tokens.
@@ -136,9 +153,5 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             return Task.CompletedTask;
         }
 
-        public override void AddSlaveController(BaseController controller)
-        {
-            throw new NotImplementedException();
-        }
     }
 }
