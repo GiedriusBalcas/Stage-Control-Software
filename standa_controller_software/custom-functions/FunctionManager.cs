@@ -20,7 +20,6 @@ namespace standa_controller_software.custom_functions
             _controllerManager = controllerManager;
             _commandManager = commandManager;
 
-            Definitions = new Definitions();
             InitializeDefinitions();
         }
 
@@ -34,7 +33,9 @@ namespace standa_controller_software.custom_functions
             };
             _controllerManager_virtual = _controllerManager.CreateACopy(rules);
             _commandManager_virtual = new CommandManager(_controllerManager_virtual);
-
+            _commandManager_virtual.ClearQueue();
+            
+            Definitions = new Definitions();
             Definitions.AddFunction("moveA", new MoveAbsolutePositionFunction(_commandManager_virtual, _controllerManager_virtual));
             //Definitions.AddFunction("arcA", new MoveArcAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual));
             //Definitions.AddFunction("shutter", new ChangeShutterStateFunction(_commandManager_virtual, _controllerManager_virtual));
@@ -45,6 +46,11 @@ namespace standa_controller_software.custom_functions
         public IEnumerable<Command[]> ExtractCommands()
         {
             return _commandManager_virtual.GetCommandQueueList();
+        }
+
+        public void ClearCommandQueue()
+        {
+            _commandManager_virtual.ClearQueue();
         }
     }
 }

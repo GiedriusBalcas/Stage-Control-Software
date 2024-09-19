@@ -69,13 +69,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 float accelValue = movementParams.MovementSettingsInformation[device.Name].TargetAcceleration;
                 float decelValue = movementParams.MovementSettingsInformation[device.Name].TargetDeceleration;
 
-                //float speedValue = (float)(command.Parameters[i][0]);
-                //float accelValue = (float)(command.Parameters[i][1]);
-                //float decelValue = (float)(command.Parameters[i][2]);
-
-                device.Speed = speedValue;
-                device.Acceleration = accelValue;
-                device.Deceleration = decelValue;
+                device.Speed = Math.Min(speedValue, device.MaxSpeed);
+                device.Acceleration = Math.Min(accelValue, device.MaxAcceleration);
+                device.Deceleration = Math.Min(decelValue, device.MaxDeceleration);
             }
 
             return Task.CompletedTask;
@@ -126,7 +122,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
             var movementParams = command.Parameters as MoveAbsoluteParameters;
 
-            // TODO: if there's no waitUntil, cause for that one, we'll need update the speeds differently.
             if(movementParams.PositionerInfo.First().Value.WaitUntil == null)
             {
                 for (int i = 0; i < command.TargetDevices.Length; i++)
@@ -210,5 +205,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return Task.CompletedTask;
          }
 
+        public override Task Stop(SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

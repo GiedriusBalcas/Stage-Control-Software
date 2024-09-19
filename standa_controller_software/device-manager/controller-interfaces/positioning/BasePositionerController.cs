@@ -76,54 +76,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
             return string.Join(" ", formattedParameters); // Join all sub-arrays with a space
         }
-        public override async Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
-        {
-            // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {command.Action} command on device {string.Join(' ', command.TargetDevices)}, parameters: {FormatParameters(command.Parameters)}");
-
-            Dictionary<char, CancellationToken> cancelationTokens = new Dictionary<char, CancellationToken>();
-            List<BasePositionerDevice> devices = new List<BasePositionerDevice> ();
-
-            foreach (var deviceName in command.TargetDevices) 
-            {
-                if (Devices.TryGetValue(deviceName, out BasePositionerDevice device))
-                {
-                    devices.Add(device);
-                }
-                else
-                {
-                    // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Device {deviceName} not found in controller {command.TargetController}");
-                }
-
-                //var tokenSource = new CancellationTokenSource();
-                //if (deviceCancellationTokens.ContainsKey(deviceName) && command.Action == CommandDefinitionsLibrary.MoveAbsolute.ToString())
-                //{
-                //    deviceCancellationTokens[deviceName].Cancel();
-                //    deviceCancellationTokens[deviceName] = tokenSource;
-                //}
-                //else
-                //{
-                //    deviceCancellationTokens.TryAdd(deviceName, tokenSource);
-                //}
-                //cancelationTokens.Add(deviceName, tokenSource.Token);
-
-
-
-            }
-
-            if (_methodMap.TryGetValue(command.Action, out var method))
-            {
-                if (command.Await)
-                    await method.MethodHandle(command, semaphore, log);
-                else
-                    _ = method.MethodHandle(command, semaphore, log);
-            }
-            else
-            {
-                throw new InvalidOperationException("Invalid action");
-            }
-            
-            // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Completed {command.Action} command on device {string.Join(' ', command.TargetDevices)}");
-        }
+        
 
         public override List<BaseDevice> GetDevices()
         {

@@ -6,6 +6,7 @@ namespace standa_control_software_WPF.view_models.config_creation.serialization_
     {
         public string Name { get; set; } = string.Empty;
         public string SelectedControllerType { get; set; } = string.Empty;
+        public string SelectedMasterControllerName { get; set; } = string.Empty;
         public List<DeviceSer> Devices { get; set; } = new List<DeviceSer>();
         public List<PropertyDisplayItemSer> ControllerProperties {  get; set; } = new List<PropertyDisplayItemSer>();
     }

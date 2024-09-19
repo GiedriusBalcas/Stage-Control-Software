@@ -30,11 +30,11 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
             }
             set
             {
-                _propertyValue = value;
                 // Check if the new value is already of the correct type, including handling non-null values of the same type.
                 if (PropertyType != null && value != null && PropertyType.IsAssignableFrom(value.GetType()))
                 {
                     _propertyValue = value;
+                    PropertyInformation.SetValue(DeviceReference, _propertyValue);
                     PropertyMessage = string.Empty; // Clear any previous error message
                 }
                 else if (PropertyType != null && value != null)

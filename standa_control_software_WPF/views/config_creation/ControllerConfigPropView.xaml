@@ -35,6 +35,7 @@
         <DataTemplate x:Key="CustomFieldTemplate">
             <Label Content="{Binding PropertyValue}" />
         </DataTemplate>
+        
 
 
         <DataTemplate x:Key="CharTemplate">
@@ -66,20 +67,65 @@
         </Grid.RowDefinitions>
 
         <Border Background="{StaticResource MidBackgroundColorBrush}" Margin="5" Padding="8" BorderBrush="AliceBlue" BorderThickness="0" Grid.Row="0" Style="{StaticResource parentBorder}">
-            <StackPanel Orientation="Horizontal">
-                <Label Content="Controller type:" Foreground="{StaticResource FontColorBrush}"/>
-                <ComboBox Margin="5,0"
-                          Width="auto"
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <!-- The first column will auto-size to the content of the labels -->
+                    <ColumnDefinition Width="Auto" />
+                    <!-- The second column will take up the remaining space -->
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="auto" />
+                    <RowDefinition Height="auto" />
+                    <RowDefinition Height="auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Enabled -->
+                <Label Content="Enabled:"
+                       Foreground="{StaticResource FontColorBrush}"
+                       Grid.Row="0"
+                       Grid.Column="0"
+                       VerticalAlignment="Center" />
+                <CheckBox IsChecked="{Binding IsEnabled}"
+                          VerticalAlignment="Center"
+                          Grid.Row="0"
+                          Grid.Column="1"
+                          Margin="20,0,0,0" />
+
+                <!-- Controller type -->
+                <Label Content="Controller type:"
+                       Foreground="{StaticResource FontColorBrush}"
+                       Grid.Row="1"
+                       Grid.Column="0"
+                       VerticalAlignment="Center" />
+                <ComboBox Margin="20,0,0,0"
                           MinWidth="100"
                           HorizontalAlignment="Left"
                           IsEnabled="{Binding IsEnabled}"
-                          ItemsSource="{Binding ControllerTypes}" SelectedItem="{Binding SelectedControllerType}" Foreground="{StaticResource FontColorBrush}" VerticalAlignment="Bottom"/>
+                          ItemsSource="{Binding ControllerTypes}"
+                          SelectedItem="{Binding SelectedControllerType}"
+                          Foreground="{StaticResource FontColorBrush}"
+                          VerticalAlignment="Center"
+                          Grid.Row="1"
+                          Grid.Column="1" />
 
-                <Label Content="Enabled:" Foreground="{StaticResource FontColorBrush}" Margin="20,0,0,0"/>
-                <CheckBox IsChecked="{Binding IsEnabled}"
-                          VerticalAlignment="Center"/>
-
-            </StackPanel>
+                <!-- Master Controller -->
+                <Label Content="Master Controller:"
+                       Foreground="{StaticResource FontColorBrush}"
+                       Grid.Row="2"
+                       Grid.Column="0"
+                       VerticalAlignment="Center" />
+                <ComboBox Margin="20,0,0,0"
+                          MinWidth="100"
+                          HorizontalAlignment="Left"
+                          IsEnabled="{Binding IsEnabled}"
+                          ItemsSource="{Binding ConfigurationControllerNames}"
+                          SelectedItem="{Binding SelectedMasterControllerName, Mode=TwoWay}"
+                          Foreground="{StaticResource FontColorBrush}"
+                          VerticalAlignment="Center"
+                          Grid.Row="2"
+                          Grid.Column="1" />
+            </Grid>
         </Border>
 
         <Border Grid.Row="1" 
@@ -100,10 +146,10 @@
                 <ListView.View>
                     <GridView>
                         <GridViewColumn Header="Property Name" DisplayMemberBinding="{Binding PropertyName}" Width="150"/>
-                        <GridViewColumn Header="Value" Width="220">
+                        <GridViewColumn Header="Value" Width="800">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <ContentPresenter Content="{Binding}" Width="200" MinWidth="100"
+                                    <ContentPresenter Content="{Binding}"
                                       ContentTemplateSelector="{StaticResource PropertyDataTemplateSelector}" />
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>

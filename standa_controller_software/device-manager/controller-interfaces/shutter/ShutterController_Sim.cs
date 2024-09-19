@@ -1,4 +1,5 @@
 ﻿using standa_controller_software.command_manager;
+using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
@@ -63,15 +64,15 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         protected override async Task ChangeState(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
+            var parameters = command.Parameters as ChangeShutterStateParameters;
 
-            //for (int i = 0; i < devices.Length; i++)
-            //{
-            //    var device = devices[i];
-            //    var state = (bool)command.Parameters[i][0];
-            //    await Task.Delay(2);
-            //    _deviceInfo[device.Name]._isOn = state;
-            //    device.IsOn = state;
-            //}
+            for (int i = 0; i < devices.Length; i++)
+            {
+                var device = devices[i];
+                var state = parameters.State;
+                _deviceInfo[device.Name]._isOn = state;
+                device.IsOn = state;
+            }
         }
 
         public async Task ChangeStatePublic(bool wantedstate)

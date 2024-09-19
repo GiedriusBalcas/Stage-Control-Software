@@ -27,12 +27,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             public float Acceleration
             {
                 get { return _acceleration; }
-                set { _acceleration = Math.Min(value, this.MaxAcceleration); ; }
+                set { _acceleration = value; }
             }
             public float Deceleration
             {
                 get { return _deceleration; }
-                set { _deceleration = Math.Min(value, this.MaxDeceleration); ; }
+                set { _deceleration = value; }
             }
             public float Speed
             {
@@ -43,8 +43,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             public uint MoveStatus { get; set; } = 0;
             public string Name { get; set; }
             public float CurrentSpeed { get; set; } = 0;
-            public float MaxAcceleration { get; set; } = 10000;
-            public float MaxDeceleration { get; set; } = 10000;
             public float MaxSpeed { get; set; } = 1000;
         }
         private ConcurrentDictionary<char, DeviceInformation> _deviceInfo = new ConcurrentDictionary<char, DeviceInformation>();
@@ -94,8 +92,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 {
                     CurrentPosition = positioningDevice.CurrentPosition,
                     CurrentSpeed = positioningDevice.CurrentSpeed,
-                    MaxAcceleration = positioningDevice.MaxAcceleration,
-                    MaxDeceleration = positioningDevice.MaxDeceleration,
                     MaxSpeed = positioningDevice.MaxSpeed,
                     Speed = positioningDevice.Speed,
                     Acceleration = positioningDevice.Acceleration,
@@ -131,6 +127,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
         private async Task OnSyncInAction(char name)
         {
+            if (_buffer[name].Count < 1)
+                throw new Exception("Got sync in signal, when no buffered items exist.");
 
             var parameters = _buffer[name].Dequeue();
 
@@ -150,7 +148,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             {
                 deviceCancellationTokens[device.Name] = new CancellationTokenSource();
             }
-            if (deviceCancellationTokens[device.Name].IsCancellationRequested)
+            else if (deviceCancellationTokens[device.Name].IsCancellationRequested)
             {
                 deviceCancellationTokens[device.Name].Dispose();
                 deviceCancellationTokens[device.Name] = new CancellationTokenSource();
@@ -203,7 +201,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             for (int i = 0; i < devices.Length; i++)
             {
                 var device = devices[i];
-                if (deviceCancellationTokens[device.Name].IsCancellationRequested)
+                if (!deviceCancellationTokens.ContainsKey(device.Name))
+                {
+                    deviceCancellationTokens[device.Name] = new CancellationTokenSource();
+                }
+                else if (deviceCancellationTokens[device.Name].IsCancellationRequested)
                 {
                     deviceCancellationTokens[device.Name].Dispose();
                     deviceCancellationTokens[device.Name] = new CancellationTokenSource();
@@ -251,7 +253,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 float speedValue = movementParams.MovementSettingsInformation[device.Name].TargetSpeed;
                 float accelValue = movementParams.MovementSettingsInformation[device.Name].TargetAcceleration;
                 float decelValue = movementParams.MovementSettingsInformation[device.Name].TargetDeceleration;
-
+                
                 var task = UpdateMovementSettings(device.Name, speedValue, accelValue, decelValue);
                 await task;
             }
@@ -263,17 +265,15 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
         private Task UpdateMovementSettings(char name, float speedValue, float accelValue, float decelValue)
         {
-            _deviceInfo[name].Speed = speedValue;
-            _deviceInfo[name].Acceleration = accelValue;
-            _deviceInfo[name].Deceleration = decelValue;
+            _deviceInfo[name].Speed = Math.Min(speedValue, Devices[name].MaxSpeed); ;
+            _deviceInfo[name].Acceleration = Math.Min(accelValue, Devices[name].MaxAcceleration);
+            _deviceInfo[name].Deceleration = Math.Min(decelValue, Devices[name].MaxDeceleration);
 
             return Task.CompletedTask;
         }
 
         protected async Task WaitUntilStopAsync(Dictionary<char, float?> waitUntilPositions, Dictionary<char, bool> directions, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
-            log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: wait start");
-
             //var devices = waitUntilPositions.Keys.Select(deviceName => Devices[deviceName]).ToArray();
             var queuedItems = new List<Func<Task<bool>>>();
 
@@ -348,7 +348,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 throw new Exception("Smth wrong with wait until in Virtual Positioner");
             }
 
-            log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: wait end");
 
         }
 
@@ -594,10 +593,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 positioner.Value.Acceleration = _deviceInfo[positioner.Key].Acceleration;
                 positioner.Value.Deceleration = _deviceInfo[positioner.Key].Deceleration;
                 positioner.Value.Speed = _deviceInfo[positioner.Key].Speed;
-                positioner.Value.MaxAcceleration = _deviceInfo[positioner.Key].MaxAcceleration;
-                positioner.Value.MaxDeceleration = _deviceInfo[positioner.Key].MaxDeceleration;
 
-                // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
+                //log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
             }
             //await Task.Delay(10);
         }
@@ -617,6 +614,21 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         protected override Task WaitUntilStop(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
             throw new NotImplementedException();
+        }
+
+        public override Task Stop(SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        {
+            _buffer.Clear();
+
+            foreach(var (deviceName, device) in Devices)
+            {
+                if (deviceCancellationTokens.ContainsKey(deviceName))
+                {
+                    deviceCancellationTokens[deviceName].Cancel();
+                }
+            }
+
+            return Task.CompletedTask;
         }
     }
 }

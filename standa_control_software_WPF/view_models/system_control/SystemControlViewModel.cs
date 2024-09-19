@@ -97,12 +97,20 @@ namespace standa_control_software_WPF.view_models.system_control
 
             CreateCommandQueueFromInputCommand = new RelayCommand(CreateCommandQueueFromInputAsync);
             ExecuteCommandQueueCommand = new RelayCommand(ExecuteCommandsQueueAsync);
-            ForceStopCommand = new RelayCommand(() => { });
+            ForceStopCommand = new RelayCommand(ForceStop);
         }
 
         private async void UpdateDeviceStates(bool isProbing)
         {
             Task.Run(() => _commandManager.UpdateStatesAsync());
+        }
+
+        private async void ForceStop()
+        {
+
+            OutputMessage += $"\nStop.";
+            _commandManager.Stop();
+            OutputMessage += $"\ndone Stop.";
         }
 
         private void SaveLog()
@@ -148,6 +156,10 @@ namespace standa_control_software_WPF.view_models.system_control
 
         private async void ExecuteCommandsQueueAsync()
         {
+            OutputMessage += $"\nStop.";
+            _commandManager.Stop();
+            OutputMessage += $"\ndone Stop.";
+
             _commandManager.ClearQueue();
             foreach (var commandLine in _functionDefinitionLibrary.ExtractCommands())
             {
@@ -162,6 +174,7 @@ namespace standa_control_software_WPF.view_models.system_control
             try
             {
                 await Task.Run(() => _commandManager.ProcessQueue());
+                OutputMessage += $"\nDone Executing.";
             }
             catch(Exception ex)
             {
@@ -188,7 +201,10 @@ namespace standa_control_software_WPF.view_models.system_control
             HighlightedLineNumber = null;
             try
             {
+                _functionDefinitionLibrary.ClearCommandQueue();
                 _functionDefinitionLibrary.InitializeDefinitions();
+                
+                _textInterpreter.DefinitionLibrary = _functionDefinitionLibrary.Definitions;
                 _textInterpreter.ReadInput(inputText);
                 _painterManager.PaintCommandQueue(_functionDefinitionLibrary.ExtractCommands());
             }

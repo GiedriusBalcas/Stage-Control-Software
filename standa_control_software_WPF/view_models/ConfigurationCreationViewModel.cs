@@ -11,6 +11,7 @@ using ToolDependancyBuilder;
 using standa_control_software_WPF.view_models.config_creation.serialization_helpers;
 using standa_control_software_WPF.view_models.config_creation;
 using standa_controller_software.device_manager.devices.shutter;
+using standa_controller_software.device_manager.controller_interfaces.master_controller;
 
 namespace standa_control_software_WPF.view_models
 {
@@ -157,8 +158,20 @@ namespace standa_control_software_WPF.view_models
                         controllerMangerInstance.AddController(controllerInstance);
                     }
                 }
+                // Master/Slave controller
 
-                var shutterDevice = controllerMangerInstance.GetDevices<BaseShutterDevice>().FirstOrDefault()?? new ShutterDevice('s',"undefined");
+                foreach (var controller in Configuration.Controllers)
+                {
+                    var selectedMasterController = controllerMangerInstance.Controllers.Values.FirstOrDefault(controllerInstance => controllerInstance.Name == controller.SelectedMasterControllerName);
+                    if (controller.SelectedMasterControllerName != string.Empty && selectedMasterController is BaseMasterController masterController)
+                    {
+                        controllerMangerInstance.Controllers[controller.Name].MasterController = masterController;
+                        masterController.AddSlaveController(controllerMangerInstance.Controllers[controller.Name], controllerMangerInstance.ControllerLocks[controller.Name]);
+                    }
+                }
+
+                // Tool device creation
+                var shutterDevice = controllerMangerInstance.GetDevices<BaseShutterDevice>().FirstOrDefault() ?? new ShutterDevice('s', "undefined");
                 var positionerDevices = controllerMangerInstance.GetDevices<BasePositionerDevice>();
                 var positionerNames = positionerDevices.Select(dev => dev.Name).ToList();
                 var calculator = new ToolPositionCalculator();

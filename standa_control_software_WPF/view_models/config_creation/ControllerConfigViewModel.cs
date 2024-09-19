@@ -3,6 +3,7 @@ using standa_control_software_WPF.view_models.commands;
 using standa_controller_software.device_manager;
 using standa_controller_software.device_manager.attributes;
 using standa_controller_software.device_manager.controller_interfaces;
+using standa_controller_software.device_manager.controller_interfaces.master_controller;
 using System.Collections.ObjectModel;
 using System.Reflection;
 using System.Windows.Input;
@@ -14,7 +15,7 @@ namespace standa_control_software_WPF.view_models.config_creation
         private readonly ConfigurationViewModel _config;
         private string _selectedControllerType;
 
-        private bool _isEnabled;
+        private bool _isEnabled = true;
         public bool IsEnabled
         {
             get => _isEnabled;
@@ -52,6 +53,25 @@ namespace standa_control_software_WPF.view_models.config_creation
         public Type ControllerType { get; private set; }
         public ObservableCollection<DeviceConfigViewModel> Devices { get; set; } = new ObservableCollection<DeviceConfigViewModel>();
         public ObservableCollection<PropertyDisplayItem> ControllerProperties { get; } = new ObservableCollection<PropertyDisplayItem>();
+        public ObservableCollection<string> ConfigurationControllerNames => new ObservableCollection<string>(
+            _config?.Controllers
+            .Where(controller => controller.ControllerType.IsSubclassOf(typeof(BaseMasterController)))
+            .Select(controllerInfo => controllerInfo.Name)
+            .Where(controllerName => controllerName != this.Name)
+            .ToList() ?? new List<string>()
+        );
+        private string _selectedMasterControllerName = string.Empty;
+
+        public string SelectedMasterControllerName
+        {
+            get => _selectedMasterControllerName; 
+            set 
+            {
+                if(value != null)
+                    _selectedMasterControllerName = value;
+                OnPropertyChanged(nameof(SelectedMasterControllerName));
+            }
+        }
 
         public string SelectedControllerType { 
             get => _selectedControllerType; 
@@ -79,6 +99,8 @@ namespace standa_control_software_WPF.view_models.config_creation
         public ControllerConfigViewModel(ConfigurationViewModel config)
         {
             _config = config;
+            foreach(string controllerName in _config.Controllers.Select(controller => controller.Name))
+                ConfigurationControllerNames.Add(controllerName);
 
             ControllerProperties.Clear();
 
@@ -220,12 +242,10 @@ namespace standa_control_software_WPF.view_models.config_creation
                 }
             }
 
-
             // Additional property setting can be performed here if necessary
 
             return controllerInstance;
         }
-
 
 
     }

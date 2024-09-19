@@ -57,7 +57,7 @@ namespace standa_controller_software.command_manager
         private bool _running = true;
         private CommandManagerState _currentState = CommandManagerState.Waiting;
         private string _currentQueueController = string.Empty;
-
+        private bool _allowedToRun = true;
         public CommandManager(ControllerManager manager)
         {
             this._controllerManager = manager;
@@ -87,13 +87,14 @@ namespace standa_controller_software.command_manager
         }
         public void Start()
         {
-            _running = true;
             CurrentState = CommandManagerState.Processing;
             Task.Run(() => ProcessQueue());
         }
         public async Task ProcessQueue()
         {
-            while (_commandQueue.Count > 0)
+            _allowedToRun = true;
+            _log.Enqueue("ProcessingQueue.");
+            while (_commandQueue.Count > 0 && _allowedToRun)
             {
                 if (_commandQueue.TryDequeue(out Command[] commandLine))
                 {
@@ -106,7 +107,6 @@ namespace standa_controller_software.command_manager
             }
             if (!(_currentQueueController == string.Empty || _currentQueueController is null))
             {
-                // TODO: only await needed semaphores.
                 if (_controllerManager.Controllers[_currentQueueController] is BaseMasterController queuedMasterController)
                 {
                     Dictionary<string, SemaphoreSlim> semaphoresOfQueuedControllers = new Dictionary<string, SemaphoreSlim>();
@@ -129,6 +129,8 @@ namespace standa_controller_software.command_manager
                 }
             }
             CurrentState = CommandManagerState.Waiting;
+            _log.Enqueue("QueueEnd.");
+
         }
 
 
@@ -294,263 +296,6 @@ namespace standa_controller_software.command_manager
         }
 
 
-
-        //private async Task ProcessQueue()
-        //{
-        //    while (_commandQueue.Count > 0)
-        //    {
-        //        if (_commandQueue.TryDequeue(out Command[] commands))
-        //        {
-        //            // Execute the command line
-        //            var commandLineTask = ExecuteCommandLine(commands);
-        //            await commandLineTask;
-
-        //            //// Check if any command in the line has Await = true
-        //            //if (commands.Any(c => c.Await))
-        //            //{
-        //            //    // Wait for the command line to complete before continuing
-        //            //    await commandLineTask;
-        //            //}
-        //        }
-        //        else
-        //        {
-        //            CurrentState = CommandManagerState.Waiting;
-        //        }
-
-        //        //await Task.Delay(10); // Adjust delay as needed
-        //    }
-        //}
-
-        //public Task ExecuteCommandLine(Command[] commands)
-        //{
-        //    var tasks = new List<Task>();
-
-        //    // Group commands by their target device
-        //    var groupedCommands = commands.GroupBy(c => c.TargetDevice);
-
-        //    // Dictionary to track the last task for each device
-        //    var deviceTasks = new Dictionary<string, Task>();
-
-        //    foreach (var group in groupedCommands)
-        //    {
-        //        var deviceName = group.Key;
-        //        var controller = _controllerManager.GetDeviceController<IController>(deviceName);
-        //        var semaphore = _controllerManager.ControllerLocks[controller.Name];
-
-        //        foreach (var command in group)
-        //        {
-        //            // Check if there is a previous task for the same device
-        //            if (deviceTasks.TryGetValue(deviceName, out var lastTask))
-        //            {
-        //                // Chain the command execution after the last task for the same device
-        //                var task = lastTask.ContinueWith(_ => ExecuteCommand(controller, semaphore, command)).Unwrap();
-        //                deviceTasks[deviceName] = task;
-        //                tasks.Add(task);
-        //            }
-        //            else
-        //            {
-        //                // No previous task, execute immediately
-        //                var task = ExecuteCommand(controller, semaphore, command);
-        //                deviceTasks[deviceName] = task;
-        //                tasks.Add(task);
-        //            }
-        //        }
-        //    }
-
-        //    // Return a task that completes when all commands in this line are done
-        //    return Task.WhenAll(tasks);
-        //}
-
-        //private async Task ExecuteCommand(IController controller, SemaphoreSlim semaphore, Command command)
-        //{
-        //    await semaphore.WaitAsync();
-        //    try
-        //    {
-        //        await controller.ExecuteCommandAsync(command, semaphore, _log);
-        //    }
-        //    finally
-        //    {
-        //        if(semaphore.CurrentCount == 0)
-        //            semaphore.Release();
-        //    }
-        //}
-
-
-        //public async Task ExecuteCommandLine(Command[] commands)
-        //{
-        //    var tasks = new List<Task>();
-
-        //    // Group commands by their target device
-        //    var groupedCommands = commands.GroupBy(c => c.TargetDevice);
-
-        //    // Dictionary to track the last task for each device
-        //    var deviceTasks = new Dictionary<char, Task>();
-
-        //    // List of semaphores to acquire
-        //    var semaphoresToAcquire = new List<SemaphoreSlim>();
-
-        //    // Acquire all semaphores before starting execution
-        //    foreach (var group in groupedCommands)
-        //    {
-        //        var deviceName = group.Key;
-        //        var controller = _controllerManager.GetDeviceController<BaseController>(deviceName);
-        //        var semaphore = _controllerManager.ControllerLocks[controller.Name];
-
-        //        // Add the semaphore to the list to be acquired
-        //        semaphoresToAcquire.Add(semaphore);
-        //    }
-
-        //    // Acquire all semaphores
-        //    foreach (var semaphore in semaphoresToAcquire)
-        //    {
-        //        await semaphore.WaitAsync();
-        //    }
-
-        //    try
-        //    {
-        //        // Execute commands after acquiring all semaphores
-        //        foreach (var group in groupedCommands)
-        //        {
-        //            var deviceName = group.Key;
-        //            var controller = _controllerManager.GetDeviceController<BaseController>(deviceName);
-        //            var semaphore = _controllerManager.ControllerLocks[controller.Name];
-
-        //            foreach (var command in group)
-        //            {
-        //                // Check if there is a previous task for the same device
-        //                if (deviceTasks.TryGetValue(deviceName, out var lastTask))
-        //                {
-        //                    // Chain the command execution after the last task for the same device
-        //                    var task = lastTask.ContinueWith(_ => ExecuteCommand(controller, semaphore, command)).Unwrap();
-        //                    deviceTasks[deviceName] = task;
-        //                    tasks.Add(task);
-        //                }
-        //                else
-        //                {
-        //                    // No previous task, execute immediately
-        //                    var task = ExecuteCommand(controller, semaphore, command);
-        //                    deviceTasks[deviceName] = task;
-        //                    tasks.Add(task);
-        //                }
-        //            }
-        //        }
-        //    }
-        //    finally
-        //    {
-        //        // Release all semaphores
-        //        foreach (var semaphore in semaphoresToAcquire)
-        //        {
-        //            if (semaphore.CurrentCount == 0)
-        //                semaphore.Release();
-        //        }
-        //    }
-
-        //    // Return a task that completes when all commands in this line are done
-        //    await Task.WhenAll(tasks);
-        //}
-
-        //public async Task ExecuteCommandLine(Command[] commands)
-        //{
-        //    var tasks = new List<Task>();
-
-        //    // Group commands by their target controller
-        //    var groupedCommands = commands
-        //        .GroupBy(c => _controllerManager.GetDeviceController<BaseController>(c.TargetDevice));
-
-        //    // Dictionary to track the last task for each controller
-        //    var controllerTasks = new Dictionary<string, Task>();
-
-        //    // List of semaphores to acquire
-        //    var semaphoresToAcquire = new List<SemaphoreSlim>();
-
-        //    // Acquire all semaphores before starting execution
-        //    foreach (var group in groupedCommands)
-        //    {
-        //        var controller = group.Key;
-        //        var semaphore = _controllerManager.ControllerLocks[controller.Name];
-        //        semaphoresToAcquire.Add(semaphore);
-        //        await semaphore.WaitAsync();
-        //    }
-
-        //    try
-        //    {
-        //        // Execute commands after acquiring all semaphores
-        //        foreach (var group in groupedCommands)
-        //        {
-        //            var controller = group.Key;
-        //            var semaphore = _controllerManager.ControllerLocks[controller.Name];
-
-        //            foreach (var command in group)
-        //            {
-        //                // Check if there is a previous task for the same controller
-        //                if (controllerTasks.TryGetValue(controller.Name, out var lastTask))
-        //                {
-        //                    // Chain the command execution after the last task for the same controller
-        //                    var task = lastTask.ContinueWith(_ => ExecuteCommand(controller, semaphore, command)).Unwrap();
-        //                    controllerTasks[controller.Name] = task;
-        //                    tasks.Add(task);
-        //                }
-        //                else
-        //                {
-        //                    // No previous task, execute immediately
-        //                    var task = ExecuteCommand(controller, semaphore, command);
-        //                    controllerTasks[controller.Name] = task;
-        //                    tasks.Add(task);
-        //                }
-        //            }
-        //        }
-        //    }
-        //    finally
-        //    {
-        //        // Release all semaphores
-        //        foreach (var semaphore in semaphoresToAcquire)
-        //        {
-        //            if (semaphore.CurrentCount == 0)
-        //                semaphore.Release();
-        //        }
-        //    }
-
-        //    // Return a task that completes when all commands in this line are done
-        //    await Task.WhenAll(tasks);
-        //}
-
-
-        //private async Task ProcessControllerQueue(string controllerName, AsyncQueue<Command> queue)
-        //{
-        //    var controller = _controllerManager.Controllers[controllerName];
-        //    var semaphore = _controllerManager.ControllerLocks[controller.Name];
-
-        //    while (await queue.WaitForNextItemAsync())
-        //    {
-        //        var command = await queue.DequeueAsync();
-
-        //        // Acquire semaphore before executing command
-        //        await semaphore.WaitAsync();
-
-        //        // Execute the command
-        //        _ = ExecuteCommand(controller, semaphore, command)
-        //            .ContinueWith(_ => semaphore.Release(), TaskContinuationOptions.ExecuteSynchronously);
-        //    }
-        //}
-
-
-        //private async Task ExecuteCommand(BaseController controller, SemaphoreSlim semaphore, Command command)
-        //{
-        //    try
-        //    {
-        //        //await semaphore.WaitAsync();
-
-        //        await controller.ExecuteCommandAsync(command, semaphore, _log);
-        //    }
-        //    finally
-        //    {
-        //        if (semaphore.CurrentCount == 0)
-        //            semaphore.Release();
-        //    }
-        //}
-
-
-        // I should release semaphore only when awaited the response here.
         public async Task UpdateStatesAsync()
         {
             while (true)
@@ -589,10 +334,26 @@ namespace standa_controller_software.command_manager
             }
         }
 
-        public void StopDequeuing()
+        public async void Stop()
         {
             _running = false;
+            _allowedToRun = false;
             CurrentState = CommandManagerState.Waiting;
+
+            List<Task> tasks = new List<Task>();
+            foreach(var (controllerName, controller )in _controllerManager.Controllers)
+            {
+                await _controllerManager.ControllerLocks[controllerName].WaitAsync();
+                var task = controller.Stop(_controllerManager.ControllerLocks[controllerName], _log);
+                tasks.Add(task);
+            }
+            await Task.WhenAll(tasks);
+
+            foreach (var (controllerName, controller) in _controllerManager.Controllers)
+            {
+                if (_controllerManager.ControllerLocks[controllerName].CurrentCount == 0)
+                    _controllerManager.ControllerLocks[controllerName].Release();
+            }
         }
 
         public void ClearQueue()

@@ -1,4 +1,5 @@
-﻿using standa_controller_software.command_manager;
+﻿using OpenTK.Audio.OpenAL;
+using standa_controller_software.command_manager;
 using standa_controller_software.device_manager.attributes;
 using standa_controller_software.device_manager.devices;
 using System;
@@ -29,9 +30,10 @@ namespace standa_controller_software.device_manager.controller_interfaces
         }
 
         protected Dictionary<CommandDefinitions, MethodInformation> _methodMap = new Dictionary<CommandDefinitions, MethodInformation>();
-
+        
+        [DisplayPropertyAttribute]
         public BaseController? MasterController { get; set; } = null;
-
+        
         public bool IsQuable { get; set; } = false;
 
         [DisplayPropertyAttribute]
@@ -40,7 +42,25 @@ namespace standa_controller_software.device_manager.controller_interfaces
         {
             Name = name;
         }
-        public abstract Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
+        public virtual async Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        {
+            // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {command.Action} command on device {string.Join(' ', command.TargetDevices)}, parameters: {FormatParameters(command.Parameters)}");
+
+            Dictionary<char, CancellationToken> cancelationTokens = new Dictionary<char, CancellationToken>();
+
+
+            if (_methodMap.TryGetValue(command.Action, out var method))
+            {
+                if (command.Await)
+                    await method.MethodHandle(command, semaphore, log);
+                else
+                    _ = method.MethodHandle(command, semaphore, log);
+            }
+            else
+            {
+                throw new InvalidOperationException("Invalid action");
+            }
+        }
         public abstract Task UpdateStatesAsync(ConcurrentQueue<string> log);
         public abstract void AddDevice(BaseDevice device);
         public abstract Task ConnectDevice(BaseDevice device, SemaphoreSlim semaphore);
@@ -51,6 +71,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
         {
             return Task.CompletedTask ;
         }
+        public abstract Task Stop(SemaphoreSlim semaphore, ConcurrentQueue<string> log);
 
     }
 }

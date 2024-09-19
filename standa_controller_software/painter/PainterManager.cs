@@ -161,35 +161,26 @@ namespace standa_controller_software.painter
                 { typeof(PositionAndShutterController_Sim), typeof(PositionAndShutterController_Virtual) }
             };
             var controllerManager_virtual = _controllerManager.CreateACopy(rules);
+
+
+            var masterPainterController = new PositionAndShutterController_Painter("painter", _lineCollection, controllerManager_virtual.ToolInformation);
+            controllerManager_virtual.AddController(masterPainterController);
+            foreach(var (controllerName, controller) in controllerManager_virtual.Controllers)
+            {
+                controller.MasterController = masterPainterController;
+                masterPainterController.AddSlaveController(controller, controllerManager_virtual.ControllerLocks[controllerName]);
+            }
+            
             var commandManager_virtual = new CommandManager(controllerManager_virtual);
+            
+            _commandLayer.ClearCollections();
+            _lineCollection.ClearCollection();
 
-            //var commandLines = _commandManager.GetCommandQueueList();
-            var renderObjects = new LineObjectCollection();
-
-            bool wasEngaged = false;
-            controllerManager_virtual.ToolInformation.EngagedStateChanged += () => wasEngaged = true;
             foreach (var commandLine in commandLines)
             {
-                wasEngaged = false;
-                var startPositions = controllerManager_virtual.ToolInformation.CalculateToolPositionUpdate();
                 commandManager_virtual.ExecuteCommandLine(commandLine).GetAwaiter().GetResult();
-
-                var endPositions = controllerManager_virtual.ToolInformation.CalculateToolPositionUpdate();
-
-                if (controllerManager_virtual.ToolInformation.IsOn)
-                    wasEngaged = true;
-
-                var lineColor = wasEngaged
-                    ? new Vector4(1, 0, 0, 1)
-                    : new Vector4(1, 1, 0, 1);
-
-                if (endPositions != startPositions)
-                    renderObjects.AddLine(startPositions, endPositions, lineColor);
             }
 
-            _lineCollection.ClearCollection();
-            _lineCollection = renderObjects;
-            _commandLayer.ClearCollections();
             _commandLayer.AddObjectCollection(_lineCollection);
         }
 

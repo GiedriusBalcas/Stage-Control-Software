@@ -50,6 +50,7 @@ namespace standa_controller_software.command_manager.command_parameter_library
     {
         public float LeadInStartPos { get; set; }
         public float LeadInEndPos { get; set; }
+        public float LeadOutStartPos { get; set; }
         public float LeadOutEndPos { get; set; }
         public float LeadInAllocatedTime { get; set; }
         public float LeadOutAllocatedTime { get; set; }

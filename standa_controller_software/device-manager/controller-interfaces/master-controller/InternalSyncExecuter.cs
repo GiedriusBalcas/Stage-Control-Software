@@ -26,6 +26,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             private ConcurrentQueue<string>? _log;
             private bool _relaunchFlag = true;
             private int _maxBufferSize = 6;
+            private bool _allowedToRun = true;
 
             public event Action<string> SendMessage;
             public enum QueueState
@@ -37,6 +38,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             {
                 
 
+            }
+
+            public Task Stop()
+            {
+                _buffer.Clear();
+                _allowedToRun = false;
+                _queueState = QueueState.Waiting;
+                return Task.CompletedTask;
             }
             public void AddBufferItem(ExecutionInformation executionInformation)
             {
@@ -73,6 +82,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             public async Task ExecuteQueue(ConcurrentQueue<string> log)
             {
                 _log = log;
+                _allowedToRun = true;
                 log.Enqueue("Starting executing on sync executer controller");
                 if (_queueState == QueueState.Running)
                     return;
@@ -94,8 +104,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     {
                         waitingForSyncOutsFrom.Add(device);
                     }
-
-
 
                     // where to send the sync ins for next command?
                     _sendSyncInTo.Clear();
@@ -131,7 +139,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     //var shutterOnPending = executionInformation.Shutter;
                     //var shutterOffPending = executionInformation.Shutter;
 
-                    while (true)
+                    while (_allowedToRun)
                     {
                         var time = millis.ElapsedMilliseconds;
                         // check if we sync outs from devices of curent movement.
@@ -208,7 +216,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 }));
 
                 // Await all tasks to complete
-                _ = Task.WhenAll(tasks);
+                await Task.WhenAll(tasks);
             }
 
             private void SendSyncIn(char[] devices)

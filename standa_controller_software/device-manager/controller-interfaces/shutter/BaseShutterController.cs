@@ -19,6 +19,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         {
             //_methodMap[CommandDefinitionsLibrary.ChangeShutterState.ToString()] = ChangeState;
             //_methodMap[CommandDefinitionsLibrary.ChangeShutterStateOnInterval.ToString()] = ChangeStateOnInterval;
+            _methodMap[CommandDefinitions.ChangeShutterState] = new MethodInformation
+            {
+                MethodHandle = ChangeState,
+                Quable = false,
+                State = MethodState.Waiting,
+            };
 
             Devices = new Dictionary<char, BaseShutterDevice>();
             //methodMap["UpdateStates"] = UpdateStatesCall;
@@ -114,6 +120,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             return Devices.Values.Cast<BaseDevice>().ToList();
         }
 
+        public override Task Stop(SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        {
+            return Task.CompletedTask;
+        }
         public override abstract Task UpdateStatesAsync(ConcurrentQueue<string> log);
     }
 }

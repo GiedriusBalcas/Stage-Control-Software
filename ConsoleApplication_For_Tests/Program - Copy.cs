@@ -32,7 +32,7 @@ class Program
     [STAThread]
     static void Main(string[] args)
     {
-        _controllerManager = SetupSystemControllers();
+        _controllerManager = SetupSystemControllersWithMaster();
         _commandManager = new CommandManager(_controllerManager);
 
         Task.Run(() => _commandManager.UpdateStatesAsync());
@@ -95,7 +95,7 @@ class Program
     private static async void ExecuteCommandQueue()
     {
 
-        Thread.Sleep(2000);
+        Thread.Sleep(500);
 
         Console.WriteLine("Before Starting:");
         Console.WriteLine(_commandManager.GetCommandQueueAsString());
@@ -132,7 +132,7 @@ class Program
         return _definitions;
     }
 
-    private static ControllerManager SetupSystemControllers()
+    private static ControllerManager SetupSystemControllersWithMaster()
     {
 
 
@@ -150,7 +150,7 @@ class Program
         var masterController = new PositionAndShutterController_Sim("master") { IsQuable = true };
         var posController1 = new PositionerController_Sim("FirstController") { MasterController = masterController };
         var posController2 = new PositionerController_Sim("SecondController") { MasterController = masterController };
-        var shutterController = new ShutterController_Sim("Shutter-controller");
+        var shutterController = new ShutterController_Sim("Shutter-controller") { MasterController = masterController };
 
         posController1.AddDevice(deviceX);
         posController1.AddDevice(deviceY);
@@ -182,5 +182,49 @@ class Program
         return controllerManager;
     }
 
-    
+    private static ControllerManager SetupSystemControllers()
+    {
+
+
+        var deviceX = new LinearPositionerDevice('x', "") { Acceleration = 1000, Deceleration = 10000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 50000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
+        var deviceY = new LinearPositionerDevice('y', "") { Acceleration = 1000, Deceleration = 10000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 50000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
+        var deviceZ = new LinearPositionerDevice('z', "") { Acceleration = 1000, Deceleration = 10000, MaxAcceleration = 10000, MaxDeceleration = 10000, MaxSpeed = 50000, Speed = 200, CurrentPosition = 0, CurrentSpeed = 0 };
+
+
+        //var deviceX = new LinearPositionerDevice('x', "") { Acceleration = 10000000000, Deceleration = 10000000000, MaxAcceleration = 10000000000, MaxDeceleration = 10000000000, MaxSpeed = 10000000000, Speed = 10000000000, CurrentPosition = 0, CurrentSpeed = 0 };
+        //var deviceY = new LinearPositionerDevice('y', "") { Acceleration = 10000000000, Deceleration = 10000000000, MaxAcceleration = 10000000000, MaxDeceleration = 10000000000, MaxSpeed = 10000000000, Speed = 10000000000, CurrentPosition = 0, CurrentSpeed = 0 };
+        //var deviceZ = new LinearPositionerDevice('z', "") { Acceleration = 10000000000, Deceleration = 10000000000, MaxAcceleration = 10000000000, MaxDeceleration = 10000000000, MaxSpeed = 10000000000, Speed = 10000000000, CurrentPosition = 0, CurrentSpeed = 0 };
+
+        var shutterDevice = new ShutterDevice('s', "") { DelayOff = 50, DelayOn = 50, IsOn = false };
+
+        var posController1 = new PositionerController_Sim("FirstController");
+        var posController2 = new PositionerController_Sim("SecondController");
+        var shutterController = new ShutterController_Sim("Shutter-controller");
+
+        posController1.AddDevice(deviceX);
+        posController1.AddDevice(deviceY);
+        posController2.AddDevice(deviceZ);
+        shutterController.AddDevice(shutterDevice);
+
+        var controllerManager = new ControllerManager();
+        controllerManager.AddController(posController1);
+        controllerManager.AddController(posController2);
+        controllerManager.AddController(shutterController);
+
+        var toolPositionFunctionX = (Dictionary<char, float> positions) =>
+        {
+            return new Vector3()
+            {
+                X = positions.ContainsKey('x') ? positions['x'] : 0,
+                Y = positions.ContainsKey('y') ? positions['y'] : 0,
+                Z = positions.ContainsKey('z') ? positions['z'] : 0
+            };
+        };
+        var toolInfo = new ToolInformation(controllerManager.GetDevices<BasePositionerDevice>(), shutterDevice, toolPositionFunctionX);
+        controllerManager.ToolInformation = toolInfo;
+
+        return controllerManager;
+    }
+
+
 }

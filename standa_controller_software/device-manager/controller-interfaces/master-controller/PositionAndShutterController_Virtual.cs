@@ -34,7 +34,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 Quable = true,
                 State = MethodState.Free,
             };
-
+            _methodMap_multiControntroller[CommandDefinitions.ChangeShutterState] = new MultiControllerMethodInformation()
+            {
+                MethodHandle = ChangeState,
+                Quable = true,
+                State = MethodState.Free,
+            };
 
             //_methodMap["UpdateMoveSettings"] = UpdateMoveSettings;
 
@@ -103,7 +108,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         {
             throw new NotImplementedException();
         }
+        private async Task ChangeState(Command[] commands, Dictionary<string, SemaphoreSlim> semaphors, ConcurrentQueue<string> log)
+        {
 
+        }
         public override async Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
 
@@ -182,6 +190,15 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         public override Task AwaitQueuedItems(Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log)
         {
             throw new NotImplementedException();
+        }
+
+        public override Task Stop(SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        {
+            // clear all buffer.
+            
+
+
+            return Task.CompletedTask;
         }
     }
 }

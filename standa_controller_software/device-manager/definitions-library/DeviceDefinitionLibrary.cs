@@ -1,4 +1,5 @@
 ﻿using standa_controller_software.device_manager.controller_interfaces;
+using standa_controller_software.device_manager.controller_interfaces.master_controller;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.controller_interfaces.shutter;
 using standa_controller_software.device_manager.devices;
@@ -68,8 +69,25 @@ namespace standa_controller_software.device_manager
                 //}
             };
 
+            var masterControllerTypeDefinitions = new List<ControllerInfo>
+            {
+                new ControllerInfo
+                {
+                    Name = "Virtual Master Controller",
+                    Type = typeof(PositionAndShutterController_Sim),
+                    AllowedDevices = shutterDeviceDefinitions
+                },
+                //new ControllerInfo
+                //{
+                //    Name = "Arduino Master Controller",
+                //    Type = typeof(Posi),
+                //    AllowedDevices = shutterDeviceDefinitions
+                //},
+            };
+
             ControllerDefinitions.Add(typeof(BasePositionerController), positionerControllerTypeDefinitions);
             ControllerDefinitions.Add(typeof(BaseShutterController), shutterControllerTypeDefinitions);
+            ControllerDefinitions.Add(typeof(BaseMasterController), masterControllerTypeDefinitions);
         }
     }
 }

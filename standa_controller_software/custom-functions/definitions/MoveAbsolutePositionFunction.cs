@@ -10,6 +10,7 @@ using System.ComponentModel;
 using System.Xml.Linq;
 using standa_controller_software.command_manager.command_parameter_library;
 using System.Reflection;
+using standa_controller_software.device_manager.devices.shutter;
 
 namespace standa_controller_software.custom_functions.definitions
 {
@@ -241,7 +242,7 @@ namespace standa_controller_software.custom_functions.definitions
                 GetLeadInKinParameters(_controllerManager, trajectorySpeed, ref positionerMovementInformations_LeadIn, out float allocatedTimeLeadIn);
 
 
-                // CONSTANCT SPEED PHASE
+                // CONSTANT SPEED PHASE
 
                 var positionerMovementInformations_Constant = new Dictionary<char, PositionerMovementInformation>();
 
@@ -384,6 +385,8 @@ namespace standa_controller_software.custom_functions.definitions
 
                 // MOVEA COMMAND FOR ALL 3 PHASES.
 
+
+
                 commandsMovement = new List<Command>();
 
                 foreach (var controllerGroup in groupedDevicesByController)
@@ -407,7 +410,8 @@ namespace standa_controller_software.custom_functions.definitions
                             LeadOutAllocatedTime = allocatedTime_LeadOut,
                             LeadInStartPos = positionerMovementInformations_LeadIn[deviceName].StartingPosition,
                             LeadInEndPos = positionerMovementInformations_LeadIn[deviceName].TargetPosition,
-                            LeadOutEndPos = positionerMovementInformations_LeadOut[deviceName].TargetPosition
+                            LeadOutEndPos = positionerMovementInformations_LeadOut[deviceName].TargetPosition,
+                            LeadOutStartPos = positionerMovementInformations[deviceName].TargetPosition
                         };
 
                         float? waitUntilPos = null;
@@ -454,9 +458,54 @@ namespace standa_controller_software.custom_functions.definitions
                     );
                 }
 
+                if ((bool)IsShutterUsed)
+                {
+                    var shutterDevice = _controllerManager.GetDevices<BaseShutterDevice>().FirstOrDefault();
+                    if (shutterDevice is null)
+                        throw new Exception("Trying to use non existing shutter device");
+                    var shutterController = _controllerManager.GetDeviceController<BaseShutterController>(shutterDevice.Name);
+                    var commandShutter = new Command()
+                    {
+                        Action = CommandDefinitions.ChangeShutterState,
+                        Await = false,
+                        Parameters = new ChangeShutterStateParameters
+                        {
+                            State = true
+                        },
+                        TargetController = shutterController.Name,
+                        TargetDevices = [shutterDevice.Name]
+                    };
+
+                    _commandManager.EnqueueCommandLine([commandShutter]);
+                    _commandManager.ExecuteCommandLine([commandShutter]).GetAwaiter().GetResult();
+                }
+
+
                 _commandManager.EnqueueCommandLine(commandsMovement.ToArray());
                 _commandManager.ExecuteCommandLine(commandsMovement.ToArray()).GetAwaiter().GetResult();
 
+
+                if ((bool)IsShutterUsed)
+                {
+                    var shutterDevice = _controllerManager.GetDevices<BaseShutterDevice>().FirstOrDefault();
+                    if (shutterDevice is null)
+                        throw new Exception("Trying to use non existing shutter device");
+                    var shutterController = _controllerManager.GetDeviceController<BaseShutterController>(shutterDevice.Name);
+                    var commandShutter = new Command()
+                    {
+                        Action = CommandDefinitions.ChangeShutterState,
+                        Await = false,
+                        Parameters = new ChangeShutterStateParameters
+                        {
+                            State = false
+                        },
+                        TargetController = shutterController.Name,
+                        TargetDevices = [shutterDevice.Name]
+                    };
+
+                    _commandManager.EnqueueCommandLine([commandShutter]);
+                    _commandManager.ExecuteCommandLine([commandShutter]).GetAwaiter().GetResult();
+                }
 
                 // GETTING TO LEAD-OUT START PHASE
 

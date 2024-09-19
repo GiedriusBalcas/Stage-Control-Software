@@ -14,15 +14,26 @@ namespace standa_controller_software.device_manager.devices
         protected BasePositionerDevice(char name, string id) : base(name, id)
         {
         }
+        private float maxAcceleration = 100f;
+
+
         [DisplayPropertyAttribute]
         [DynamicPropertyAttribute]
-        public virtual float MaxSpeed { get; set; }
+        public virtual float MaxSpeed 
+        { 
+            get; 
+            set; 
+        }
         [DisplayPropertyAttribute]
         [DynamicPropertyAttribute]
         public virtual float DefaultSpeed { get; set; }
         [DisplayPropertyAttribute]
         [DynamicPropertyAttribute]
-        public virtual float MaxAcceleration { get; set; }
+        public virtual float MaxAcceleration 
+        {
+            get; 
+            set; 
+        }
         [DisplayPropertyAttribute]
         [DynamicPropertyAttribute]
         public virtual float MaxDeceleration { get; set; }

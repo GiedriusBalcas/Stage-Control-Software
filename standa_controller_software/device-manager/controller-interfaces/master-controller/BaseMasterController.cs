@@ -28,7 +28,52 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         {
         }
         public abstract void AddSlaveController(BaseController controller, SemaphoreSlim controllerLock);
-        public abstract Task ExecuteSlaveCommandsAsync(Command[] commands, Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log);
+        public virtual async Task ExecuteSlaveCommandsAsync(Command[] commands, Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log) 
+        {
+            log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {string.Join(' ', commands.Select(command => command.Action).ToArray())} command on device {string.Join(' ', commands.SelectMany(command => command.TargetDevices).ToArray())}");
+
+            var groupedCommands = commands
+                .GroupBy(command => command.Action)
+                .ToDictionary(group => group.Key, group => new
+                {
+                    Commands = group.ToArray(),
+                    Semaphores = group
+                        .Select(command => command.TargetController)
+                        .Distinct() // Ensure unique TargetController entries
+                        .Where(targetController => semaphores.ContainsKey(targetController))
+                        .ToDictionary(
+                            targetController => targetController,
+                            targetController => semaphores[targetController]
+                        )
+                });
+
+            foreach (var (action, groupData) in groupedCommands)
+            {
+                var commandGroup = groupData.Commands; // The array of commands for this action
+                var groupSemaphores = groupData.Semaphores; // The list of semaphores for this action's commands
+
+                if (_methodMap_multiControntroller.TryGetValue(action, out var method))
+                {
+                    if (commandGroup.Any(groupsCommand => groupsCommand.Await))
+                        await method.MethodHandle(commands, groupSemaphores, log);
+                    else
+                        _ = method.MethodHandle(commands, groupSemaphores, log);
+                }
+                else
+                {
+                    foreach (Command command in commands)
+                    {
+                        if (SlaveControllers.TryGetValue(command.TargetController, out var slaveController))
+                        {
+                            await slaveController.ExecuteCommandAsync(command, groupSemaphores[command.TargetController], log);
+                        }
+                        else
+                            throw new Exception($"Slave controller {command.TargetController} was not found.");
+
+                    }
+                }
+            }
+        }
         public abstract Task AwaitQueuedItems(Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log);
 
     }

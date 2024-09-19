@@ -26,7 +26,8 @@ namespace standa_control_software_WPF.view_models.config_creation.serialization_
                 var controllerSer = new ControllerSer()
                 {
                     Name = controller.Name,
-                    SelectedControllerType = controller.SelectedControllerType
+                    SelectedControllerType = controller.SelectedControllerType,
+                    SelectedMasterControllerName = controller.SelectedMasterControllerName,
                 };
                 foreach (var prop in controller.ControllerProperties)
                 {
@@ -74,8 +75,11 @@ namespace standa_control_software_WPF.view_models.config_creation.serialization_
                 var controller = new ControllerConfigViewModel(config)
                 {
                     Name = controllerSer.Name,
-                    SelectedControllerType = controllerSer.SelectedControllerType
+                    SelectedControllerType = controllerSer.SelectedControllerType,
+                    SelectedMasterControllerName = controllerSer.SelectedMasterControllerName
                 };
+
+
                 foreach (var propSer in controllerSer.ControllerProperties)
                 {
                     controller.UpdatePropertyValue(propSer.PropertyName, propSer.PropertyValue);
