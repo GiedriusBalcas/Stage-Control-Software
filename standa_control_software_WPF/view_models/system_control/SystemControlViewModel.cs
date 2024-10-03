@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.Drawing;
 using System.IO;
 using System.Windows.Input;
+using System.Windows.Media.Animation;
 using text_parser_library;
 
 namespace standa_control_software_WPF.view_models.system_control
@@ -122,16 +123,8 @@ namespace standa_control_software_WPF.view_models.system_control
             // Path to save the file in the same project directory
             string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
 
-            try
-            {
-                // Write the string to the file
-                File.WriteAllText(filePath, content);
-                Console.WriteLine("File saved successfully at " + filePath);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("An error occurred: " + ex.Message);
-            }
+            File.WriteAllText(filePath, content);
+
         }
         private void SaveCommandLog()
         {
@@ -142,16 +135,8 @@ namespace standa_control_software_WPF.view_models.system_control
             // Path to save the file in the same project directory
             string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
 
-            try
-            {
-                // Write the string to the file
-                File.WriteAllText(filePath, content);
-                Console.WriteLine("File saved successfully at " + filePath);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("An error occurred: " + ex.Message);
-            }
+            File.WriteAllText(filePath, content);
+
         }
 
         private async void ExecuteCommandsQueueAsync()
@@ -160,19 +145,33 @@ namespace standa_control_software_WPF.view_models.system_control
             _commandManager.Stop();
             OutputMessage += $"\ndone Stop.";
 
+            foreach(var (controllerName, controller) in _controllerManager.Controllers)
+            {
+                if (_controllerManager.ControllerLocks[controllerName].CurrentCount == 0)
+                    _controllerManager.ControllerLocks[controllerName].Release();
+            }
+
             _commandManager.ClearQueue();
             foreach (var commandLine in _functionDefinitionLibrary.ExtractCommands())
             {
                 _commandManager.EnqueueCommandLine(commandLine);
             }
-            SaveCommandLog();
 
-            _commandManager.ClearLog();
+            ClearLog();
             //var inputThread = new Thread(async() => await _commandManager.ProcessQueue());
             //inputThread.Start();
+            SaveCommandLog();
 
             try
             {
+                _ = Task.Run(async () =>
+                {
+                    while (true)
+                    {
+                        SaveLog();
+                        await Task.Delay(1000);
+                    }
+                });
                 await Task.Run(() => _commandManager.ProcessQueue());
                 OutputMessage += $"\nDone Executing.";
             }
@@ -193,6 +192,19 @@ namespace standa_control_software_WPF.view_models.system_control
             //    await Task.Delay(1000);
             //    SaveLog();
             //}
+        }
+
+        private void ClearLog()
+        {
+            _commandManager.ClearLog();
+
+            var content = string.Join("\n", _commandManager.GetLog());
+            // The name of the file where the content will be saved
+            string fileName = "log.txt";
+
+            // Path to save the file in the same project directory
+            string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
+            File.WriteAllText(filePath, content);
         }
 
         private async void CreateCommandQueueFromInputAsync()

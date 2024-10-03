@@ -8,7 +8,7 @@ using System.Collections.Concurrent;
 
 namespace standa_controller_software.device_manager.controller_interfaces.master_controller
 {
-    public partial class PositionAndShutterController_Sim : BaseMasterController
+    public partial class PositionAndShutterController_Pico : BaseMasterController
     {
         private struct PositionerInfo
         {
@@ -34,22 +34,21 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         }
 
 
-        private SyncController_Sim _syncController;
+        private SyncController_Pico _syncController;
 
         private Queue<MovementInformation> _buffer;
         private bool _launchPending = true;
-        private ConcurrentQueue<string>? _log;
         private TaskCompletionSource<bool> _processingCompletionSource;
 
 
-        public PositionAndShutterController_Sim(string name) : base(name)
+        public PositionAndShutterController_Pico(string name) : base(name)
         {
             _methodMap_multiControntroller[CommandDefinitions.ChangeShutterState] = new MultiControllerMethodInformation()
             {
                 MethodHandle = ChangeState,
                 Quable = true,
                 State = MethodState.Free,
-            }; 
+            };
             _methodMap_multiControntroller[CommandDefinitions.MoveAbsolute] = new MultiControllerMethodInformation()
             {
                 MethodHandle = MoveAbsolute,
@@ -73,23 +72,16 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             IsQuable = true;
         }
 
-
-        private void GotMessageFromSyncExecuter(string Message)
+        private void OnSyncControllerExecutionEnd()
         {
-            if (Message == "0x01") // Arduino signaled buffer space is available
-            {
-                SendCommandIfAvailable().GetAwaiter().GetResult();
-            }
-            else if (Message == "0x02") // Arduino signaled buffer is empty
-            {
-                _processingCompletionSource.TrySetResult(true);
+            _processingCompletionSource.TrySetResult(true);
 
-                _log?.Enqueue("Sync controller signaled buffer is empty");
-            }
+            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled buffer is empty");
         }
-
-        private async Task SendCommandIfAvailable()
+        private async Task OnSyncControllerBufferSpaceAvailable()
         {
+            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled buffer has free slot");
+
             if (_buffer.Count > 0)
             {
                 var movementInformation = _buffer.Dequeue();
@@ -103,7 +95,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
         private async Task ProcessQueue(Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log)
         {
-            log.Enqueue($"-------------------Starting to flushing buffer to controllers, movement buffer count: {_buffer.Count}.----------------");
+            log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: asked to process queue");
 
             if (_processingCompletionSource != null && !_processingCompletionSource.Task.IsCompleted)
             {
@@ -115,20 +107,27 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             _processingCompletionSource = new TaskCompletionSource<bool>();
 
             // Send command to device to start processing
-
+            log.Enqueue($"master: process queue allowed");
+            
             await FillControllerBuffers(semaphores, log);
 
-            await _syncController.ExecuteQueue(log);
+
+            log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: send to pico to start execution");
+
+            await _syncController.StartExecution();
 
             // Set the flag to indicate processing has started
-            
+
             _launchPending = true;
 
         }
 
         private async Task FillControllerBuffers(Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log)
         {
-            int minFreeItemCount = GetMinFreeBufferItemCount();
+            log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: trying to fill slave buffers");
+
+
+            int minFreeItemCount = await GetMinFreeBufferItemCount();
             int bufferCount = _buffer.Count;
 
             for (int i = 0; i < Math.Min(minFreeItemCount, bufferCount); i++)
@@ -176,18 +175,22 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
             // Sending the sync_execution_info
 
-            _syncController.AddBufferItem(
+            await _syncController.AddBufferItem(
                 execInfo.Devices,
                 execInfo.Launch,
                 execInfo.Rethrow,
                 execInfo.Shutter,
                 execInfo.Shutter_delay_on,
                 execInfo.Shutter_delay_off);
-            }
+            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: sent an item to the buffer");
+
+        }
 
 
-        private int GetMinFreeBufferItemCount()
+        private async Task<int> GetMinFreeBufferItemCount()
         {
+            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: trying to get min free buffer item count");
+
             int minFreeItemCount = int.MaxValue;
             foreach (var (controllerName, controller) in SlaveControllers)
             {
@@ -196,14 +199,15 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     minFreeItemCount = Math.Min(minFreeItemCount, positionerController.CheckBufferFreeSpace());
                 }
             }
-            _syncController.CheckFreeItemSpace();
-            minFreeItemCount = Math.Min(minFreeItemCount, _syncController.CheckFreeItemSpace());
+
+            int syncControllerBufferItemCount = await _syncController.GetBufferItemCount();
+            minFreeItemCount = Math.Min(minFreeItemCount, syncControllerBufferItemCount);
             return minFreeItemCount;
         }
 
         private Task ChangeState(Command[] commands, Dictionary<string, SemaphoreSlim> semaphors, ConcurrentQueue<string> log)
         {
-            return Task.CompletedTask;    
+            return Task.CompletedTask;
         }
 
         private async Task UpdateMoveSettings(Command[] commands, Dictionary<string, SemaphoreSlim> semaphors, ConcurrentQueue<string> log)
@@ -224,9 +228,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     throw new Exception($"Slave controller {command.TargetController} was not found.");
 
             }
-
-            // save the parameters in memory ( why? allocated time must be provided by the moveAFunction).
-            // call ximc.set_movement_settings() on execution;
 
         }
 
@@ -264,7 +265,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             {
                 Devices = commands.SelectMany(comm => comm.TargetDevices).ToArray(),
                 Launch = _launchPending,
-                Rethrow = 0f,
+                Rethrow = 5f,
                 Shutter = commandParametersFromFirstCommand.IsShutterUsed,
                 Shutter_delay_off = commandParametersFromFirstCommand.IsShutterUsed ? commandParametersFromFirstCommand.ShutterInfo.DelayOff : 0f,
                 Shutter_delay_on = commandParametersFromFirstCommand.IsShutterUsed ? commandParametersFromFirstCommand.ShutterInfo.DelayOn : 0f,
@@ -293,60 +294,22 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             {
                 SlaveControllers.Add(shutterController.Name, shutterController);
                 SlaveControllersLocks.Add(shutterController.Name, controllerLock);
-                if (_syncController is not null)
-                {
-                    _syncController._shutterChangeState = (bool wantedState) =>
-                    {
-                        _ = shutterController.ChangeStatePublic(wantedState);
-                    };
-                }
             }
-            else if (controller is PositionerController_Sim positionerController)
+            else if (controller is BasePositionerController positionerController)
             {
                 SlaveControllers.Add(positionerController.Name, positionerController);
                 SlaveControllersLocks.Add(positionerController.Name, controllerLock);
-
-                foreach (var device in positionerController.GetDevices())
-                {
-                    char deviceName = device.Name;
-                    if(_syncController is not null)
-                    {
-                        _syncController._positionerSyncInMap[deviceName] = () => positionerController.InvokeSynIn(deviceName);
-                        positionerController.OnSyncOut += _syncController.GotSyncOut;
-                    }
-                }
             }
-            else if(controller is SyncController_Sim syncController)
+            else if (controller is SyncController_Pico syncController)
             {
 
                 SlaveControllers.Add(syncController.Name, syncController);
                 SlaveControllersLocks.Add(syncController.Name, controllerLock);
                 _syncController = syncController;
-                _syncController.SendMessage += GotMessageFromSyncExecuter;
+                _syncController.BufferHasFreeSpace += async () => await OnSyncControllerBufferSpaceAvailable();
+                _syncController.ExecutionCompleted += () => OnSyncControllerExecutionEnd();
+                //_syncController.LastBufferItemTaken += async () => await SendCommandIfAvailable();
 
-                foreach(var (slaveControllerName, slaveController) in SlaveControllers)
-                {
-                    if(slaveController is PositionerController_Sim slavePositionerController)
-                    {
-                        foreach (var device in slavePositionerController.GetDevices())
-                        {
-                            char deviceName = device.Name;
-                            if (_syncController is not null)
-                            {
-                                _syncController._positionerSyncInMap[deviceName] = () => slavePositionerController.InvokeSynIn(deviceName);
-                                slavePositionerController.OnSyncOut += _syncController.GotSyncOut;
-                            }
-                        }
-                    }
-
-                    if(slaveController is ShutterController_Sim slaveShutterController)
-                    {
-                        _syncController._shutterChangeState = (bool wantedState) =>
-                        {
-                            _ = slaveShutterController.ChangeStatePublic(wantedState);
-                        };
-                    }
-                }
             }
         }
 
@@ -436,31 +399,33 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
         public override async Task AwaitQueuedItems(Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log)
         {
+            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: await queued items encountered.");
+
             foreach (var (controllerName, semaphore) in semaphores)
             {
                 if (semaphore.CurrentCount == 0)
                     semaphore.Release();
             }
-            
+
             if (_processingCompletionSource == null || _processingCompletionSource.Task.IsCompleted)
             {
                 await ProcessQueue(semaphores, log);
             }
-            
+
 
             // Await the TaskCompletionSource's Task without blocking the thread
             await _processingCompletionSource.Task;
         }
 
-        public override Task Stop(SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        public override async Task Stop(SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
+            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: stop encountered.");
+
             _buffer.Clear();
-            _syncController.Stop();
+            _processingCompletionSource?.TrySetResult(true);
             _launchPending = true;
-                _processingCompletionSource?.TrySetResult(true);
 
-
-            return Task.CompletedTask;
+            var kaka = 1;
         }
     }
 }

@@ -61,23 +61,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 _gotSyncOutFrom.Add(deviceName);
             }
            
-            
-            //private void CheckAndRelaunchSyncIn()
-            //{
-            //    if (syncOutFlags.All(kvp => kvp.Value == true) && _relaunchFlag)
-            //    {
-            //        _relaunchFlag = false;
-            //        _movementFlag = true;
-            //        var devicesToRethrow = sendSyncInTo.Where(kvp => kvp.Value == true)
-            //                      .Select(kvp => kvp.Key)
-            //                      .ToArray();
-
-            //        SendSyncIn(devicesToRethrow);
-            //        _relaunchFlag = true;
-            //    }
-            //}
-
-
 
             public async Task ExecuteQueue(ConcurrentQueue<string> log)
             {

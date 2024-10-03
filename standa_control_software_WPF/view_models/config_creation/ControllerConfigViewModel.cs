@@ -55,7 +55,14 @@ namespace standa_control_software_WPF.view_models.config_creation
         public ObservableCollection<PropertyDisplayItem> ControllerProperties { get; } = new ObservableCollection<PropertyDisplayItem>();
         public ObservableCollection<string> ConfigurationControllerNames => new ObservableCollection<string>(
             _config?.Controllers
-            .Where(controller => controller.ControllerType.IsSubclassOf(typeof(BaseMasterController)))
+            .Where(controller => 
+            {
+                if (controller.ControllerType is not null)
+                    return controller.ControllerType.IsSubclassOf(typeof(BaseMasterController));
+                else
+                    return false;
+
+            })
             .Select(controllerInfo => controllerInfo.Name)
             .Where(controllerName => controllerName != this.Name)
             .ToList() ?? new List<string>()

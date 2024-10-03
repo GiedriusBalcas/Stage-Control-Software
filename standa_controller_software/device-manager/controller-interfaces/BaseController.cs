@@ -30,7 +30,8 @@ namespace standa_controller_software.device_manager.controller_interfaces
         }
 
         protected Dictionary<CommandDefinitions, MethodInformation> _methodMap = new Dictionary<CommandDefinitions, MethodInformation>();
-        
+        protected ConcurrentQueue<string> _log;
+
         [DisplayPropertyAttribute]
         public BaseController? MasterController { get; set; } = null;
         
@@ -38,6 +39,9 @@ namespace standa_controller_software.device_manager.controller_interfaces
 
         [DisplayPropertyAttribute]
         public string Name { get;}
+
+        [DisplayPropertyAttribute]
+        public string ID { get; set; }
         protected BaseController(string name)
         {
             Name = name;
@@ -64,6 +68,12 @@ namespace standa_controller_software.device_manager.controller_interfaces
         public abstract Task UpdateStatesAsync(ConcurrentQueue<string> log);
         public abstract void AddDevice(BaseDevice device);
         public abstract Task ConnectDevice(BaseDevice device, SemaphoreSlim semaphore);
+        public virtual Task InitializeController(SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        {
+            _log = log;
+            return Task.CompletedTask;
+        }
+
         public abstract List<BaseDevice> GetDevices();
         public abstract BaseController GetCopy();
 

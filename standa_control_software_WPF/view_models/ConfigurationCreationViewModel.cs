@@ -200,7 +200,7 @@ namespace standa_control_software_WPF.view_models
                     );
 
                 controllerMangerInstance.ToolInformation = tool;
-
+            
                 _onInitializationComplete.Invoke(controllerMangerInstance);
             }
             catch (Exception ex)

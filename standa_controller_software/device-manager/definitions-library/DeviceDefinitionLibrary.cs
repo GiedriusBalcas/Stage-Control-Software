@@ -2,6 +2,7 @@
 using standa_controller_software.device_manager.controller_interfaces.master_controller;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.controller_interfaces.shutter;
+using standa_controller_software.device_manager.controller_interfaces.sync;
 using standa_controller_software.device_manager.devices;
 using standa_controller_software.device_manager.devices.shutter;
 using System;
@@ -77,17 +78,35 @@ namespace standa_controller_software.device_manager
                     Type = typeof(PositionAndShutterController_Sim),
                     AllowedDevices = shutterDeviceDefinitions
                 },
-                //new ControllerInfo
-                //{
-                //    Name = "Arduino Master Controller",
-                //    Type = typeof(Posi),
-                //    AllowedDevices = shutterDeviceDefinitions
-                //},
+                new ControllerInfo
+                {
+                    Name = "Pico Master Controller",
+                    Type = typeof(PositionAndShutterController_Pico),
+                    AllowedDevices = shutterDeviceDefinitions
+                },
+            };
+
+
+            var syncControllerTypeDefinitions = new List<ControllerInfo>
+            {
+                new ControllerInfo
+                {
+                    Name = "Virtual Sync Controller",
+                    Type = typeof(SyncController_Sim),
+                    AllowedDevices = new List<DeviceInfo>()
+                },
+                new ControllerInfo
+                {
+                    Name = "Pico Sync Controller",
+                    Type = typeof(SyncController_Pico),
+                    AllowedDevices = new List<DeviceInfo>()
+                },
             };
 
             ControllerDefinitions.Add(typeof(BasePositionerController), positionerControllerTypeDefinitions);
             ControllerDefinitions.Add(typeof(BaseShutterController), shutterControllerTypeDefinitions);
             ControllerDefinitions.Add(typeof(BaseMasterController), masterControllerTypeDefinitions);
+            ControllerDefinitions.Add(typeof(BaseController), syncControllerTypeDefinitions);
         }
     }
 }

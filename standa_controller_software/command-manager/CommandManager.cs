@@ -54,13 +54,20 @@ namespace standa_controller_software.command_manager
         private readonly ControllerManager _controllerManager;
         private ConcurrentQueue<Command[]> _commandQueue = new ConcurrentQueue<Command[]>();
         private ConcurrentQueue<string> _log = new ConcurrentQueue<string>();
-        private bool _running = true;
         private CommandManagerState _currentState = CommandManagerState.Waiting;
         private string _currentQueueController = string.Empty;
         private bool _allowedToRun = true;
         public CommandManager(ControllerManager manager)
         {
             this._controllerManager = manager;
+
+
+            foreach (var (controllerName, controller) in _controllerManager.Controllers)
+            {
+                _controllerManager.ControllerLocks[controllerName].Wait();
+                controller.InitializeController(_controllerManager.ControllerLocks[controllerName], _log);
+                _controllerManager.ControllerLocks[controllerName].Release();
+            }
         }
 
         public CommandManagerState CurrentState
@@ -129,7 +136,7 @@ namespace standa_controller_software.command_manager
                 }
             }
             CurrentState = CommandManagerState.Waiting;
-            _log.Enqueue("QueueEnd.");
+            _log.Enqueue("QueueEnd in command manager.");
 
         }
 
@@ -322,7 +329,7 @@ namespace standa_controller_software.command_manager
 
                 }
                 await Task.WhenAll(tasks);
-                await Task.Delay(10);
+                await Task.Delay(100);
             }
         }
 
@@ -336,7 +343,6 @@ namespace standa_controller_software.command_manager
 
         public async void Stop()
         {
-            _running = false;
             _allowedToRun = false;
             CurrentState = CommandManagerState.Waiting;
 
@@ -344,10 +350,10 @@ namespace standa_controller_software.command_manager
             foreach(var (controllerName, controller )in _controllerManager.Controllers)
             {
                 await _controllerManager.ControllerLocks[controllerName].WaitAsync();
-                var task = controller.Stop(_controllerManager.ControllerLocks[controllerName], _log);
-                tasks.Add(task);
+                await controller.Stop(_controllerManager.ControllerLocks[controllerName], _log);
+                //tasks.Add(task);
             }
-            await Task.WhenAll(tasks);
+            //await Task.WhenAll(tasks);
 
             foreach (var (controllerName, controller) in _controllerManager.Controllers)
             {

@@ -4,6 +4,7 @@ using standa_controller_software.device_manager;
 using standa_controller_software.device_manager.controller_interfaces.master_controller;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.controller_interfaces.shutter;
+using standa_controller_software.device_manager.controller_interfaces.sync;
 using text_parser_library;
 
 namespace standa_controller_software.custom_functions
@@ -29,7 +30,8 @@ namespace standa_controller_software.custom_functions
             {
                 { typeof(BasePositionerController), typeof(PositionerController_Virtual) },
                 { typeof(BaseShutterController), typeof(ShutterController_Virtual) },
-                { typeof(PositionAndShutterController_Sim), typeof(PositionAndShutterController_Virtual)}
+                { typeof(BaseSyncController), typeof(SyncController_Sim) },
+                { typeof(BaseMasterController), typeof(PositionAndShutterController_Virtual)}
             };
             _controllerManager_virtual = _controllerManager.CreateACopy(rules);
             _commandManager_virtual = new CommandManager(_controllerManager_virtual);

@@ -21,7 +21,7 @@ namespace standa_controller_software.device_manager
         {
         }
 
-        public void AddController(BaseController controller)
+        public async void AddController(BaseController controller)
         {
             // Check if controller's name is unique
             if (Controllers.ContainsKey(controller.Name))
@@ -29,6 +29,7 @@ namespace standa_controller_software.device_manager
 
             Controllers.Add(controller.Name, controller);
             ControllerLocks.Add(controller.Name, new SemaphoreSlim(1, 1));
+
         }
 
         public TController GetDeviceController<TController>(char deviceName) where TController : BaseController

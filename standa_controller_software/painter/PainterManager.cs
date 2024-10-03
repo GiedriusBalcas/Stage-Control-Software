@@ -10,6 +10,7 @@ using standa_controller_software.device_manager.devices.shutter;
 using standa_controller_software.device_manager.controller_interfaces.shutter;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.controller_interfaces.master_controller;
+using standa_controller_software.device_manager.controller_interfaces.sync;
 
 namespace standa_controller_software.painter
 {
@@ -158,7 +159,8 @@ namespace standa_controller_software.painter
             {
                 { typeof(BasePositionerController), typeof(PositionerController_Virtual) },
                 { typeof(BaseShutterController), typeof(ShutterController_Virtual) },
-                { typeof(PositionAndShutterController_Sim), typeof(PositionAndShutterController_Virtual) }
+                { typeof(BaseSyncController), typeof(SyncController_Sim) },
+                { typeof(BaseMasterController), typeof(PositionAndShutterController_Virtual) }
             };
             var controllerManager_virtual = _controllerManager.CreateACopy(rules);
 
