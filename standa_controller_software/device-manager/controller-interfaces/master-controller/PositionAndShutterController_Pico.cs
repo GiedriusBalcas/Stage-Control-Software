@@ -1,4 +1,5 @@
-﻿using standa_controller_software.command_manager;
+﻿using OpenTK.Graphics.ES11;
+using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.controller_interfaces.shutter;
@@ -80,7 +81,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         }
         private async Task OnSyncControllerBufferSpaceAvailable()
         {
-            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled buffer has free slot");
+           _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled buffer has free slot");
 
             if (_buffer.Count > 0)
             {
@@ -243,8 +244,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             bool isLeadInUsed = commandParametersFromFirstCommand.IsLeadInUsed;
             bool isLeadOutUsed = commandParametersFromFirstCommand.IsLeadOutUsed;
 
-
-
             Dictionary<string, PositionerInfo> posInfoGroups = new Dictionary<string, PositionerInfo>();
 
             for (int i = 0; i < commands.Length; i++)
@@ -265,10 +264,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             {
                 Devices = commands.SelectMany(comm => comm.TargetDevices).ToArray(),
                 Launch = _launchPending,
-                Rethrow = 5f,
+                Rethrow = posInfoGroups.Values.SelectMany(info => info.AllocatedTimes).Max()*1000,
                 Shutter = commandParametersFromFirstCommand.IsShutterUsed,
-                Shutter_delay_off = commandParametersFromFirstCommand.IsShutterUsed ? commandParametersFromFirstCommand.ShutterInfo.DelayOff : 0f,
-                Shutter_delay_on = commandParametersFromFirstCommand.IsShutterUsed ? commandParametersFromFirstCommand.ShutterInfo.DelayOn : 0f,
+                Shutter_delay_off = commandParametersFromFirstCommand.IsShutterUsed ? commandParametersFromFirstCommand.ShutterInfo.DelayOff *1000: 0f,
+                Shutter_delay_on = commandParametersFromFirstCommand.IsShutterUsed ? commandParametersFromFirstCommand.ShutterInfo.DelayOn *1000: 0f,
             };
 
             var moveInfo = new MovementInformation()

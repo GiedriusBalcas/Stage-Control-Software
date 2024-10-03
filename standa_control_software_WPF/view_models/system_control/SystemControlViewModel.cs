@@ -141,6 +141,8 @@ namespace standa_control_software_WPF.view_models.system_control
 
         private async void ExecuteCommandsQueueAsync()
         {
+            ClearLog();
+
             OutputMessage += $"\nStop.";
             _commandManager.Stop();
             OutputMessage += $"\ndone Stop.";
@@ -157,7 +159,6 @@ namespace standa_control_software_WPF.view_models.system_control
                 _commandManager.EnqueueCommandLine(commandLine);
             }
 
-            ClearLog();
             //var inputThread = new Thread(async() => await _commandManager.ProcessQueue());
             //inputThread.Start();
             SaveCommandLog();

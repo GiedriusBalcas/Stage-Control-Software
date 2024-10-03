@@ -100,10 +100,77 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         }
 
         // Method to add buffer item
+        //public async Task AddBufferItem(char[] Devices, bool Launch, float Rethrow, bool Shutter, float Shutter_delay_on, float Shutter_delay_off)
+        //{
+        //    //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --AddBuffer--");
+
+        //    await commandSemaphore.WaitAsync();
+
+        //    try
+        //    {
+        //        var executionInfo = new ExecutionInformation
+        //        {
+        //            Devices = Devices,
+        //            Launch = Launch,
+        //            Rethrow = Rethrow,
+        //            Shutter = Shutter,
+        //            Shutter_delay_off = Shutter_delay_off,
+        //            Shutter_delay_on = Shutter_delay_on
+        //        };
+
+        //        // Construct the packet
+        //        byte[] packet = ConstructAddBufferItemPacket(executionInfo);
+
+        //        // Log the packet being sent
+        //        //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Sending AddBufferItem command: {BitConverter.ToString(packet)}");
+
+        //        // Initialize the TaskCompletionSource
+        //        var tcs = new TaskCompletionSource<bool>();
+
+        //        lock (responseLock)
+        //        {
+        //            if (commandResponseTcs != null)
+        //            {
+        //                throw new InvalidOperationException("Another command is already being processed.");
+        //            }
+        //            commandResponseTcs = tcs;
+        //        }
+
+        //        // Send the packet
+        //        if (!serialPort.IsOpen)
+        //        {
+        //            throw new InvalidOperationException("Serial port is closed.");
+        //        }
+        //        serialPort.Write(packet, 0, packet.Length);
+        //        //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --AddBuffer--serial wrote--");
+
+        //        // Wait for the response with timeout
+        //        bool success = await WaitForResponseAsync(tcs.Task, timeoutMilliseconds: 5000);
+
+        //        //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --AddBuffer--awaited response--");
+
+        //        if (!success)
+        //        {
+        //            throw new Exception("Error executing ADD_BUFFER_ITEM command.");
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Exception in AddBufferItem: {ex.Message}");
+        //        throw;
+        //    }
+        //    finally
+        //    {
+        //        lock (responseLock)
+        //        {
+        //            commandResponseTcs = null;
+        //        }
+        //        commandSemaphore.Release();
+        //    }
+        //}
+
         public async Task AddBufferItem(char[] Devices, bool Launch, float Rethrow, bool Shutter, float Shutter_delay_on, float Shutter_delay_off)
         {
-            //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --AddBuffer--");
-
             await commandSemaphore.WaitAsync();
 
             try
@@ -120,9 +187,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
                 // Construct the packet
                 byte[] packet = ConstructAddBufferItemPacket(executionInfo);
-
-                // Log the packet being sent
-                //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Sending AddBufferItem command: {BitConverter.ToString(packet)}");
 
                 // Initialize the TaskCompletionSource
                 var tcs = new TaskCompletionSource<bool>();
@@ -142,12 +206,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                     throw new InvalidOperationException("Serial port is closed.");
                 }
                 serialPort.Write(packet, 0, packet.Length);
-                //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --AddBuffer--serial wrote--");
+                _log.Enqueue($"packer: \nDevices = {String.Join(' ', Devices)} \n Launch = {Launch}\nRethrow = {Rethrow}\n Shutter_on= {Shutter_delay_on}\n Shutter_off= {Shutter_delay_off}");
+                _log.Enqueue($"pico: sending packet: [{String.Join(' ',packet)}]");
 
                 // Wait for the response with timeout
                 bool success = await WaitForResponseAsync(tcs.Task, timeoutMilliseconds: 5000);
-
-                //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --AddBuffer--awaited response--");
 
                 if (!success)
                 {
@@ -156,7 +219,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             }
             catch (Exception ex)
             {
-                //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Exception in AddBufferItem: {ex.Message}");
                 throw;
             }
             finally
@@ -362,11 +424,69 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         }
 
         // Helper method to construct the packet for AddBufferItem
+        //private byte[] ConstructAddBufferItemPacket(ExecutionInformation executionInfo)
+        //{
+        //    const byte PAYLOAD_LENGTH = 9;
+
+        //    byte launch = (byte)(executionInfo.Launch ? 0x01 : 0x00);
+
+        //    // Map Devices to LEDpins
+        //    byte[] ledPins = new byte[4];
+        //    for (int i = 0; i < 4; i++)
+        //    {
+        //        if (i < executionInfo.Devices.Length)
+        //        {
+        //            char device = executionInfo.Devices[i];
+        //            if (_deviceToPinMap.TryGetValue(device, out byte pin))
+        //            {
+        //                ledPins[i] = pin;
+        //            }
+        //            else
+        //            {
+        //                throw new ArgumentException($"Unknown device '{device}'");
+        //            }
+        //        }
+        //        else
+        //        {
+        //            ledPins[i] = 0xFF; // Unused
+        //        }
+        //    }
+
+        //    // Convert Rethrow to bytes (float)
+        //    byte[] rethrowBytes = BitConverter.GetBytes(executionInfo.Rethrow);
+
+        //    // Construct the payload
+        //    byte[] payload = new byte[PAYLOAD_LENGTH];
+        //    payload[0] = launch;
+        //    Array.Copy(ledPins, 0, payload, 1, 4);
+        //    Array.Copy(rethrowBytes, 0, payload, 5, 4);
+
+        //    // Compute checksum
+        //    byte checksum = CMD_ADD_BUFFER_ITEM ^ PAYLOAD_LENGTH;
+        //    foreach (byte b in payload)
+        //    {
+        //        checksum ^= b;
+        //    }
+
+        //    // Construct the packet
+        //    byte[] packet = new byte[1 + 1 + 1 + PAYLOAD_LENGTH + 1];
+        //    int index = 0;
+        //    packet[index++] = START_BYTE;
+        //    packet[index++] = CMD_ADD_BUFFER_ITEM;
+        //    packet[index++] = PAYLOAD_LENGTH;
+        //    Array.Copy(payload, 0, packet, index, PAYLOAD_LENGTH);
+        //    index += PAYLOAD_LENGTH;
+        //    packet[index++] = checksum;
+
+        //    return packet;
+        //}
+
         private byte[] ConstructAddBufferItemPacket(ExecutionInformation executionInfo)
         {
-            const byte PAYLOAD_LENGTH = 9;
+            const byte PAYLOAD_LENGTH = 17; // Updated payload length
 
             byte launch = (byte)(executionInfo.Launch ? 0x01 : 0x00);
+            //byte shutter = (byte)(executionInfo.Shutter ? 0x01 : 0x00);
 
             // Map Devices to LEDpins
             byte[] ledPins = new byte[4];
@@ -390,14 +510,24 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                 }
             }
 
-            // Convert Rethrow to bytes (float)
+            // Convert floats to bytes (little-endian)
             byte[] rethrowBytes = BitConverter.GetBytes(executionInfo.Rethrow);
+            byte[] shutterDelayOnBytes = BitConverter.GetBytes(executionInfo.Shutter_delay_on);
+            byte[] shutterDelayOffBytes = BitConverter.GetBytes(executionInfo.Shutter_delay_off);
 
             // Construct the payload
             byte[] payload = new byte[PAYLOAD_LENGTH];
-            payload[0] = launch;
-            Array.Copy(ledPins, 0, payload, 1, 4);
-            Array.Copy(rethrowBytes, 0, payload, 5, 4);
+            int index = 0;
+            payload[index++] = launch;
+            //payload[index++] = shutter;
+            Array.Copy(ledPins, 0, payload, index, 4);
+            index += 4;
+            Array.Copy(rethrowBytes, 0, payload, index, 4);
+            index += 4;
+            Array.Copy(shutterDelayOnBytes, 0, payload, index, 4);
+            index += 4;
+            Array.Copy(shutterDelayOffBytes, 0, payload, index, 4);
+            index += 4;
 
             // Compute checksum
             byte checksum = CMD_ADD_BUFFER_ITEM ^ PAYLOAD_LENGTH;
@@ -408,13 +538,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
             // Construct the packet
             byte[] packet = new byte[1 + 1 + 1 + PAYLOAD_LENGTH + 1];
-            int index = 0;
-            packet[index++] = START_BYTE;
-            packet[index++] = CMD_ADD_BUFFER_ITEM;
-            packet[index++] = PAYLOAD_LENGTH;
-            Array.Copy(payload, 0, packet, index, PAYLOAD_LENGTH);
-            index += PAYLOAD_LENGTH;
-            packet[index++] = checksum;
+            int packetIndex = 0;
+            packet[packetIndex++] = START_BYTE;
+            packet[packetIndex++] = CMD_ADD_BUFFER_ITEM;
+            packet[packetIndex++] = PAYLOAD_LENGTH;
+            Array.Copy(payload, 0, packet, packetIndex, PAYLOAD_LENGTH);
+            packetIndex += PAYLOAD_LENGTH;
+            packet[packetIndex++] = checksum;
 
             return packet;
         }
@@ -475,23 +605,24 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                 {
                     // It's text data (debug messages)
                     StringBuilder sb = new StringBuilder();
-                    while (dataQueue.TryDequeue(out byte textByte))
+                    while (dataQueue.TryPeek(out byte textByte))
                     {
                         if (textByte == RESPONSE_START_BYTE)
                         {
                             // Put it back for the next iteration
-                            dataQueue.Enqueue(textByte);
+                            //dataQueue.(textByte);
                             break;
                         }
                         else
                         {
-                            sb.Append((char)textByte);
+                            dataQueue.TryDequeue(out byte textByteDequeued);
+                            sb.Append((char)textByteDequeued);
                         }
                     }
                     string text = sb.ToString();
                     if (!string.IsNullOrWhiteSpace(text))
                     {
-                        //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Received Text: {text}");
+                        _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Received Text: {text}");
                     }
                 }
             }
@@ -581,12 +712,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
                         if (tcs != null)
                         {
-                            //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --response: success: true --");
+                            _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --response: success: true --");
                             tcs.SetResult(true);
                         }
                         else
                         {
-                            //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Received success response with no pending command.");
+                            _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Received success response with no pending command.");
                         }
                     }
                     break;
@@ -602,12 +733,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
                         if (tcs != null)
                         {
-                            //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --response: success: false --");
+                            _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --response: success: false --");
                             tcs.SetResult(false);
                         }
                         else
                         {
-                            //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Received error response with no pending command.");
+                            _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Received error response with no pending command.");
                         }
                     }
                     break;
@@ -626,39 +757,39 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                             if (payload.Length >= 1)
                             {
                                 int count = payload[0]; // Assuming count is a single byte
-                                //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --response count: {count} --");
+                                _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --response count: {count} --");
                                 countTcs.SetResult(count);
                             }
                             else
                             {
-                                //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --response count: Invalid payload length for BUFFER_ITEM_COUNT response.--");
+                                _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --response count: Invalid payload length for BUFFER_ITEM_COUNT response.--");
                                 countTcs.SetException(new Exception("Invalid payload length for BUFFER_ITEM_COUNT response."));
                             }
                         }
                         else
                         {
-                            //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --response count: Received BUFFER_ITEM_COUNT response with no pending request.--");
+                            _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --response count: Received BUFFER_ITEM_COUNT response with no pending request.--");
                         }
                     }
                     break;
 
                 case BUFFER_STATUS_FREE_SPACE:
-                    //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --response: Buffer has free space available.--");
+                    _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --response: Buffer has free space available.--");
                     BufferHasFreeSpace?.Invoke();
                     break;
 
                 case BUFFER_STATUS_LAST_ITEM:
-                    //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --response: Last buffer item has been taken.--");
+                    _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --response: Last buffer item has been taken.--");
                     LastBufferItemTaken?.Invoke();
                     break;
 
                 case EXECUTION_STATUS_END:
-                    //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --response: Execution of all commands completed.--");
+                    _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --response: Execution of all commands completed.--");
                     ExecutionCompleted?.Invoke();
                     break;
 
                 default:
-                    //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --response: Unknown response code: 0x{responseCode:X2}--");
+                    _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: --response: Unknown response code: 0x{responseCode:X2}--");
                     break;
             }
         }
@@ -729,6 +860,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         }
     }
 }
+
 
 
 
