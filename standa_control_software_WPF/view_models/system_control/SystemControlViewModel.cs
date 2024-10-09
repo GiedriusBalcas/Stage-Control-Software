@@ -163,8 +163,8 @@ namespace standa_control_software_WPF.view_models.system_control
             //inputThread.Start();
             SaveCommandLog();
 
-            try
-            {
+            //try
+            //{
                 _ = Task.Run(async () =>
                 {
                     while (true)
@@ -175,11 +175,11 @@ namespace standa_control_software_WPF.view_models.system_control
                 });
                 await Task.Run(() => _commandManager.ProcessQueue());
                 OutputMessage += $"\nDone Executing.";
-            }
-            catch(Exception ex)
-            {
-                OutputMessage += $"\n{ex.Message}";
-            }
+            //}
+            //catch(Exception ex)
+            //{
+            //    OutputMessage += $"\n{ex.Message}";
+            //}
             //var highPriorityThread = new Thread(() => _commandManager.ProcessQueue());
             //highPriorityThread.Priority = ThreadPriority.Highest; // Set the priority to Highest
             //highPriorityThread.Start();

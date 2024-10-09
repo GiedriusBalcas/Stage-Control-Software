@@ -112,29 +112,9 @@ namespace standa_controller_software.command_manager
                    
                 }
             }
-            if (!(_currentQueueController == string.Empty || _currentQueueController is null))
-            {
-                if (_controllerManager.Controllers[_currentQueueController] is BaseMasterController queuedMasterController)
-                {
-                    Dictionary<string, SemaphoreSlim> semaphoresOfQueuedControllers = new Dictionary<string, SemaphoreSlim>();
-                    semaphoresOfQueuedControllers[_currentQueueController] = _controllerManager.ControllerLocks[_currentQueueController];
-                    foreach (var (slaveControllerName, slaveController) in queuedMasterController.SlaveControllers)
-                    {
-                        semaphoresOfQueuedControllers[slaveControllerName] = _controllerManager.ControllerLocks[slaveControllerName];
-                    }
-                    foreach (var (slaveControllerName, semaphoreOfQueuedController) in semaphoresOfQueuedControllers)
-                    {
-                        await semaphoreOfQueuedController.WaitAsync();
-                    }
-                    await queuedMasterController.AwaitQueuedItems(semaphoresOfQueuedControllers, _log);
-                }
-                else
-                {
-                    var semaphoreOfQueuedController = _controllerManager.ControllerLocks[_currentQueueController];
-                    await semaphoreOfQueuedController.WaitAsync();
-                    await _controllerManager.Controllers[_currentQueueController].AwaitQueuedItems(semaphoreOfQueuedController, _log);
-                }
-            }
+
+            await CheckAndUpdateControllerQueue(String.Empty);
+
             CurrentState = CommandManagerState.Waiting;
             _log.Enqueue("QueueEnd in command manager.");
 
@@ -173,28 +153,30 @@ namespace standa_controller_software.command_manager
 
             var masterControllerNames = commandsByMasterController.Keys.ToList();
 
-            // TODO: check if I dont need to first find the _queuedController and deal with it (add new commands), and then repeat until theres no more queued controllers or not
-
             var executeTasks = masterControllerNames.Select(async controllerName =>
             {
                 var commands = commandsByMasterController[controllerName];
                 var semaphore = _controllerManager.ControllerLocks[controllerName];
-                
+
+                await CheckAndUpdateControllerQueue(controllerName);
+
                 if (_controllerManager.Controllers[controllerName] is BaseMasterController masterController)
                 {
-                    var semaphores = new Dictionary<string, SemaphoreSlim>();
+                    var slaveSemaphores = new Dictionary<string, SemaphoreSlim>();
                     foreach (var (slaveControllerName, slaveController) in masterController.SlaveControllers)
                     {
-                        semaphores[slaveControllerName] = _controllerManager.ControllerLocks[slaveControllerName];
+                        slaveSemaphores[slaveControllerName] = _controllerManager.ControllerLocks[slaveControllerName];
                     }
 
-                    await ExecuteCommandsForMasterControllerAsync(commands, controllerName, semaphores);
+                    await ExecuteCommandsForMasterControllerAsync(commands, controllerName, semaphore, slaveSemaphores);
 
-                    foreach (string slaveControllerName in commands.Select(command => command.TargetController).Distinct())
+                    foreach (var (slaveControllerName, slaveSemaphore) in slaveSemaphores)
                     {
-                        if (controllerSemaphores[slaveControllerName].CurrentCount == 0)
-                            controllerSemaphores[slaveControllerName].Release();
+                        if (slaveSemaphore.CurrentCount == 0)
+                            slaveSemaphore.Release();
                     }
+                    if (semaphore.CurrentCount == 0)
+                        semaphore.Release();
                 }
                 else
                 {
@@ -209,90 +191,21 @@ namespace standa_controller_software.command_manager
             await Task.WhenAll(executeTasks);
 
         }
-        private async Task ExecuteCommandsForMasterControllerAsync(Command[] commands, string controllerName, Dictionary<string, SemaphoreSlim> semaphores)
+        private async Task ExecuteCommandsForMasterControllerAsync(Command[] commands, string controllerName, SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphores)
         {
-            // TODO: group by action.
-
-            if (_currentQueueController != string.Empty && _currentQueueController != controllerName)
-            {
-                if (_controllerManager.Controllers[_currentQueueController] is BaseMasterController queuedMasterController)
-                {
-                    Dictionary<string, SemaphoreSlim> semaphoresOfQueuedControllers = new Dictionary<string, SemaphoreSlim>();
-                    semaphoresOfQueuedControllers[_currentQueueController] = _controllerManager.ControllerLocks[_currentQueueController];
-                    foreach (var (slaveControllerName, slaveController) in queuedMasterController.SlaveControllers)
-                    {
-                        semaphoresOfQueuedControllers[slaveControllerName] = _controllerManager.ControllerLocks[slaveControllerName];
-                    }
-                    foreach (var (slaveControllerName, semaphoreOfQueuedController) in semaphoresOfQueuedControllers)
-                    {
-                        await semaphoreOfQueuedController.WaitAsync();
-                    }
-                    await queuedMasterController.AwaitQueuedItems(semaphoresOfQueuedControllers, _log);
-                }
-                else
-                {
-                    var semaphoreOfQueuedController = _controllerManager.ControllerLocks[_currentQueueController];
-                    await semaphoreOfQueuedController.WaitAsync();
-                    await _controllerManager.Controllers[_currentQueueController].AwaitQueuedItems(semaphoreOfQueuedController, _log);
-                }
-            }
-            if (_controllerManager.Controllers[controllerName].IsQuable)
-            {
-                _currentQueueController = controllerName;
-            }
-
             if (_controllerManager.Controllers[controllerName] is BaseMasterController masterController)
             {
-                await masterController.ExecuteSlaveCommandsAsync(commands, semaphores, _log);
-
-                
+                await masterController.ExecuteSlaveCommandsAsync(commands, semaphore, slaveSemaphores, _log);
             }
         }
         private async Task ExecuteCommandsForControllerAsync(Command[] commands, string controllerName, SemaphoreSlim semaphore)
         {
-            if (_currentQueueController != string.Empty && _currentQueueController != controllerName)
-            {
-                if (_controllerManager.Controllers[_currentQueueController] is BaseMasterController queuedMasterController)
-                {
-                    Dictionary<string, SemaphoreSlim> semaphoresOfQueuedControllers = new Dictionary<string, SemaphoreSlim>();
-                    semaphoresOfQueuedControllers[_currentQueueController] = _controllerManager.ControllerLocks[_currentQueueController];
-                    foreach (var (slaveControllerName, slaveController) in queuedMasterController.SlaveControllers)
-                    {
-                        semaphoresOfQueuedControllers[slaveControllerName] = _controllerManager.ControllerLocks[slaveControllerName];
-                    }
-                    foreach (var (slaveControllerName, semaphoreOfQueuedController) in semaphoresOfQueuedControllers)
-                    {
-                        await semaphoreOfQueuedController.WaitAsync();
-                    }
-                    await queuedMasterController.AwaitQueuedItems(semaphoresOfQueuedControllers, _log);
-                }
-                else
-                {
-                    var semaphoreOfQueuedController = _controllerManager.ControllerLocks[_currentQueueController];
-                    await semaphoreOfQueuedController.WaitAsync();
-                    await _controllerManager.Controllers[_currentQueueController].AwaitQueuedItems(semaphoreOfQueuedController, _log);
-                }
-            }
-            if (_controllerManager.Controllers[controllerName].IsQuable)
-            {
-                _currentQueueController = controllerName;
-            }
 
             for (int i = 0; i < commands.Length; i++)
             {
-                // if this one is not quanle but last one is, then lets wait for the previous to finish.
-                // await controller.QueueLoop
-                if (i > 0)
-                {
-                    //if (semaphore.CurrentCount != 0)
-                    //    await semaphore.WaitAsync();
-                }
                 try
                 {
-                    // Execute the command
                     await _controllerManager.Controllers[controllerName].ExecuteCommandAsync(commands[i], semaphore, _log);
-                    //if (semaphore.CurrentCount == 0)
-                    //    semaphore.Release();
                 }
                 catch (Exception ex)
                 {
@@ -302,6 +215,26 @@ namespace standa_controller_software.command_manager
             }
         }
 
+        private async Task CheckAndUpdateControllerQueue(string controllerName)
+        {
+            if (_currentQueueController != string.Empty && _currentQueueController != controllerName)
+            {
+                var semaphore = _controllerManager.ControllerLocks[_currentQueueController];
+                await semaphore.WaitAsync();
+                if (_controllerManager.Controllers[_currentQueueController] is BaseMasterController queuedMasterController)
+                {
+                    await queuedMasterController.AwaitQueuedItems(semaphore, new Dictionary<string, SemaphoreSlim>(), _log);
+                }
+                else
+                {
+                    await _controllerManager.Controllers[_currentQueueController].AwaitQueuedItems(semaphore, _log);
+                }
+            }
+            if (_controllerManager.Controllers.ContainsKey(controllerName) && _controllerManager.Controllers[controllerName].IsQuable)
+            {
+                _currentQueueController = controllerName;
+            }
+        }
 
         public async Task UpdateStatesAsync()
         {

@@ -1,21 +1,12 @@
-﻿using OpenTK.Compute.OpenCL;
-using standa_controller_software.command_manager;
-using standa_controller_software.command_manager.command_parameter_library;
+﻿using standa_controller_software.command_manager;
 using standa_controller_software.device_manager.devices;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 using ximc;
 
 namespace standa_controller_software.device_manager.controller_interfaces.positioning
 {
-    public class PositionerController_XIMC : BasePositionerController
+    public class PositionerController_XIMC_old : BasePositionerController
     {
-        //----------Virtual axes private data---------------
         private const uint MOVE_CMD_RUNNING = 0x80;
         private class DeviceInformation
         {
@@ -46,9 +37,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
         private ConcurrentDictionary<char, DeviceInformation> _deviceInfo = new ConcurrentDictionary<char, DeviceInformation>();
 
+        public PositionerController_XIMC_old(string name) : base(name)
+        {
+        }
 
-        public PositionerController_XIMC(string name) : base(name) { }
-        
         public override void AddDevice(BaseDevice device)
         {
             base.AddDevice(device);
@@ -58,14 +50,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 _deviceInfo.TryAdd(positioningDevice.Name, new DeviceInformation());
             }
         }
-
         public override Task ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
         {
             if (device is BasePositionerDevice positioningDevice && _deviceInfo.TryGetValue(positioningDevice.Name, out DeviceInformation deviceInfo))
             {
                 deviceInfo.maxDeceleration = positioningDevice.MaxDeceleration;
-                deviceInfo.maxAcceleration = positioningDevice.MaxAcceleration;
-                deviceInfo.maxSpeed = positioningDevice.MaxSpeed;
+                deviceInfo.maxAcceleration= positioningDevice.MaxAcceleration;
+                deviceInfo.maxSpeed= positioningDevice.MaxSpeed;
                 deviceInfo.name = positioningDevice.Name;
 
                 const int probe_flags = (int)(Flags.ENUMERATE_PROBE | Flags.ENUMERATE_NETWORK);
@@ -105,41 +96,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 deviceInfo.moveSettings_t.Decel = Math.Min(positioningDevice.Deceleration, positioningDevice.MaxDeceleration);
                 CallResponse = API.set_move_settings_calb(deviceInfo.id, ref deviceInfo.moveSettings_t, ref deviceInfo.calibration_t);
             }
-
+            
             return base.ConnectDevice(device, semaphore);
         }
-
-        protected override Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
-        {
-            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
-            var movementParams = command.Parameters as UpdateMovementSettingsParameters;
-            
-            for (int i = 0; i < devices.Length; i++)
-            {
-                var device = devices[i];
-
-                float speedValue = movementParams.MovementSettingsInformation[device.Name].TargetSpeed;
-                float accelValue = movementParams.MovementSettingsInformation[device.Name].TargetAcceleration;
-                float decelValue = movementParams.MovementSettingsInformation[device.Name].TargetDeceleration;
-                _deviceInfo[device.Name].moveSettings_t.Speed = speedValue;
-                _deviceInfo[device.Name].moveSettings_t.Accel = accelValue;
-                _deviceInfo[device.Name].moveSettings_t.Decel = decelValue;
-
-                CallResponse = API.set_move_settings_calb(_deviceInfo[device.Name].id, ref _deviceInfo[device.Name].moveSettings_t, ref _deviceInfo[device.Name].calibration_t);
-            }
-            return Task.CompletedTask;
-
-        }
-
-
-        protected override Task WaitUntilStop(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
-        {
-            throw new NotImplementedException();
-        }
-
         public override BaseController GetCopy()
         {
-            var controller = new PositionerController_XIMC(Name);
+            var controller = new PositionerController_XIMC_old(Name);
             foreach (var device in Devices)
             {
                 controller.AddDevice(device.Value.GetCopy());
@@ -163,43 +125,59 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return controller;
         }
 
-        protected override async Task MoveAbsolute(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        public override Task UpdateStatesAsync(ConcurrentQueue<string> log)
         {
-            // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: move start");
-            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
-            var movementParameters = command.Parameters as MoveAbsoluteParameters;
-
-            for (int i = 0; i < devices.Length; i++)
+            foreach (var positioner in Devices)
             {
-                var device = devices[i];
-                float targetPosition = movementParameters.PositionerInfo[device.Name].TargetPosition;
+                if(positioner.Value.IsConnected)
+                {
+                    var deviceInfo = _deviceInfo[positioner.Key];
+                    CallResponse = API.get_status_calb(deviceInfo.id, out deviceInfo.statusCalibrated_t, ref deviceInfo.calibration_t);
 
-               API.command_move_calb(_deviceInfo[device.Name].id, targetPosition, ref _deviceInfo[device.Name].calibration_t);
-                
+                    positioner.Value.CurrentPosition = deviceInfo.statusCalibrated_t.CurPosition;
+                    positioner.Value.CurrentSpeed = deviceInfo.statusCalibrated_t.CurSpeed;
+
+                    CallResponse = API.get_move_settings_calb(deviceInfo.id, out deviceInfo.moveSettings_t, ref deviceInfo.calibration_t);
+
+                    positioner.Value.Acceleration = deviceInfo.moveSettings_t.Accel;
+                    positioner.Value.Deceleration = deviceInfo.moveSettings_t.Decel;
+                    positioner.Value.Speed = deviceInfo.moveSettings_t.Speed;
+                    positioner.Value.MaxAcceleration = _deviceInfo[positioner.Key].maxAcceleration;
+                    positioner.Value.MaxDeceleration = _deviceInfo[positioner.Key].maxDeceleration;
+                    positioner.Value.MaxSpeed = _deviceInfo[positioner.Key].maxSpeed;
+                    // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
+                }
             }
-
-            var waitUntilPositions = new Dictionary<char, float?>();
-            var directions = new Dictionary<char, bool>();
-            foreach (var (deviceName, movementInfo) in movementParameters.PositionerInfo)
-            {
-                waitUntilPositions[deviceName] = movementInfo.WaitUntil;
-                directions[deviceName] = movementInfo.Direction;
-            }
-
-            await WaitUntilStopAsync(waitUntilPositions, directions, semaphore, log);
-            // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: move end");
-
+            return Task.CompletedTask;
         }
 
-        protected async Task WaitUntilStopAsync(Dictionary<char, float?> waitUntilPositions, Dictionary<char, bool> directions, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override Task UpdateMoveSettings(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
-            //var devices = waitUntilPositions.Keys.Select(deviceName => Devices[deviceName]).ToArray();
+            for (int i = 0; i < devices.Count; i++)
+            {
+                var device = devices[i];
+                float speedValue = (float)(command.Parameters[i][0]);
+                float accelValue = (float)(command.Parameters[i][1]);
+                float decelValue = (float)(command.Parameters[i][2]);
+
+                _deviceInfo[device.Name].moveSettings_t.Speed = speedValue;
+                _deviceInfo[device.Name].moveSettings_t.Accel = accelValue;
+                _deviceInfo[device.Name].moveSettings_t.Decel = decelValue;
+
+                CallResponse = API.set_move_settings_calb(_deviceInfo[device.Name].id, ref _deviceInfo[device.Name].moveSettings_t, ref _deviceInfo[device.Name].calibration_t);
+            }
+            semaphore.Release();
+            return Task.CompletedTask;
+        }
+
+        protected override async Task WaitUntilStop(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        {
             var queuedItems = new List<Func<Task<bool>>>();
 
-            foreach (var deviceName in waitUntilPositions.Keys)
+            for (int i = 0; i < devices.Count; i++)
             {
-                var device = Devices[deviceName];
-                if (waitUntilPositions[deviceName] == null)
+                var device = devices[i];
+                if (command.Parameters[i].Length == 0)
                 {
                     queuedItems.Add
                         (
@@ -215,8 +193,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 }
                 else
                 {
-                    float targetPosition = (float)(waitUntilPositions[deviceName]);
-                    bool direction = (bool)(directions[deviceName]);
+                    float targetPosition = (float)(command.Parameters[i][0]);
+                    bool direction = (bool)(command.Parameters[i][1]);
                     queuedItems.Add
                         (
                             async () =>
@@ -228,13 +206,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                                 device.CurrentPosition = currentPosition;
 
                                 var boolCheck = moveStatus && (direction ? currentPosition < targetPosition : currentPosition > targetPosition);
-                                await Task.Delay(1);
                                 return boolCheck;
                             }
                         );
                 }
             }
-
 
             try
             {
@@ -254,28 +230,36 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     {
                         queuedItems.Remove(item);
                     }
+
+                    //await Task.Delay(1); // A slight delay to prevent a tight loop; adjust as needed
                 }
             }
             catch (Exception ex)
             {
                 throw new Exception("Smth wrong with wait until in Virtual Positioner");
             }
-
-
+            finally
+            {
+                semaphore.Release();
+            }
         }
 
-
-
-        public override Task Stop(SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override Task WaitUntilStopPolar(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
-            //_buffer.Clear();
-            // might need to restart the controller to clea the buffer.
+            return Task.CompletedTask;
+        }
 
-            foreach (var (deviceName, device) in Devices)
+        protected override Task MoveAbsolute(Command command, List<BasePositionerDevice> devices, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        {
+            for (int i = 0; i < devices.Count; i++)
             {
-                CallResponse = API.command_sstp(_deviceInfo[device.Name].id);
-            }
+                var device = devices[i];
+                float targetPosition = (float)(command.Parameters[i][0]);
 
+                API.command_move_calb(_deviceInfo[device.Name].id, targetPosition, ref _deviceInfo[device.Name].calibration_t);
+            }
+            
+            semaphore.Release();
             return Task.CompletedTask;
         }
     }

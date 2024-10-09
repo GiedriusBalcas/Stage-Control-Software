@@ -84,7 +84,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         }
 
         public override abstract Task UpdateStatesAsync(ConcurrentQueue<string> log);
-
         protected abstract Task MoveAbsolute(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
         protected abstract Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
         protected abstract Task WaitUntilStop(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);

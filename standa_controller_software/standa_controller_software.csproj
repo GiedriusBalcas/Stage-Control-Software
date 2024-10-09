@@ -13,6 +13,7 @@
     <Compile Remove="custom-functions\definitions\WaitUntilFunction.cs" />
     <Compile Remove="device-manager\controller-interfaces\master-controller\InternalSyncExecuter.cs" />
     <Compile Remove="device-manager\controller-interfaces\positioning\PositionerController_XIMC.cs" />
+    <Compile Remove="device-manager\controller-interfaces\positioning\PositionerController_XIMC_old.cs" />
     <Compile Remove="device-manager\controller-interfaces\shutter\ShutterController_Arduino.cs" />
   </ItemGroup>
 

@@ -127,8 +127,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
         private async Task OnSyncInAction(char name)
         {
-            if (_buffer[name].Count < 1)
-                throw new Exception("Got sync in signal, when no buffered items exist.");
+            if (!_buffer.ContainsKey(name) || _buffer[name].Count < 1)
+                _log?.Enqueue("Got sync in signal, when no buffered items exist.");
 
             var parameters = _buffer[name].Dequeue();
 

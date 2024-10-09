@@ -62,12 +62,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 Quable = true,
                 State = MethodState.Free,
             };
-            _methodMap[CommandDefinitions.WaitUntilStop] = new MethodInformation()
-            {
-                MethodHandle = WaitUntilStop,
-                Quable = true,
-                State = MethodState.Free,
-            };
 
             _buffer = new Queue<MovementInformation>();
             IsQuable = true;
@@ -117,6 +111,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             // Send command to device to start processing
 
             await FillControllerBuffers(semaphores, log);
+
+
+            foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
+            {
+                if (slaveSemaphore.CurrentCount == 0)
+                    slaveSemaphore.Release();
+            }
 
             await _syncController.ExecuteQueue(log);
 
@@ -201,24 +202,24 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             return minFreeItemCount;
         }
 
-        private Task ChangeState(Command[] commands, Dictionary<string, SemaphoreSlim> semaphors, ConcurrentQueue<string> log)
+        private Task ChangeState(Command[] commands, SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphors, ConcurrentQueue<string> log)
         {
             return Task.CompletedTask;    
         }
 
-        private async Task UpdateMoveSettings(Command[] commands, Dictionary<string, SemaphoreSlim> semaphors, ConcurrentQueue<string> log)
+        private async Task UpdateMoveSettings(Command[] commands, SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphors, ConcurrentQueue<string> log)
         {
             /// MoveAbsoluteFunction wil only create this command if the settings need to be changed.
             /// await the current queue end if this is the case. 
 
             _launchPending = true;
-            await AwaitQueuedItems(semaphors, log);
+            await AwaitQueuedItems(semaphore, slaveSemaphors, log);
 
             foreach (Command command in commands)
             {
                 if (SlaveControllers.TryGetValue(command.TargetController, out var slaveController))
                 {
-                    await slaveController.ExecuteCommandAsync(command, semaphors[command.TargetController], log);
+                    await slaveController.ExecuteCommandAsync(command, slaveSemaphors[command.TargetController], log);
                 }
                 else
                     throw new Exception($"Slave controller {command.TargetController} was not found.");
@@ -229,13 +230,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             // call ximc.set_movement_settings() on execution;
 
         }
-
-        private Task WaitUntilStop(Command command, SemaphoreSlim slim, ConcurrentQueue<string> log)
-        {
-            return Task.CompletedTask;
-        }
-
-        private Task MoveAbsolute(Command[] commands, Dictionary<string, SemaphoreSlim> semaphors, ConcurrentQueue<string> log)
+        private Task MoveAbsolute(Command[] commands, SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphors, ConcurrentQueue<string> log)
         {
             var commandParametersFromFirstCommand = commands.FirstOrDefault().Parameters as MoveAbsoluteParameters ?? throw new Exception("Unable to retrive MoveAbsolute parameters.");
 
@@ -357,41 +352,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
         public override async Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
-
-            throw new Exception("Slave controller shouldnt call this method, sir.");
-            log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {command.Action} command on device {string.Join(' ', command.TargetDevices)}");
-
-            List<BaseDevice> devices = new List<BaseDevice>();
-
-            foreach (var deviceName in command.TargetDevices)
-            {
-                Dictionary<char, BaseDevice> slaveDevices = new Dictionary<char, BaseDevice>();
-                foreach (var slaveController in SlaveControllers)
-                {
-                    slaveController.Value.GetDevices().ForEach(slaveDevice => slaveDevices.Add(slaveDevice.Name, slaveDevice));
-                }
-
-                if (slaveDevices.TryGetValue(deviceName, out BaseDevice device))
-                {
-                    devices.Add(device);
-                }
-                else
-                {
-                    // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Device {deviceName} not found in controller {command.TargetController}");
-                }
-            }
-
-            if (_methodMap.TryGetValue(command.Action, out var method))
-            {
-                if (command.Await)
-                    await method.MethodHandle(command, semaphore, log);
-                else
-                    _ = method.MethodHandle(command, semaphore, log);
-            }
-            else
-            {
-                throw new InvalidOperationException("Invalid action");
-            }
+            throw new Exception("Master controller shouldnt call this method, sir.");
         }
 
         public override BaseController GetCopy()
@@ -415,36 +376,19 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             return Task.CompletedTask;
         }
 
-        public override async Task ExecuteSlaveCommandsAsync(Command[] commands, Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log)
-        {
-            _log = log;
-            log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {string.Join(' ', commands.Select(command => command.Action).ToArray())} command on device {string.Join(' ', commands.SelectMany(command => command.TargetDevices).ToArray())},  {string.Join(' ', commands.Select(command => command.Parameters.ToString()))}  ");
 
-            var command = commands.First();
-            if (_methodMap_multiControntroller.TryGetValue(commands.First().Action, out var method))
-            {
-                if (command.Await)
-                    await method.MethodHandle(commands, semaphores, log);
-                else
-                    _ = method.MethodHandle(commands, semaphores, log);
-            }
-            else
-            {
-                throw new InvalidOperationException("Invalid action");
-            }
-        }
-
-        public override async Task AwaitQueuedItems(Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log)
+        public override async Task AwaitQueuedItems(SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphors, ConcurrentQueue<string> log)
         {
-            foreach (var (controllerName, semaphore) in semaphores)
+            foreach (var (slaveControllerName, semaphoreOfSlaveController) in SlaveControllersLocks)
             {
-                if (semaphore.CurrentCount == 0)
-                    semaphore.Release();
+                if (!slaveSemaphors.ContainsKey(slaveControllerName))
+                    await semaphoreOfSlaveController.WaitAsync();
             }
+
             
             if (_processingCompletionSource == null || _processingCompletionSource.Task.IsCompleted)
             {
-                await ProcessQueue(semaphores, log);
+                await ProcessQueue(SlaveControllersLocks, log);
             }
             
 
@@ -457,7 +401,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             _buffer.Clear();
             _syncController.Stop();
             _launchPending = true;
-                _processingCompletionSource?.TrySetResult(true);
+            _processingCompletionSource?.TrySetResult(true);
 
 
             return Task.CompletedTask;

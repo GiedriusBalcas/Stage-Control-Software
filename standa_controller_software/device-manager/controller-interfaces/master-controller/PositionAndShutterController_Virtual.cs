@@ -28,12 +28,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 Quable = true,
                 State = MethodState.Free,
             };
-            _methodMap[CommandDefinitions.WaitUntilStop] = new MethodInformation()
-            {
-                MethodHandle = WaitUntilStop,
-                Quable = true,
-                State = MethodState.Free,
-            };
             _methodMap_multiControntroller[CommandDefinitions.ChangeShutterState] = new MultiControllerMethodInformation()
             {
                 MethodHandle = ChangeState,
@@ -46,13 +40,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             //_methodMap["WaitUntilStop"] = WaitUntilStop;
         }
 
-        private async Task UpdateMoveSettings(Command[] commands, Dictionary<string, SemaphoreSlim> semaphors, ConcurrentQueue<string> log)
+        private async Task UpdateMoveSettings(Command[] commands, SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphors, ConcurrentQueue<string> log)
         {
             foreach (Command command in commands)
             {
                 if (SlaveControllers.TryGetValue(command.TargetController, out var slaveController))
                 {
-                    await slaveController.ExecuteCommandAsync(command, semaphors[command.TargetController], log);
+                    await slaveController.ExecuteCommandAsync(command, slaveSemaphors[command.TargetController], log);
                 }
                 else
                     throw new Exception($"Slave controller {command.TargetController} was not found.");
@@ -60,23 +54,15 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             }
         }
 
-        private async Task WaitUntilStop(Command command, SemaphoreSlim slim, ConcurrentQueue<string> log)
-        {
-            var targetControllerName = command.TargetController;
-            if (SlaveControllers.TryGetValue(targetControllerName, out BaseController positionerController))
-            {
-                await positionerController.ExecuteCommandAsync(command, slim, log);
-            }
-        }
 
-        private async Task MoveAbsolute(Command[] commands, Dictionary<string, SemaphoreSlim> semaphors, ConcurrentQueue<string> log)
+        private async Task MoveAbsolute(Command[] commands, SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphors, ConcurrentQueue<string> log)
         {
             foreach(Command command in commands)
             {
                 var targetController = command.TargetController;
                 if (SlaveControllers.TryGetValue(targetController, out BaseController positionerController))
                 {
-                    await positionerController.ExecuteCommandAsync(command, semaphors[targetController], log);
+                    await positionerController.ExecuteCommandAsync(command, slaveSemaphors[targetController], log);
                 }
             }
 
@@ -108,7 +94,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         {
             throw new NotImplementedException();
         }
-        private async Task ChangeState(Command[] commands, Dictionary<string, SemaphoreSlim> semaphors, ConcurrentQueue<string> log)
+        private async Task ChangeState(Command[] commands, SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphors, ConcurrentQueue<string> log)
         {
 
         }
@@ -169,7 +155,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             return Task.CompletedTask;
         }
 
-        public override async Task ExecuteSlaveCommandsAsync(Command[] commands, Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log)
+        public override async Task ExecuteSlaveCommandsAsync(Command[] commands, SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphors, ConcurrentQueue<string> log)
         {
             log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {string.Join(' ', commands.Select(command => command.Action).ToArray())} command on device {string.Join(' ', commands.SelectMany(command => command.TargetDevices).ToArray())}");
 
@@ -177,9 +163,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             if (_methodMap_multiControntroller.TryGetValue(commands.First().Action, out var method))
             {
                 if (command.Await)
-                    await method.MethodHandle(commands, semaphores, log);
+                    await method.MethodHandle(commands, semaphore ,slaveSemaphors, log);
                 else
-                    _ = method.MethodHandle(commands, semaphores, log);
+                    _ = method.MethodHandle(commands, semaphore, slaveSemaphors, log);
             }
             else
             {
@@ -187,7 +173,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             }
         }
 
-        public override Task AwaitQueuedItems(Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log)
+        public override Task AwaitQueuedItems(SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphors, ConcurrentQueue<string> log)
         {
             throw new NotImplementedException();
         }

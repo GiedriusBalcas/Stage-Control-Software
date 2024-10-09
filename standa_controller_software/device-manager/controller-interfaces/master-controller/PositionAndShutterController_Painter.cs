@@ -45,7 +45,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             //_methodMap["WaitUntilStop"] = WaitUntilStop;
         }
 
-        private async Task MoveAbsolute(Command[] commands, Dictionary<string, SemaphoreSlim> semaphors, ConcurrentQueue<string> log)
+        private async Task MoveAbsolute(Command[] commands, SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphors, ConcurrentQueue<string> log)
         {
 
             var startPositions = _toolInformation.CalculateToolPositionUpdate();
@@ -85,7 +85,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
                     if (SlaveControllers.TryGetValue(targetControllerName, out BaseController targetController))
                     {
-                        await targetController.ExecuteCommandAsync(newCommand, semaphors[targetControllerName], log);
+                        await targetController.ExecuteCommandAsync(newCommand, slaveSemaphors[targetControllerName], log);
                     }
                 }
 
@@ -122,7 +122,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
                     if (SlaveControllers.TryGetValue(targetControllerName, out BaseController targetController))
                     {
-                        await targetController.ExecuteCommandAsync(newCommand, semaphors[targetControllerName], log);
+                        await targetController.ExecuteCommandAsync(newCommand, slaveSemaphors[targetControllerName], log);
                     }
                 }
 
@@ -136,7 +136,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     var targetController = command.TargetController;
                     if (SlaveControllers.TryGetValue(targetController, out BaseController positionerController))
                     {
-                        await positionerController.ExecuteCommandAsync(command, semaphors[targetController], log);
+                        await positionerController.ExecuteCommandAsync(command, slaveSemaphors[targetController], log);
                     }
                 }
                 var endPositions = _toolInformation.CalculateToolPositionUpdate();
@@ -150,7 +150,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     var targetController = command.TargetController;
                     if (SlaveControllers.TryGetValue(targetController, out BaseController positionerController))
                     {
-                        await positionerController.ExecuteCommandAsync(command, semaphors[targetController], log);
+                        await positionerController.ExecuteCommandAsync(command, slaveSemaphors[targetController], log);
                     }
                 }
                 var endPositions = _toolInformation.CalculateToolPositionUpdate();
@@ -184,7 +184,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         {
             throw new NotImplementedException();
         }
-        private async Task ChangeState(Command[] commands, Dictionary<string, SemaphoreSlim> semaphors, ConcurrentQueue<string> log)
+        private async Task ChangeState(Command[] commands, SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphors, ConcurrentQueue<string> log)
         {
 
         }
@@ -246,7 +246,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         }
 
 
-        public override Task AwaitQueuedItems(Dictionary<string, SemaphoreSlim> semaphores, ConcurrentQueue<string> log)
+        public override Task AwaitQueuedItems(SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphors, ConcurrentQueue<string> log)
         {
             throw new NotImplementedException();
         }
