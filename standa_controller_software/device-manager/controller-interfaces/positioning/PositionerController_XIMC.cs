@@ -1,4 +1,5 @@
-﻿using OpenTK.Compute.OpenCL;
+﻿using OpenTK.Audio.OpenAL;
+using OpenTK.Compute.OpenCL;
 using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.device_manager.devices;
@@ -21,8 +22,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         {
             public char name;
             public int id;
-            public float maxAcceleration = 10000;
-            public float maxDeceleration = 10000;
+            public float maxAcceleration;
+            public float maxDeceleration;
             public float maxSpeed;
             public calibration_t calibration_t;
             public status_calb_t statusCalibrated_t;
@@ -47,8 +48,36 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         private ConcurrentDictionary<char, DeviceInformation> _deviceInfo = new ConcurrentDictionary<char, DeviceInformation>();
 
 
-        public PositionerController_XIMC(string name) : base(name) { }
-        
+        public PositionerController_XIMC(string name) : base(name) 
+        {
+            _methodMap[CommandDefinitions.AddSyncInAction] = new MethodInformation()
+            {
+                MethodHandle = AddSyncInAction,
+                Quable = false,
+                State = MethodState.Free,
+            };
+        }
+        private Task AddSyncInAction(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        {
+            _log = log;
+            var deviceNames = command.TargetDevices;
+            var parameters = command.Parameters as AddSyncInActionParameters;
+            for (int i = 0; i < deviceNames.Length; i++)
+            {
+                var deviceName = deviceNames[i];
+                var targetPosition = parameters.MovementInformation[deviceName].Position;
+                var allocatedTime = parameters.MovementInformation[deviceName].Time;
+
+                var syncInAction = new ximc.command_add_sync_in_action_calb_t
+                {
+                    Position = targetPosition,
+                    Time = (uint)allocatedTime*1000,    // [us]
+                };
+
+                CallResponse = API.command_add_sync_in_action_calb(_deviceInfo[deviceName].id,ref syncInAction, ref _deviceInfo[deviceName].calibration_t);
+            }
+            return Task.CompletedTask;
+        }
         public override void AddDevice(BaseDevice device)
         {
             base.AddDevice(device);
@@ -209,6 +238,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                                 CallResponse = API.get_status_calb(deviceInfo.id, out deviceInfo.statusCalibrated_t, ref deviceInfo.calibration_t);
                                 device.CurrentPosition = deviceInfo.statusCalibrated_t.CurPosition;
                                 bool boolCheck = (deviceInfo.statusCalibrated_t.MvCmdSts & MOVE_CMD_RUNNING) != 0;
+                                await Task.Delay(10);
                                 return boolCheck;
                             }
                         );
@@ -228,7 +258,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                                 device.CurrentPosition = currentPosition;
 
                                 var boolCheck = moveStatus && (direction ? currentPosition < targetPosition : currentPosition > targetPosition);
-                                await Task.Delay(1);
+                                await Task.Delay(10);
                                 return boolCheck;
                             }
                         );
@@ -277,6 +307,52 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             }
 
             return Task.CompletedTask;
+        }
+
+        public override Task UpdateStatesAsync(ConcurrentQueue<string> log)
+        {
+            foreach (var positioner in Devices)
+            {
+                if (positioner.Value.IsConnected)
+                {
+                    var deviceInfo = _deviceInfo[positioner.Key];
+                    CallResponse = API.get_status_calb(deviceInfo.id, out deviceInfo.statusCalibrated_t, ref deviceInfo.calibration_t);
+
+                    positioner.Value.CurrentPosition = deviceInfo.statusCalibrated_t.CurPosition;
+                    positioner.Value.CurrentSpeed = deviceInfo.statusCalibrated_t.CurSpeed;
+
+                    CallResponse = API.get_move_settings_calb(deviceInfo.id, out deviceInfo.moveSettings_t, ref deviceInfo.calibration_t);
+
+                    positioner.Value.Acceleration = deviceInfo.moveSettings_t.Accel;
+                    positioner.Value.Deceleration = deviceInfo.moveSettings_t.Decel;
+                    positioner.Value.Speed = deviceInfo.moveSettings_t.Speed;
+                    positioner.Value.MaxAcceleration = _deviceInfo[positioner.Key].maxAcceleration;
+                    positioner.Value.MaxDeceleration = _deviceInfo[positioner.Key].maxDeceleration;
+                    positioner.Value.MaxSpeed = _deviceInfo[positioner.Key].maxSpeed;
+                    // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
+                }
+            }
+            return Task.CompletedTask;
+        }
+
+        protected override Task WaitUntilStopPolar(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        {
+            throw new NotImplementedException();
+        }
+        public int CheckBufferFreeSpace(char targetDevice)
+        {
+            if (Devices[targetDevice].IsConnected)
+            {
+                var deviceInfo = _deviceInfo[targetDevice];
+                CallResponse = API.get_status_calb(deviceInfo.id, out deviceInfo.statusCalibrated_t, ref deviceInfo.calibration_t);
+
+                Devices[targetDevice].CurrentPosition = deviceInfo.statusCalibrated_t.CurPosition;
+                Devices[targetDevice].CurrentSpeed = deviceInfo.statusCalibrated_t.CurSpeed;
+
+                return (int)deviceInfo.statusCalibrated_t.CmdBufFreeSpace;
+            }
+
+            return 0;
         }
     }
 }

@@ -257,8 +257,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 Launch = _launchPending,
                 Rethrow = posInfoGroups.Values.SelectMany(info => info.AllocatedTimes).Max()*1000,
                 Shutter = commandParametersFromFirstCommand.IsShutterUsed,
-                Shutter_delay_off = commandParametersFromFirstCommand.IsShutterUsed ? commandParametersFromFirstCommand.ShutterInfo.DelayOff *1000: 0f,
                 Shutter_delay_on = commandParametersFromFirstCommand.IsShutterUsed ? commandParametersFromFirstCommand.ShutterInfo.DelayOn *1000: 0f,
+                Shutter_delay_off = commandParametersFromFirstCommand.IsShutterUsed ? commandParametersFromFirstCommand.ShutterInfo.DelayOff *1000: 0f,
             };
 
             var moveInfo = new MovementInformation()
