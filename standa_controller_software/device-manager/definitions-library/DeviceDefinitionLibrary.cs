@@ -37,12 +37,12 @@ namespace standa_controller_software.device_manager
                     Type = typeof(PositionerController_Sim),
                     AllowedDevices = positionerDeviceDefinitions
                 },
-                //new ControllerInfo
-                //{
-                //    Name = "Positioner Controller XIMC",
-                //    Type = typeof(PositionerController_XIMC),
-                //    AllowedDevices = positionerDeviceDefinitions
-                //}
+                new ControllerInfo
+                {
+                    Name = "Positioner Controller XIMC",
+                    Type = typeof(PositionerController_XIMC),
+                    AllowedDevices = positionerDeviceDefinitions
+                }
             };
 
 

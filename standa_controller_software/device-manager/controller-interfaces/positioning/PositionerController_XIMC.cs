@@ -2,6 +2,7 @@
 using OpenTK.Compute.OpenCL;
 using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
+using standa_controller_software.device_manager.attributes;
 using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
@@ -47,6 +48,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
         private ConcurrentDictionary<char, DeviceInformation> _deviceInfo = new ConcurrentDictionary<char, DeviceInformation>();
 
+        //------------------------------------------------------------------------
+
+
+        [DisplayPropertyAttribute]
+        public bool isSyncUsed { get; set; }
 
         public PositionerController_XIMC(string name) : base(name) 
         {
@@ -59,22 +65,25 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         }
         private Task AddSyncInAction(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
-            _log = log;
-            var deviceNames = command.TargetDevices;
-            var parameters = command.Parameters as AddSyncInActionParameters;
-            for (int i = 0; i < deviceNames.Length; i++)
+            if (isSyncUsed)
             {
-                var deviceName = deviceNames[i];
-                var targetPosition = parameters.MovementInformation[deviceName].Position;
-                var allocatedTime = parameters.MovementInformation[deviceName].Time;
-
-                var syncInAction = new ximc.command_add_sync_in_action_calb_t
+                _log = log;
+                var deviceNames = command.TargetDevices;
+                var parameters = command.Parameters as AddSyncInActionParameters;
+                for (int i = 0; i < deviceNames.Length; i++)
                 {
-                    Position = targetPosition,
-                    Time = (uint)allocatedTime*1000,    // [us]
-                };
+                    var deviceName = deviceNames[i];
+                    var targetPosition = parameters.MovementInformation[deviceName].Position;
+                    var allocatedTime = parameters.MovementInformation[deviceName].Time;
 
-                CallResponse = API.command_add_sync_in_action_calb(_deviceInfo[deviceName].id,ref syncInAction, ref _deviceInfo[deviceName].calibration_t);
+                    var syncInAction = new ximc.command_add_sync_in_action_calb_t
+                    {
+                        Position = targetPosition,
+                        Time = (uint)allocatedTime*1000,    // [us]
+                    };
+
+                    CallResponse = API.command_add_sync_in_action_calb(_deviceInfo[deviceName].id,ref syncInAction, ref _deviceInfo[deviceName].calibration_t);
+                }
             }
             return Task.CompletedTask;
         }
@@ -133,6 +142,26 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 deviceInfo.moveSettings_t.Accel = Math.Min(positioningDevice.Acceleration, positioningDevice.MaxAcceleration);
                 deviceInfo.moveSettings_t.Decel = Math.Min(positioningDevice.Deceleration, positioningDevice.MaxDeceleration);
                 CallResponse = API.set_move_settings_calb(deviceInfo.id, ref deviceInfo.moveSettings_t, ref deviceInfo.calibration_t);
+
+                if (isSyncUsed)
+                {
+                    var sync_in_settings_calibrated = new ximc.sync_in_settings_calb_t
+                    {
+                        ClutterTime = 0,
+                        Position = 0,
+                        Speed = 100,
+                        SyncInFlags = ximc.Flags.SYNCIN_ENABLED,
+                    };
+
+                    var sync_out_settings_calibrated = new ximc.sync_out_settings_calb_t
+                    {
+                        Accuracy = 0,
+                        SyncOutFlags = ximc.Flags.SYNCOUT_ENABLED | ximc.Flags.SYNCOUT_ONSTOP,
+                    };
+
+                    CallResponse = API.set_sync_in_settings_calb(deviceInfo.id, ref sync_in_settings_calibrated, ref deviceInfo.calibration_t);
+                    CallResponse = API.set_sync_out_settings_calb(deviceInfo.id, ref sync_out_settings_calibrated, ref deviceInfo.calibration_t);
+                }
             }
 
             return base.ConnectDevice(device, semaphore);
