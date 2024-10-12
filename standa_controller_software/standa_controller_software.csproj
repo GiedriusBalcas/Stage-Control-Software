@@ -1,10 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="oldximc\**" />
+    <EmbeddedResource Remove="oldximc\**" />
+    <None Remove="oldximc\**" />
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Remove="custom-functions\definitions\ChangeShutterStateFunction.cs" />
@@ -17,24 +24,21 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.Compatibility" Version="8.0.10" />
     <PackageReference Include="System.IO.Ports" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\openTK_painter\opentk_painter_library.csproj" />
     <ProjectReference Include="..\text_parser_library\text_parser_library.csproj" />
+    <ProjectReference Include="..\ximcWrapperProject\ximcWrapperProject.csproj" />
   </ItemGroup>
-	<ItemGroup>
-	  <None Update="bindy.dll">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </None>
-	  <None Update="libximc.dll">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </None>
-	  <None Update="xiwrapper.dll">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </None>
-	</ItemGroup>
+
+  <ItemGroup>
+    <None Update="bindy.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 
 	
 

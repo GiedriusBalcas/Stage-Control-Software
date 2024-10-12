@@ -8,10 +8,12 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Timers;
 using System.Xml.Linq;
-using ximc;
+using ximcWrapper;
 
 namespace standa_controller_software.device_manager.controller_interfaces.positioning
 {
@@ -74,15 +76,29 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 {
                     var deviceName = deviceNames[i];
                     var targetPosition = parameters.MovementInformation[deviceName].Position;
-                    var allocatedTime = parameters.MovementInformation[deviceName].Time;
+                    var allocatedTime = parameters.MovementInformation[deviceName].Time;    // [s]
+                    var velocity = parameters.MovementInformation[deviceName].Velocity;    // [s]
 
-                    var syncInAction = new ximc.command_add_sync_in_action_calb_t
+                    var syncInAction = new command_add_sync_in_action_calb_t
                     {
+                        //Time = (uint)allocatedTime * 100000000,    // [us]
                         Position = targetPosition,
-                        Time = (uint)allocatedTime*1000,    // [us]
+                        Time = (uint)Math.Max((Math.Abs(velocity) / Devices[deviceName].StepSize), 1),
+                        // TODO: check if conversion is correct float -> uint.
                     };
 
-                    CallResponse = API.command_add_sync_in_action_calb(_deviceInfo[deviceName].id,ref syncInAction, ref _deviceInfo[deviceName].calibration_t);
+                    CallResponse = API.command_add_sync_in_action_calb(_deviceInfo[deviceName].id, ref syncInAction, ref _deviceInfo[deviceName].calibration_t);
+                    _log.Enqueue($"ximc: added ASIA to {deviceName} . Position: {syncInAction.Position};   Speed: {velocity}    Time: {allocatedTime}.");
+
+                    //var syncInAction_nonCalibrated = new command_add_sync_in_action_t
+                    //{
+                    //    Position = (int)Math.Round(targetPosition / 2.5),
+                    //    uPosition = 0,
+                    //    Time = (uint)(Math.Round(allocatedTime * 1000000)),
+                    //};
+
+                    //CallResponse = API.command_add_sync_in_action(_deviceInfo[deviceName].id, ref syncInAction_nonCalibrated);
+                    //_log.Enqueue($"ximc: added ASIA to {deviceName} . Position: {syncInAction_nonCalibrated.Position};   Time: {syncInAction_nonCalibrated.Time}");
                 }
             }
             return Task.CompletedTask;
@@ -97,6 +113,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             }
         }
 
+        private static void MyLog(API.LogLevel loglevel, string message, IntPtr user_data)
+        {
+            Console.WriteLine("MyLog {0}: {1}", loglevel, message);
+        }
         public override Task ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
         {
             if (device is BasePositionerDevice positioningDevice && _deviceInfo.TryGetValue(positioningDevice.Name, out DeviceInformation deviceInfo))
@@ -106,13 +126,47 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 deviceInfo.maxSpeed = positioningDevice.MaxSpeed;
                 deviceInfo.name = positioningDevice.Name;
 
+                //const int probe_flags = (int)(Flags.ENUMERATE_PROBE | Flags.ENUMERATE_NETWORK);
+                //String enumerate_hints = "addr=192.168.1.1,172.16.2.3";
+                //API.set_bindy_key("keyfile.sqlite");
+
+                //var textkaka = "testapp CLR runtime version: " + Assembly.GetExecutingAssembly().ImageRuntimeVersion;
+                //var textkakaximc = "";
+                //foreach (Assembly a in AppDomain.CurrentDomain.GetAssemblies())
+                //    if (a.GetName().Name.Equals("ximcnet"))
+                //        textkakaximc = "ximcnet CLR runtime version: " + a.ImageRuntimeVersion;
+                //var textkaka3 = "Current CLR runtime version: " + Environment.Version.ToString();
+
+                //var callback = new API.LoggingCallback(MyLog);
+                //API.set_logging_callback(callback, IntPtr.Zero);
+
+                API.set_bindy_key("keyfile.sqlite");
+
+
+                // Pointer to device enumeration structure
+                IntPtr device_enumeration;
+
+                // Probe flags, used to enable various enumeration options
                 const int probe_flags = (int)(Flags.ENUMERATE_PROBE | Flags.ENUMERATE_NETWORK);
+
+                // Enumeration hint, currently used to indicate ip address for network enumeration
+                //String enumerate_hints = "addr=";
                 String enumerate_hints = "addr=192.168.1.1,172.16.2.3";
-                var device_enumeration = API.enumerate_devices(probe_flags, enumerate_hints);
+
+                // String enumerate_hints = "addr="; // this hint will use broadcast enumeration, if ENUMERATE_NETWORK flag is enabled
+
+                //  Sets bindy (network) keyfile. Must be called before any call to "enumerate_devices" or "open_device" if you
+                //  wish to use network-attached controllers. Accepts both absolute and relative paths, relative paths are resolved
+                //  relative to the process working directory. If you do not need network devices then "set_bindy_key" is optional.
+                //API.set_bindy_key("keyfile.sqlite");
+                // Enumerates all devices
+                device_enumeration = API.enumerate_devices(probe_flags, enumerate_hints);
+
+
+                //String enumerate_hints = "";
+                //var device_enumeration = API.enumerate_devices(probe_flags, enumerate_hints);
                 int device_count = API.get_device_count(device_enumeration);
 
-                var kaka = new command_add_sync_in_action_t() { Time = 10, Position = 100, uPosition = 0 };
-                API.command_add_sync_in_action(0, ref kaka);
 
                 string deviceName = string.Empty;
                 for (int i = 0; i < device_count; i++)
@@ -145,22 +199,22 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
                 if (isSyncUsed)
                 {
-                    var sync_in_settings_calibrated = new ximc.sync_in_settings_calb_t
-                    {
-                        ClutterTime = 0,
-                        Position = 0,
-                        Speed = 100,
-                        SyncInFlags = ximc.Flags.SYNCIN_ENABLED,
-                    };
+                    //var sync_in_settings_calibrated = new ximcWrapper.sync_in_settings_calb_t
+                    //{
+                    //    ClutterTime = 0,
+                    //    Position = 0,
+                    //    Speed = 100,
+                    //    SyncInFlags = ximcWrapper.Flags.SYNCIN_ENABLED | ximcWrapper.Flags.SYNCIN_GOTOPOSITION,
+                    //};
 
-                    var sync_out_settings_calibrated = new ximc.sync_out_settings_calb_t
-                    {
-                        Accuracy = 0,
-                        SyncOutFlags = ximc.Flags.SYNCOUT_ENABLED | ximc.Flags.SYNCOUT_ONSTOP,
-                    };
+                    //var sync_out_settings_calibrated = new ximcWrapper.sync_out_settings_calb_t
+                    //{
+                    //    Accuracy = 0,
+                    //    SyncOutFlags = ximcWrapper.Flags.SYNCOUT_ENABLED | ximcWrapper.Flags.SYNCOUT_ONSTOP,
+                    //};
 
-                    CallResponse = API.set_sync_in_settings_calb(deviceInfo.id, ref sync_in_settings_calibrated, ref deviceInfo.calibration_t);
-                    CallResponse = API.set_sync_out_settings_calb(deviceInfo.id, ref sync_out_settings_calibrated, ref deviceInfo.calibration_t);
+                    //CallResponse = API.set_sync_in_settings_calb(deviceInfo.id, ref sync_in_settings_calibrated, ref deviceInfo.calibration_t);
+                    //CallResponse = API.set_sync_out_settings_calb(deviceInfo.id, ref sync_out_settings_calibrated, ref deviceInfo.calibration_t);
                 }
             }
 
@@ -184,6 +238,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 _deviceInfo[device.Name].moveSettings_t.Decel = decelValue;
 
                 CallResponse = API.set_move_settings_calb(_deviceInfo[device.Name].id, ref _deviceInfo[device.Name].moveSettings_t, ref _deviceInfo[device.Name].calibration_t);
+
+                _log.Enqueue($"ximc: updated move settings on {device.Name}. Speed: {_deviceInfo[device.Name].moveSettings_t.Speed};   Accel: {_deviceInfo[device.Name].moveSettings_t.Accel};  Decel: {_deviceInfo[device.Name].moveSettings_t.Decel}");
+
             }
             return Task.CompletedTask;
 
@@ -332,7 +389,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
             foreach (var (deviceName, device) in Devices)
             {
-                CallResponse = API.command_sstp(_deviceInfo[device.Name].id);
+                if(device.IsConnected)
+                    CallResponse = API.command_stop(_deviceInfo[device.Name].id);
             }
 
             return Task.CompletedTask;
@@ -358,7 +416,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     positioner.Value.MaxAcceleration = _deviceInfo[positioner.Key].maxAcceleration;
                     positioner.Value.MaxDeceleration = _deviceInfo[positioner.Key].maxDeceleration;
                     positioner.Value.MaxSpeed = _deviceInfo[positioner.Key].maxSpeed;
-                    // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
+                    log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
                 }
             }
             return Task.CompletedTask;

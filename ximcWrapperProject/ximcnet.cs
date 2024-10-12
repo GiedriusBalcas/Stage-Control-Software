@@ -1,8 +1,11 @@
+
+using Microsoft.Win32;
 using System;
+using System.IO.Ports;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace ximc
+namespace ximcWrapper
 {
 	public enum Result { ok = 0, error = -1, not_implemented = -2, value_error = -3, no_device = -4 };
 

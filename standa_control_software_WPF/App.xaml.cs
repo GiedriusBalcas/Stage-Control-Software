@@ -55,7 +55,7 @@ namespace standa_control_software_WPF
             _systemInformationViewModel = new SystemInformtaionViewModel();
 
 
-            _lscNavigationStore.CurrentViewModel = _systemControlViewModel;
+            _lscNavigationStore.CurrentViewModel = _systemPropertiesViewModel;
             _systemControlMainViewModel = new SystemControlMainViewModel(_commandManager, _lscNavigationStore, GetSystemConfigurationsViewModel, GetSystemInformtaionViewModel, GetSystemCompilerViewModel);
 
             _navigationStore.CurrentViewModel = _systemControlMainViewModel;

@@ -16,6 +16,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             public char[] Devices;
             public float[] TargetPositions;
             public float[] AllocatedTimes;
+            public float[] Velocities;
         }
 
         public struct ExecutionInformation
@@ -123,6 +124,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
 
             int minFreeItemCount = await GetMinFreeBufferItemCount();
+
+
+
             int bufferCount = _buffer.Count;
 
             for (int i = 0; i < Math.Min(minFreeItemCount, bufferCount); i++)
@@ -154,7 +158,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     parameters.MovementInformation[deviceName] = new PositionTimePair
                     {
                         Position = posInfoList.TargetPositions[index],
-                        Time = posInfoList.AllocatedTimes[index]
+                        Time = posInfoList.AllocatedTimes[index],
+                        Velocity = posInfoList.Velocities[index]
                     };
                 }
 
@@ -196,11 +201,25 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             {
                 if (controller is PositionerController_Sim positionerController)
                 {
-                    minFreeItemCount = Math.Min(minFreeItemCount, positionerController.CheckBufferFreeSpace());
+                    var currentBufferSpace = positionerController.CheckBufferFreeSpace();
+                    _log.Enqueue($"master: Minimum buffer space in positioner {positionerController.Name}: {currentBufferSpace}");
+                    minFreeItemCount = Math.Min(minFreeItemCount, currentBufferSpace);
+                }
+                else if (controller is PositionerController_XIMC positionerControllerXimc)
+                {
+                    foreach(var device in positionerControllerXimc.GetDevices())
+                    {
+                        var currentBufferSpace = positionerControllerXimc.CheckBufferFreeSpace(device.Name);
+                        _log.Enqueue($"master: Minimum buffer space in positioner {device.Name}: {currentBufferSpace}");
+                        minFreeItemCount = Math.Min(minFreeItemCount, currentBufferSpace);
+                    }
                 }
             }
 
+
             int syncControllerBufferItemCount = await _syncController.GetBufferItemCount();
+            _log.Enqueue($"master: Minimum buffer space in sync controller : {syncControllerBufferItemCount}.");
+
             minFreeItemCount = Math.Min(minFreeItemCount, syncControllerBufferItemCount);
             return minFreeItemCount;
         }
@@ -247,6 +266,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     Devices = command.TargetDevices,
                     TargetPositions = command.TargetDevices.Select(deviceName => commandParameters.PositionerInfo[deviceName].TargetPosition).ToArray(),
                     AllocatedTimes = command.TargetDevices.Select(deviceName => commandParameters.AllocatedTime).ToArray(),
+                    Velocities = command.TargetDevices.Select(deviceName => commandParameters.PositionerInfo[deviceName].TargetSpeed).ToArray(),
                 };
             }
             //}
@@ -255,7 +275,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             {
                 Devices = commands.SelectMany(comm => comm.TargetDevices).ToArray(),
                 Launch = _launchPending,
-                Rethrow = posInfoGroups.Values.SelectMany(info => info.AllocatedTimes).Max()*1000,
+                Rethrow = posInfoGroups.Values.SelectMany(info => info.AllocatedTimes).Max()*1000*0.5f,
                 Shutter = commandParametersFromFirstCommand.IsShutterUsed,
                 Shutter_delay_on = commandParametersFromFirstCommand.IsShutterUsed ? commandParametersFromFirstCommand.ShutterInfo.DelayOn *1000: 0f,
                 Shutter_delay_off = commandParametersFromFirstCommand.IsShutterUsed ? commandParametersFromFirstCommand.ShutterInfo.DelayOff *1000: 0f,

@@ -145,8 +145,8 @@ namespace standa_control_software_WPF.views.system_control
                 var dx = (float)(pos.X - _lastPos.X) / (float)glControl.ActualHeight;
                 var dy = (float)(pos.Y - _lastPos.Y) / (float)glControl.ActualHeight; // Use 'dz' to represent movement along camera's local Z axis
 
-                _camera.ReferencePosition += _camera.Right * dx;
-                _camera.ReferencePosition += _camera.Up * dy;
+                _camera.ReferencePosition += _camera.Right * dx *200;
+                _camera.ReferencePosition += _camera.Up * dy *200;
 
             }
             _lastPos = e.GetPosition(this);
@@ -154,7 +154,7 @@ namespace standa_control_software_WPF.views.system_control
 
         private void glControl_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
         {
-            float dr = e.Delta;
+            float dr = e.Delta *1;
             _renderLayers[0].Camera.Distance -= dr;
             _renderLayers[0].Camera.AspectRatio = (float)(glControl.ActualWidth / (float)glControl.ActualHeight);
         }

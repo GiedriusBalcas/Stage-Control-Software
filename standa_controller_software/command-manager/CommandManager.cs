@@ -4,7 +4,7 @@ using System.Collections.Concurrent;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
-using ximc;
+using ximcWrapper;
 using standa_controller_software.device_manager.controller_interfaces.master_controller;
 using System.Runtime.ExceptionServices;
 

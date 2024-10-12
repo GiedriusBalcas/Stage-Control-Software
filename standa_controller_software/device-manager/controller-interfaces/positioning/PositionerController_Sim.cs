@@ -12,7 +12,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
 using System.Xml.Linq;
-using ximc;
 
 namespace standa_controller_software.device_manager.controller_interfaces.positioning
 {

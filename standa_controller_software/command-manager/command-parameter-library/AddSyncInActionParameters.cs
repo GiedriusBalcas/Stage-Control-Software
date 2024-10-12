@@ -16,5 +16,6 @@ namespace standa_controller_software.command_manager.command_parameter_library
     {
         public float Position {  get; set; }
         public float Time { get; set; }
+        public float Velocity { get; set; }
     }
 }

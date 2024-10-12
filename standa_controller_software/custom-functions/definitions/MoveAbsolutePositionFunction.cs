@@ -65,7 +65,8 @@ namespace standa_controller_software.custom_functions.definitions
             {
                 if (_controllerManager.TryGetDevice<BasePositionerDevice>(parsedDeviceNames[i], out var positioner))
                 {
-                    if (positioner.CurrentPosition != parsedPositions[i])
+                    // remove Magic value, maybe 1/256
+                    if (Math.Abs(positioner.CurrentPosition - parsedPositions[i]) > 0.1)
                     {
                         deviceNameList.Add(parsedDeviceNames[i]);
                         positionsList.Add(parsedPositions[i]);
