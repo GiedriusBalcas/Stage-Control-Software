@@ -116,14 +116,21 @@ namespace standa_control_software_WPF.view_models.system_control
 
         private void SaveLog()
         {
-            var content = string.Join("\n", _commandManager.GetLog());
-            // The name of the file where the content will be saved
-            string fileName = "log.txt";
+            try
+            {
+                var content = string.Join("\n", _commandManager.GetLog());
+                // The name of the file where the content will be saved
+                string fileName = "log.txt";
 
-            // Path to save the file in the same project directory
-            string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
+                // Path to save the file in the same project directory
+                string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
 
-            File.WriteAllText(filePath, content);
+                File.WriteAllText(filePath, content);
+            }
+            catch(Exception ex)
+            {
+                OutputMessage += $"\n{ex.Message}.";
+            }
 
         }
         private void SaveCommandLog()

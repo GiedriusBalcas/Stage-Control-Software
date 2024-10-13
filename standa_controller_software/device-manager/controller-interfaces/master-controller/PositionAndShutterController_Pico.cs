@@ -129,7 +129,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
             int bufferCount = _buffer.Count;
 
-            for (int i = 0; i < Math.Min(minFreeItemCount, bufferCount); i++)
+            for (int i = 0; i < Math.Min(minFreeItemCount - 1, bufferCount); i++)
             {
                 var movementInformation = _buffer.Dequeue();
                 var PosInfoControllerGroups = movementInformation.PositionerInfoGroups;
