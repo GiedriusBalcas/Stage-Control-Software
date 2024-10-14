@@ -279,20 +279,33 @@ namespace standa_controller_software.command_manager
             _allowedToRun = false;
             CurrentState = CommandManagerState.Waiting;
 
-            List<Task> tasks = new List<Task>();
-            foreach(var (controllerName, controller )in _controllerManager.Controllers)
-            {
-                await _controllerManager.ControllerLocks[controllerName].WaitAsync();
-                await controller.Stop(_controllerManager.ControllerLocks[controllerName], _log);
-                //tasks.Add(task);
-            }
-            //await Task.WhenAll(tasks);
+            // First stop the child controllers. Then let the master finish stopping everything.
 
             foreach (var (controllerName, controller) in _controllerManager.Controllers)
             {
-                if (_controllerManager.ControllerLocks[controllerName].CurrentCount == 0)
-                    _controllerManager.ControllerLocks[controllerName].Release();
+                if (controller.MasterController is not null)
+                {
+                    await _controllerManager.ControllerLocks[controllerName].WaitAsync();
+                    await controller.Stop(_controllerManager.ControllerLocks[controllerName], _log);
+
+                    if (_controllerManager.ControllerLocks[controllerName].CurrentCount == 0)
+                        _controllerManager.ControllerLocks[controllerName].Release();
+                }
             }
+
+            foreach (var (controllerName, controller) in _controllerManager.Controllers)
+            {
+                if (controller.MasterController is null)
+                {
+                    //await _controllerManager.ControllerLocks[controllerName].WaitAsync();
+                    await controller.Stop(_controllerManager.ControllerLocks[controllerName], _log);
+
+                    if (_controllerManager.ControllerLocks[controllerName].CurrentCount == 0)
+                        _controllerManager.ControllerLocks[controllerName].Release();
+                }
+            }
+
+
         }
 
         public void ClearQueue()

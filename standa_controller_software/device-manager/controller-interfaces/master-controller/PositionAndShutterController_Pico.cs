@@ -6,6 +6,7 @@ using standa_controller_software.device_manager.controller_interfaces.shutter;
 using standa_controller_software.device_manager.controller_interfaces.sync;
 using standa_controller_software.device_manager.devices;
 using System.Collections.Concurrent;
+using System.Threading;
 
 namespace standa_controller_software.device_manager.controller_interfaces.master_controller
 {
@@ -72,7 +73,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         {
             _processingCompletionSource.TrySetResult(true);
 
-            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled buffer is empty");
+            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled that execution finalized.");
         }
         private async Task OnSyncControllerBufferSpaceAvailable()
         {
@@ -84,7 +85,18 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 var PosInfoControllerGroups = movementInformation.PositionerInfoGroups;
                 var execInfo = movementInformation.ExecutionInformation;
 
+                foreach (var (slaveControllerName, semaphoreOfSlaveController) in SlaveControllersLocks)
+                {
+                    await semaphoreOfSlaveController.WaitAsync();
+                }
+
                 await SendBufferItemToControllers(PosInfoControllerGroups, execInfo, SlaveControllersLocks, _log);
+
+                foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
+                {
+                    if (slaveSemaphore.CurrentCount == 0)
+                        slaveSemaphore.Release();
+                }
             }
 
         }
@@ -112,6 +124,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
             await _syncController.StartExecution();
 
+
+            foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
+            {
+                if (slaveSemaphore.CurrentCount == 0)
+                    slaveSemaphore.Release();
+            }
+
             // Set the flag to indicate processing has started
 
             _launchPending = true;
@@ -129,7 +148,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
             int bufferCount = _buffer.Count;
 
-            for (int i = 0; i < Math.Min(minFreeItemCount - 1, bufferCount); i++)
+            for (int i = 0; i < Math.Min(minFreeItemCount - 2, bufferCount); i++)
             {
                 var movementInformation = _buffer.Dequeue();
                 var PosInfoControllerGroups = movementInformation.PositionerInfoGroups;
@@ -365,11 +384,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     await semaphoreOfSlaveController.WaitAsync();
             }
 
-            foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
-            {
-                if (slaveSemaphore.CurrentCount == 0)
-                    slaveSemaphore.Release();
-            }
 
             if (_processingCompletionSource == null || _processingCompletionSource.Task.IsCompleted)
             {
@@ -377,8 +391,16 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             }
 
 
+
+            foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
+            {
+                if (slaveSemaphore.CurrentCount == 0)
+                    slaveSemaphore.Release();
+            }
             // Await the TaskCompletionSource's Task without blocking the thread
             await _processingCompletionSource.Task;
+
+
         }
 
         public override async Task Stop(SemaphoreSlim semaphore, ConcurrentQueue<string> log)
@@ -387,7 +409,55 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
             _buffer.Clear();
             _processingCompletionSource?.TrySetResult(true);
+
+            // lets ask the sync controller to just launch 40 times for now.
+            // TODO: do something better here.
+
+            char[] deviceNames = SlaveControllers.Values
+                .Where(controller => controller is BasePositionerController)
+                .SelectMany(controller => controller.GetDevices())
+                .Select(device => device.Name)
+                .ToArray();
+
+
+
+
+            await _syncController.AddBufferItem(
+            deviceNames,
+            true,
+            1, //   [ms]
+            false,
+            0,
+            0);
+            for (int i = 0; i< 40; i++)
+            {
+                await _syncController.AddBufferItem(
+                deviceNames,
+                false,
+                1, //   [ms]
+                false,
+                0,
+                0);
+            }
+
+            
+            
+            // Set the flag to indicate processing has started
+            _processingCompletionSource = new TaskCompletionSource<bool>();
+
+            await _syncController.StartExecution();
+
+            foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
+            {
+                if (slaveSemaphore.CurrentCount == 0)
+                    slaveSemaphore.Release();
+            }
+            await _processingCompletionSource.Task;
+
+            _processingCompletionSource?.TrySetResult(true);
             _launchPending = true;
+
+
         }
     }
 }

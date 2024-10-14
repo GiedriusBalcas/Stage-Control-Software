@@ -150,9 +150,9 @@ namespace standa_control_software_WPF.view_models.system_control
         {
             ClearLog();
 
-            OutputMessage += $"\nStop.";
-            _commandManager.Stop();
-            OutputMessage += $"\ndone Stop.";
+            //OutputMessage += $"\nStop.";
+            //_commandManager.Stop();
+            //OutputMessage += $"\ndone Stop.";
 
             foreach(var (controllerName, controller) in _controllerManager.Controllers)
             {
