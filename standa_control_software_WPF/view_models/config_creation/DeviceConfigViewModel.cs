@@ -176,9 +176,6 @@ namespace standa_control_software_WPF.view_models.config_creation
             char name = nameProp != null ? Convert.ToChar(nameProp) : 'u'; // Default to 'u' if not found
             string id = idProp as string ?? string.Empty; // Default to empty string if not found
 
-            // Fetch the controller - assuming _controller is an instance of IPositionerController or can be cast to it
-            //var controller = _controller.ExtractController();
-
             // Create the device instance using reflection with parameters
             var constructorInfo = DeviceType.GetConstructor(new Type[] { typeof(char), typeof(string) });
             if (constructorInfo == null)

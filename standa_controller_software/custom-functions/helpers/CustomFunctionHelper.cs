@@ -184,7 +184,7 @@ namespace standa_controller_software.custom_functions.helpers
 
             foreach (char name in deviceNames)
             {
-                timesToComplete[name] = (float)CalculateTotalTime(trajectoryLength / movementRatio[name], targetSpeed[name], positionerMovementInfo[name].MaxAcceleration, positionerMovementInfo[name].MaxDeceleration);
+                timesToComplete[name] = (float)CalculateTotalTime(positionerMovementInfo[name].TargetDistance, targetSpeed[name], positionerMovementInfo[name].MaxAcceleration, positionerMovementInfo[name].MaxDeceleration);
             }
             
             allocatedTime = timesToComplete.Max(kvp=> kvp.Value);
@@ -192,10 +192,32 @@ namespace standa_controller_software.custom_functions.helpers
             return true;
         }
 
+       
+
         public static double CalculateTotalTime(double pathLength, double targetSpeed, double acceleration, double deceleration)
         {
             double tAcc = targetSpeed / acceleration;
             double dAcc = (targetSpeed * targetSpeed) / (2 * acceleration);
+            double tDec = targetSpeed / deceleration;
+            double dDec = (targetSpeed * targetSpeed) / (2 * deceleration);
+
+            if (dAcc + dDec <= pathLength)
+            {
+                double dConst = pathLength - (dAcc + dDec);
+                double tConst = dConst / targetSpeed;
+                return tAcc + tConst + tDec;
+            }
+            else
+            {
+                double vMax = Math.Sqrt((2 * acceleration * deceleration * pathLength) / (acceleration + deceleration));
+                return (vMax / acceleration) + (vMax / deceleration);
+            }
+        }
+
+        public static double CalculateTotalTime(double pathLength, double targetSpeed, double acceleration, double deceleration, double initialSpeed)
+        {
+            double tAcc = Math.Abs(targetSpeed - initialSpeed) / acceleration;
+            double dAcc = (Math.Abs(targetSpeed - initialSpeed) * Math.Abs(targetSpeed - initialSpeed)) / (2 * acceleration);
             double tDec = targetSpeed / deceleration;
             double dDec = (targetSpeed * targetSpeed) / (2 * deceleration);
 

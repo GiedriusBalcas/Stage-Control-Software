@@ -1,4 +1,5 @@
 ﻿using standa_controller_software.command_manager;
+using standa_controller_software.device_manager.attributes;
 using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
@@ -14,6 +15,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
         protected ConcurrentDictionary<char, CancellationTokenSource> deviceCancellationTokens = new ConcurrentDictionary<char, CancellationTokenSource>();
         protected Dictionary<char, BasePositionerDevice> Devices { get; }
+
 
         public BasePositionerController(string name) : base(name)
         {

@@ -14,8 +14,6 @@ namespace standa_controller_software.device_manager.devices
         protected BasePositionerDevice(char name, string id) : base(name, id)
         {
         }
-        private float maxAcceleration = 100f;
-
 
         [DisplayPropertyAttribute]
         [DynamicPropertyAttribute]

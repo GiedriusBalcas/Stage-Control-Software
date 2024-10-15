@@ -294,7 +294,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             {
                 Devices = commands.SelectMany(comm => comm.TargetDevices).ToArray(),
                 Launch = _launchPending,
-                Rethrow = posInfoGroups.Values.SelectMany(info => info.AllocatedTimes).Max()*1000*0.5f,
+                Rethrow = 0,//posInfoGroups.Values.SelectMany(info => info.AllocatedTimes).Max()*1000*0.5f,
                 Shutter = commandParametersFromFirstCommand.IsShutterUsed,
                 Shutter_delay_on = commandParametersFromFirstCommand.IsShutterUsed ? commandParametersFromFirstCommand.ShutterInfo.DelayOn *1000: 0f,
                 Shutter_delay_off = commandParametersFromFirstCommand.IsShutterUsed ? commandParametersFromFirstCommand.ShutterInfo.DelayOff *1000: 0f,
