@@ -37,39 +37,28 @@ namespace standa_controller_software.command_manager
                     var semaphore = _controllerManager.ControllerLocks[controller.Name];
 
                     // Attempt to acquire the semaphore without waiting
-                    if (await semaphore.WaitAsync(0))
+                    //if (await semaphore.WaitAsync(0))
+                    if (semaphore.CurrentCount > 0)
                     {
-                        tasks.Add(Task.Run(async () =>
+                        
+                        try
                         {
-                            try
-                            {
-                                // Perform the device state update as fast as possible
-                                await controller.UpdateStatesAsync(_log);
+                            // Perform the device state update as fast as possible
+                            var updateTask = Task.Run(() => controller.UpdateStatesAsync(_log));
+                            // Release semaphore immediately after update
+                            _= Task.WhenAny(updateTask, Task.Delay(2));
+                        }
+                        finally
+                        {
+                            //semaphore.Release();
+                        }
 
-                                // Release semaphore immediately after update
-                            }
-                            finally
-                            {
-                                semaphore.Release();
-                            }
-
-                            // Fetch the devices and enqueue them for further processing
-                            var devices = controller.GetDevices();
-                            foreach (var device in devices)
-                            {
-                                _updatedDevicesQueue.Enqueue(device);
-                                // Notify listeners about the updated device
-                                DeviceUpdated?.Invoke(this, device);
-                            }
-                        }));
                     }
                 }
 
-                // Wait for all tasks to complete before delaying the next cycle
-                await Task.WhenAll(tasks);
 
                 // Introduce a small delay to avoid overwhelming the system
-                await Task.Delay(200);
+                await Task.Delay(20);
             }
         }
     }

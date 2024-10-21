@@ -103,7 +103,7 @@ namespace standa_control_software_WPF.view_models.system_control
 
         private async void UpdateDeviceStates(bool isProbing)
         {
-            _ = Task.Run(() => _commandManager.UpdateStatesAsync());
+            //_ = Task.Run(() => _commandManager.UpdateStatesAsync());
             _ = Task.Run(async () =>
             {
                 while (true)
@@ -218,10 +218,10 @@ namespace standa_control_software_WPF.view_models.system_control
 
         private async void CreateCommandQueueFromInputAsync()
         {
-            var inputText = SelectedDocument.InputText;
-            HighlightedLineNumber = null;
             try
             {
+                var inputText = SelectedDocument.InputText;
+                HighlightedLineNumber = null;
                 _functionDefinitionLibrary.ClearCommandQueue();
                 _functionDefinitionLibrary.InitializeDefinitions();
                 

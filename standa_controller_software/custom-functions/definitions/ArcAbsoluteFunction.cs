@@ -49,7 +49,7 @@ namespace standa_controller_software.custom_functions.definitions
             _controllerManager.TryGetDevice<BasePositionerDevice>('y', out var devicey);
             var currY = devicey.CurrentPosition;
 
-            float radius = 100f;
+            float radius = 2f;
 
 
             // pazek gal accel max koks. o ne apskritimo lygti sprest, gi nemoki.
@@ -58,7 +58,7 @@ namespace standa_controller_software.custom_functions.definitions
             // looks like we need faster updates.
 
             
-            ExecutionCore('x', 'y', radius, 0f, 0f, 0, (float)Math.PI*2*2, 500f, 0.01f);
+            ExecutionCore('x', 'y', radius, 0f, 0f, 0, (float)Math.PI*2*10, 50f, 0.02f);
 
             return null;
         }
@@ -219,7 +219,7 @@ namespace standa_controller_software.custom_functions.definitions
 
             // segment length must be at least twice as long as the deceleration distance for any of the stages. <-------- BS
 
-            float maxDistanceToDescelerate = 2 * trajectorySpeed * trajectorySpeed / (2* devices_arc.Min(device => Math.Min(device.Value.MaxAcceleration, device.Value.MaxDeceleration))) + 0.1f * trajectorySpeed; // [um
+            float maxDistanceToDescelerate = 2 * trajectorySpeed * trajectorySpeed / (2* devices_arc.Min(device => Math.Min(device.Value.MaxAcceleration, device.Value.MaxDeceleration))) + 0.2f * trajectorySpeed; // [um
             //float maxDistanceToDescelerate = 100; // [um]
 
 
@@ -280,8 +280,8 @@ namespace standa_controller_software.custom_functions.definitions
                 double velX = Math.Abs(-trajectorySpeed * Math.Sin(theta));
                 double velY = Math.Abs(trajectorySpeed * Math.Cos(theta));
 
-                double accelX_calc = (prevVelX - velX) / rethrow;
-                double accelY_calc = (prevVelY - velY) / rethrow;
+                double accelX_calc = (prevVelX - velX) / rethrow *1;
+                double accelY_calc = (prevVelY - velY) / rethrow *1;
 
 
                 prevVelX = velX;

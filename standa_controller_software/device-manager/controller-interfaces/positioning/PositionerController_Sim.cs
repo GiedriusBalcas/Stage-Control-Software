@@ -289,6 +289,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                                 bool boolCheck = _deviceInfo[device.Name].MoveStatus != 0;
                                 var currentPosition = _deviceInfo[device.Name].CurrentPosition;
                                 device.CurrentPosition = currentPosition;
+                                device.CurrentSpeed = _deviceInfo[device.Name].CurrentSpeed;
                                 return boolCheck;
                             }
                         );
@@ -303,6 +304,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                             {
                                 var moveStatus = _deviceInfo[device.Name].MoveStatus != 0;
                                 var currentPosition = _deviceInfo[device.Name].CurrentPosition;
+                                device.CurrentSpeed = _deviceInfo[device.Name].CurrentSpeed;
                                 device.CurrentPosition = currentPosition;
 
 

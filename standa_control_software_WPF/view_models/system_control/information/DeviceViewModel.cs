@@ -11,7 +11,13 @@ namespace standa_control_software_WPF.view_models.system_control.information
     public abstract class DeviceViewModel : ViewModelBase
     {
         public char Name { get; set; }
-        public bool IsEnabled { get; set; }
+        public bool IsConnected { get; protected set; }
+
         public abstract void UpdateFromDevice(BaseDevice device);
+        public DeviceViewModel(BaseDevice device)
+        {
+            Name = device.Name;
+        }
+
     }
 }

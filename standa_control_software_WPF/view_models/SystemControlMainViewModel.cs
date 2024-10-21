@@ -57,7 +57,7 @@ namespace standa_control_software_WPF.view_models
             NavigationItems = new ObservableCollection<NavItem>
             {
                 new NavItem(){ Header= "Device Properties", GetViewModel= getConfigPageViewModel},
-                new NavItem(){ Header= "Positioner Control", GetViewModel= getInfoPageViewModel},
+                new NavItem(){ Header= "Information", GetViewModel= getInfoPageViewModel},
                 new NavItem(){ Header= "Command Window", GetViewModel= getCompPageViewModel},
             };
             _selectedNavItem = NavigationItems.First();

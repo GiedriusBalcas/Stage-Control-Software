@@ -1,29 +1,67 @@
 ﻿
 
+using standa_control_software_WPF.view_models.commands;
 using standa_control_software_WPF.view_models.system_control.information;
 using standa_control_software_WPF.view_models.system_control.information;
 using standa_controller_software.command_manager;
+using standa_controller_software.device_manager;
 using standa_controller_software.device_manager.devices;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Windows.Input;
 
 namespace standa_control_software_WPF.view_models.system_control
 {
     public class SystemInformtaionViewModel : ViewModelBase
     {
+        private readonly ControllerManager _controllerManager;
 
-        public ObservableCollection<DeviceViewModel> Devices { get; set; }
-        private readonly ControllerStateUpdater _updater;
-
-        public SystemInformtaionViewModel(ControllerStateUpdater updater)
+        private double _acquisitionDuration;
+        public double AcquisitionDuration
         {
-            Devices = new ObservableCollection<DeviceViewModel>();
-            _updater = updater;
-
-            // Subscribe to the DeviceUpdated event
-            _updater.DeviceUpdated += OnDeviceUpdated;
+            get => _acquisitionDuration;
+            set
+            {
+                _acquisitionDuration = value;
+                OnPropertyChanged(nameof(AcquisitionDuration));
+            }
         }
 
+        public ObservableCollection<DeviceViewModel> Devices { get; set; }
+        
+        public SystemInformtaionViewModel(ControllerManager controllerManager)
+        {
+            _controllerManager = controllerManager;
+            Devices = new ObservableCollection<DeviceViewModel>();
+
+            foreach(BaseDevice device in _controllerManager.GetDevices<BaseDevice>())
+            {
+                var deviceViewModel = CreateViewModelForDevice(device);
+                Devices.Add(deviceViewModel);
+            }
+
+        }
+        public ICommand AcquireCommand => new RelayCommand(StartAcquisition);
+
+        private void StartAcquisition()
+        {
+            foreach (var deviceViewModel in Devices.OfType<PositionerDeviceViewModel>())
+            {
+                if (deviceViewModel.NeedsToBeTracked)
+                {
+                    deviceViewModel.StartAcquisitionCommand.Execute(null);
+                }
+            }
+
+            // Stop acquisition after the specified duration
+            Task.Delay(TimeSpan.FromSeconds(AcquisitionDuration)).ContinueWith(_ =>
+            {
+                foreach (var deviceViewModel in Devices.OfType<PositionerDeviceViewModel>())
+                {
+                    deviceViewModel.StopAcquisitionCommand.Execute(null);
+                }
+            });
+        }
         // Event handler for device updates
         private void OnDeviceUpdated(object sender, BaseDevice device)
         {
@@ -46,19 +84,11 @@ namespace standa_control_software_WPF.view_models.system_control
         {
             if (device is BasePositionerDevice positionerDevice)
             {
-                return new PositionerDeviceViewModel
-                {
-                    Name = positionerDevice.Name,
-                    Position = positionerDevice.CurrentPosition
-                };
+                return new PositionerDeviceViewModel(positionerDevice);
             }
             else if (device is BaseShutterDevice shutterDevice)
             {
-                return new ShutterDeviceViewModel
-                {
-                    Name = shutterDevice.Name,
-                    State = shutterDevice.IsOn
-                };
+                return new ShutterDeviceViewModel(shutterDevice);
             }
 
             throw new NotSupportedException("Device type not supported");

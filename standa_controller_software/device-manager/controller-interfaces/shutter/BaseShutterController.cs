@@ -55,20 +55,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         protected abstract Task SetDelayAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
 
         protected abstract Task ChangeState(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
-        private string FormatParameters(object[][] parameters)
-        {
-            var formattedParameters = parameters
-                .Select(paramArray =>
-                {
-                    if (paramArray == null)
-                    {
-                        return "[null]";
-                    }
-                    return $"[{string.Join(", ", paramArray.Select(p => p?.ToString() ?? "null"))}]";
-                });
-
-            return string.Join(" ", formattedParameters); // Join all sub-arrays with a space
-        }
+        
         public override async Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
             // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {command.Action} command on device {string.Join(' ', command.TargetDevices)}, parameters: {FormatParameters(command.Parameters)}");

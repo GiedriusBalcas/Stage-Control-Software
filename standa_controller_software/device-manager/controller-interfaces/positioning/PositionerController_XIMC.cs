@@ -101,17 +101,17 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                         // TODO: check if conversion is correct float -> uint.
                     };
 
-                    var syncInAction_notCalib = new command_add_sync_in_action_t
-                    {
-                        //Time = (uint)allocatedTime * 100000000,    // [us]
-                        Position = (int)(targetPosition / 2.5),
-                        //Time = (uint)Math.Max((Math.Abs(velocity) / Devices[deviceName].StepSize), 1),
-                        Time = (uint)Math.Round(allocatedTime * 1000000),
-                        // TODO: check if conversion is correct float -> uint.
-                    };
+                    //var syncInAction_notCalib = new command_add_sync_in_action_t
+                    //{
+                    //    //Time = (uint)allocatedTime * 100000000,    // [us]
+                    //    Position = (int)(targetPosition / 2.5),
+                    //    //Time = (uint)Math.Max((Math.Abs(velocity) / Devices[deviceName].StepSize), 1),
+                    //    Time = (uint)Math.Round(allocatedTime * 1000000),
+                    //    // TODO: check if conversion is correct float -> uint.
+                    //};
 
-                    //CallResponse = API.command_add_sync_in_action_calb(_deviceInfo[deviceName].id, ref syncInAction, ref _deviceInfo[deviceName].calibration_t);
-                    CallResponse = API.command_add_sync_in_action(_deviceInfo[deviceName].id, ref syncInAction_notCalib);
+                    CallResponse = API.command_add_sync_in_action_calb(_deviceInfo[deviceName].id, ref syncInAction, ref _deviceInfo[deviceName].calibration_t);
+                    //CallResponse = API.command_add_sync_in_action(_deviceInfo[deviceName].id, ref syncInAction_notCalib);
                     _log.Enqueue($"ximc: added ASIA to {deviceName} . Position: {syncInAction.Position};   Speed: {velocity}    Time: {allocatedTime}.");
 
                     //var syncInAction_nonCalibrated = new command_add_sync_in_action_t

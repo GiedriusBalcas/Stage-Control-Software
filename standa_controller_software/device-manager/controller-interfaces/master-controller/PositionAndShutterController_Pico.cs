@@ -257,11 +257,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
             //-------------------------------------------------------------//
 
-            foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
-            {
-                if (slaveSemaphore.CurrentCount == 0)
-                    slaveSemaphore.Release();
-            }
 
 
             var isUpdateNeeded = commands.Any(command =>
@@ -334,12 +329,18 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
                 }
 
+
+                foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
+                {
+                    if (slaveSemaphore.CurrentCount == 0)
+                        slaveSemaphore.Release();
+                }
+
                 // await last item taken
                 if (_processingLastItemTakenSource is not null)
                     if (!_processingLastItemTakenSource.Task.IsCompleted)
                     {
                         await _processingLastItemTakenSource.Task;
-                        await Task.Delay(10);
                         _log.Enqueue("master: awaited last item taken signal");
                     }
 
@@ -353,18 +354,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     if (SlaveControllers.TryGetValue(command.TargetController, out var slaveController))
                     {
 
-                        //foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
-                        //{
-                        //    await slaveSemaphore.WaitAsync();
-                        //}
+                        
+                        await SlaveControllersLocks[slaveController.Name].WaitAsync();
+
 
                         await slaveController.ExecuteCommandAsync(command, slaveSemaphors[command.TargetController], log);
 
-                        //foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
-                        //{
-                        //    if (slaveSemaphore.CurrentCount == 0)
-                        //        slaveSemaphore.Release();
-                        //}
+                        if (SlaveControllersLocks[slaveController.Name].CurrentCount == 0)
+                            SlaveControllersLocks[slaveController.Name].Release();
                     }
                     else
                         throw new Exception($"Slave controller {command.TargetController} was not found.");
@@ -375,6 +372,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             else
             {
                 _log.Enqueue("master: did not updated movement settings");
+
+                foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
+                {
+                    if (slaveSemaphore.CurrentCount == 0)
+                        slaveSemaphore.Release();
+                }
             }
 
             //-------------------------------------------------------------//
