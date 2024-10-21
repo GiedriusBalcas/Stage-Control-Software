@@ -56,6 +56,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         [DisplayPropertyAttribute]
         public bool isSyncUsed { get; set; }
 
+        private static API.LoggingCallback callback;
+        private static ConcurrentQueue<string> logginghere = new ConcurrentQueue<string>();
+        private void MyLog(API.LogLevel loglevel, string message, IntPtr user_data)
+        {
+            _log?.Enqueue(message);
+            logginghere.Enqueue(message);
+        }
+
         public PositionerController_XIMC(string name) : base(name) 
         {
             _methodMap[CommandDefinitions.AddSyncInAction] = new MethodInformation()
@@ -64,6 +72,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 Quable = false,
                 State = MethodState.Free,
             };
+
+
+            callback = new API.LoggingCallback(MyLog);
+            API.set_logging_callback(callback, IntPtr.Zero);
+
         }
         private Task AddSyncInAction(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
@@ -83,11 +96,22 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     {
                         //Time = (uint)allocatedTime * 100000000,    // [us]
                         Position = targetPosition,
-                        Time = (uint)Math.Max((Math.Abs(velocity) / Devices[deviceName].StepSize), 1),
+                        //Time = (uint)Math.Max((Math.Abs(velocity) / Devices[deviceName].StepSize), 1),
+                        Time = (uint)Math.Round(allocatedTime * 1000000),
                         // TODO: check if conversion is correct float -> uint.
                     };
 
-                    CallResponse = API.command_add_sync_in_action_calb(_deviceInfo[deviceName].id, ref syncInAction, ref _deviceInfo[deviceName].calibration_t);
+                    var syncInAction_notCalib = new command_add_sync_in_action_t
+                    {
+                        //Time = (uint)allocatedTime * 100000000,    // [us]
+                        Position = (int)(targetPosition / 2.5),
+                        //Time = (uint)Math.Max((Math.Abs(velocity) / Devices[deviceName].StepSize), 1),
+                        Time = (uint)Math.Round(allocatedTime * 1000000),
+                        // TODO: check if conversion is correct float -> uint.
+                    };
+
+                    //CallResponse = API.command_add_sync_in_action_calb(_deviceInfo[deviceName].id, ref syncInAction, ref _deviceInfo[deviceName].calibration_t);
+                    CallResponse = API.command_add_sync_in_action(_deviceInfo[deviceName].id, ref syncInAction_notCalib);
                     _log.Enqueue($"ximc: added ASIA to {deviceName} . Position: {syncInAction.Position};   Speed: {velocity}    Time: {allocatedTime}.");
 
                     //var syncInAction_nonCalibrated = new command_add_sync_in_action_t
@@ -113,14 +137,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             }
         }
 
-        private static void MyLog(API.LogLevel loglevel, string message, IntPtr user_data)
-        {
-            Console.WriteLine("MyLog {0}: {1}", loglevel, message);
-        }
         public override Task ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
         {
             if (device is BasePositionerDevice positioningDevice && _deviceInfo.TryGetValue(positioningDevice.Name, out DeviceInformation deviceInfo))
             {
+
+
                 deviceInfo.maxDeceleration = positioningDevice.MaxDeceleration;
                 deviceInfo.maxAcceleration = positioningDevice.MaxAcceleration;
                 deviceInfo.maxSpeed = positioningDevice.MaxSpeed;
@@ -141,7 +163,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 //API.set_logging_callback(callback, IntPtr.Zero);
 
                 API.set_bindy_key("keyfile.sqlite");
-
+                logginghere.Enqueue("\n set bindy key done\n");
 
                 // Pointer to device enumeration structure
                 IntPtr device_enumeration;
@@ -161,11 +183,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 //API.set_bindy_key("keyfile.sqlite");
                 // Enumerates all devices
                 device_enumeration = API.enumerate_devices(probe_flags, enumerate_hints);
+                logginghere.Enqueue("\n enumerate devices done\n");
 
 
                 //String enumerate_hints = "";
                 //var device_enumeration = API.enumerate_devices(probe_flags, enumerate_hints);
                 int device_count = API.get_device_count(device_enumeration);
+                logginghere.Enqueue("\n get device count\n");
 
 
                 string deviceName = string.Empty;
@@ -181,41 +205,75 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 if (deviceName == string.Empty)
                     throw new Exception($"Device with name: {positioningDevice.Name} and id: {positioningDevice.ID} was not found through controller interface");
                 deviceInfo.id = API.open_device(deviceName);
+                logginghere.Enqueue("\n open device done\n");
 
                 CallResponse = API.get_status(deviceInfo.id, out deviceInfo.status_t);
+                logginghere.Enqueue("\n get status done\n");
+
                 CallResponse = API.get_device_information(deviceInfo.id, out deviceInfo.deviceInformation_t);
+                logginghere.Enqueue("\n get device information done\n");
+
                 CallResponse = API.get_engine_settings(deviceInfo.id, out deviceInfo.engineSettings_t);
+                logginghere.Enqueue("\n get engine settings done\n");
 
                 deviceInfo.calibration_t = new calibration_t();
 
                 deviceInfo.calibration_t.A = positioningDevice.StepSize;
                 deviceInfo.calibration_t.MicrostepMode = Math.Max(1, deviceInfo.engineSettings_t.MicrostepMode);
                 CallResponse = API.get_status_calb(deviceInfo.id, out deviceInfo.statusCalibrated_t, ref deviceInfo.calibration_t);
+                logginghere.Enqueue("\n get status calb done\n");
+
                 CallResponse = API.get_move_settings_calb(deviceInfo.id, out deviceInfo.moveSettings_t, ref deviceInfo.calibration_t);
+                logginghere.Enqueue("\n get move settings calb done\n");
+
+                positioningDevice.Speed = positioningDevice.DefaultSpeed;
+                positioningDevice.Acceleration = positioningDevice.MaxAcceleration;
+                positioningDevice.Deceleration = positioningDevice.MaxDeceleration;
+
                 deviceInfo.moveSettings_t.Speed = Math.Min(positioningDevice.Speed, positioningDevice.MaxSpeed);
                 deviceInfo.moveSettings_t.Accel = Math.Min(positioningDevice.Acceleration, positioningDevice.MaxAcceleration);
                 deviceInfo.moveSettings_t.Decel = Math.Min(positioningDevice.Deceleration, positioningDevice.MaxDeceleration);
+
+                //deviceInfo.moveSettings_t.Accel = 5000f;
+                //deviceInfo.moveSettings_t.Decel = 5000f;
+                //deviceInfo.moveSettings_t.Speed = 100f;
+
+
                 CallResponse = API.set_move_settings_calb(deviceInfo.id, ref deviceInfo.moveSettings_t, ref deviceInfo.calibration_t);
+                logginghere.Enqueue("\n set move settings calb done\n");
 
-                if (isSyncUsed)
-                {
-                    //var sync_in_settings_calibrated = new ximcWrapper.sync_in_settings_calb_t
-                    //{
-                    //    ClutterTime = 0,
-                    //    Position = 0,
-                    //    Speed = 100,
-                    //    SyncInFlags = ximcWrapper.Flags.SYNCIN_ENABLED | ximcWrapper.Flags.SYNCIN_GOTOPOSITION,
-                    //};
+                //if (isSyncUsed)
+                //{
+                //    var sync_in_settings_calibrated = new ximcWrapper.sync_in_settings_calb_t
+                //    {
+                //        ClutterTime = 0,
+                //        Position = 0,
+                //        Speed = 100,
+                //        SyncInFlags = ximcWrapper.Flags.SYNCIN_ENABLED | ximcWrapper.Flags.SYNCIN_GOTOPOSITION,
+                //    };
 
-                    //var sync_out_settings_calibrated = new ximcWrapper.sync_out_settings_calb_t
-                    //{
-                    //    Accuracy = 0,
-                    //    SyncOutFlags = ximcWrapper.Flags.SYNCOUT_ENABLED | ximcWrapper.Flags.SYNCOUT_ONSTOP,
-                    //};
+                //    var sync_out_settings_calibrated = new ximcWrapper.sync_out_settings_calb_t
+                //    {
+                //        Accuracy = 0.1f,
+                //        SyncOutFlags = ximcWrapper.Flags.SYNCOUT_ENABLED | ximcWrapper.Flags.SYNCOUT_ONSTOP,
+                //    };
+                //    //CallResponse = API.get_sync_in_settings_calb(deviceInfo.id, out var sync_in_settings_calibrated, ref deviceInfo.calibration_t);
 
-                    //CallResponse = API.set_sync_in_settings_calb(deviceInfo.id, ref sync_in_settings_calibrated, ref deviceInfo.calibration_t);
-                    //CallResponse = API.set_sync_out_settings_calb(deviceInfo.id, ref sync_out_settings_calibrated, ref deviceInfo.calibration_t);
-                }
+                //    CallResponse = API.set_sync_in_settings_calb(deviceInfo.id, ref sync_in_settings_calibrated, ref deviceInfo.calibration_t);
+
+                //    //CallResponse = API.get_sync_out_settings_calb(deviceInfo.id, out var sync_out_settings_calibrated, ref deviceInfo.calibration_t);
+
+                //    //sync_out_settings_calibrated.Accuracy = 100;
+
+                //    CallResponse = API.set_sync_out_settings_calb(deviceInfo.id, ref sync_out_settings_calibrated, ref deviceInfo.calibration_t);
+
+
+                //    //CallResponse = API.get_sync_out_settings(deviceInfo.id, out var sync_out_settings);
+                //    //sync_out_settings.Accuracy = 50;
+                //    //CallResponse = API.set_sync_out_settings(deviceInfo.id, ref sync_out_settings);
+
+
+                //}
             }
 
             return base.ConnectDevice(device, semaphore);
@@ -391,19 +449,36 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             {
                 if (device.IsConnected)
                 {
-                    CallResponse = API.command_sstp(_deviceInfo[device.Name].id);
+                    //CallResponse = API.command_sstp(_deviceInfo[device.Name].id);
                     CallResponse = API.command_stop(_deviceInfo[device.Name].id);
                     //CallResponse = API.command_reset(_deviceInfo[device.Name].id);
 
 
-                    CallResponse = API.get_sync_in_settings_calb(_deviceInfo[deviceName].id, out sync_in_settings_calb_t sync_in_settings_calb, ref _deviceInfo[deviceName].calibration_t);
+                    //CallResponse = API.get_sync_in_settings_calb(_deviceInfo[deviceName].id, out sync_in_settings_calb_t sync_in_settings_calb, ref _deviceInfo[deviceName].calibration_t);
 
-                    CallResponse = API.get_status_calb(_deviceInfo[deviceName].id, out _deviceInfo[deviceName].statusCalibrated_t, ref _deviceInfo[deviceName].calibration_t);
-                    var position = _deviceInfo[deviceName].statusCalibrated_t.CurPosition;
+                    //CallResponse = API.get_status_calb(_deviceInfo[deviceName].id, out _deviceInfo[deviceName].statusCalibrated_t, ref _deviceInfo[deviceName].calibration_t);
+                    //var position = _deviceInfo[deviceName].statusCalibrated_t.CurPosition;
 
-                    sync_in_settings_calb.Position = position;
+                    //sync_in_settings_calb.Position = position;
 
-                    CallResponse = API.set_sync_in_settings_calb(_deviceInfo[deviceName].id, ref sync_in_settings_calb, ref _deviceInfo[deviceName].calibration_t);
+                    //CallResponse = API.set_sync_in_settings_calb(_deviceInfo[deviceName].id, ref sync_in_settings_calb, ref _deviceInfo[deviceName].calibration_t);
+
+                    //CallResponse = API.get_engine_settings_calb(_deviceInfo[deviceName].id, out var kaka, ref _deviceInfo[deviceName].calibration_t);
+                    //kaka.EngineFlags = kaka.EngineFlags & ~ximcWrapper.Flags.ENGINE_ACCEL_ON;
+                    //CallResponse = API.set_engine_settings_calb(_deviceInfo[deviceName].id, ref kaka, ref _deviceInfo[deviceName].calibration_t);
+
+                    //CallResponse = API.get_engine_settings(_deviceInfo[deviceName].id, out var kaka2);
+                    //kaka2.EngineFlags = kaka2.EngineFlags | ximcWrapper.Flags.ENGINE_ACCEL_ON;
+                    ////kaka2.EngineFlags = kaka2.EngineFlags & ~ximcWrapper.Flags.ENGINE_ACCEL_ON;
+                    //CallResponse = API.set_engine_settings(_deviceInfo[deviceName].id, ref kaka2);
+
+                    //var sync_out_settings_calibrated = new ximcWrapper.sync_out_settings_calb_t
+                    //{
+                    //    Accuracy = 100f,
+                    //    SyncOutFlags = ximcWrapper.Flags.SYNCOUT_ENABLED | ximcWrapper.Flags.SYNCOUT_ONSTOP,
+                    //};
+
+                    //CallResponse = API.set_sync_out_settings_calb(_deviceInfo[deviceName].id, ref sync_out_settings_calibrated, ref _deviceInfo[deviceName].calibration_t);
                 }
             }
 

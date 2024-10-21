@@ -462,12 +462,18 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
         private async Task UpdateCommandMoveA(char name, float targetPosition, CancellationToken cancellationToken)
         {
+
+            var targetSpeed = _deviceInfo[name].Speed;
+            var targetAccel = _deviceInfo[name].Acceleration;
+            var targetDecel = _deviceInfo[name].Deceleration;
+            
+
             _log?.Enqueue($"UpdateCommandMoveA called on {name}");
 
             var stopwatch = new System.Diagnostics.Stopwatch();
             stopwatch.Start();
 
-            var distanceToStop = () => 0.5f * _deviceInfo[name].Deceleration * Math.Pow((Math.Abs(_deviceInfo[name].CurrentSpeed) / _deviceInfo[name].Deceleration), 2);
+            var distanceToStop = () => 0.5f * targetDecel * Math.Pow((Math.Abs(_deviceInfo[name].CurrentSpeed) / targetDecel), 2);
             var directionToTarget = () => Math.Sign(targetPosition - _deviceInfo[name].CurrentPosition);
             var distanceToTarget = () => Math.Abs(targetPosition - _deviceInfo[name].CurrentPosition);
             var pointDifference = () => targetPosition - _deviceInfo[name].CurrentPosition;
@@ -479,8 +485,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
             _deviceInfo[name].MoveStatus = 1;
             float movementPerInterval = 0 * _deviceInfo[name].CurrentSpeed;
-            float accelerationPerInterval = 0 * _deviceInfo[name].Acceleration;
-            float decelerationPerInterval = 0 * _deviceInfo[name].Deceleration;
+            float accelerationPerInterval = 0 * targetAccel;
+            float decelerationPerInterval = 0 * targetDecel;
             bool stopFlag = false;
 
             while (Math.Abs(pointDifference()) > Math.Abs(movementPerInterval) || Math.Abs(_deviceInfo[name].CurrentSpeed) > decelerationPerInterval)
@@ -492,8 +498,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 stopwatch.Restart();
 
                 movementPerInterval = timeElapsed * _deviceInfo[name].CurrentSpeed;
-                accelerationPerInterval = timeElapsed * _deviceInfo[name].Acceleration;
-                decelerationPerInterval = timeElapsed * _deviceInfo[name].Deceleration;
+                accelerationPerInterval = timeElapsed * targetAccel;
+                decelerationPerInterval = timeElapsed * targetDecel;
 
                 float updatedSpeedValue;
                 // check if moving to the target direction || not moving
@@ -522,15 +528,15 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     else
                     {
                         // moving too fast than target speed. 
-                        if (Math.Abs(_deviceInfo[name].CurrentSpeed) > _deviceInfo[name].Speed)
-                            updatedSpeedValue = Math.Abs(_deviceInfo[name].CurrentSpeed - decelerationPerInterval * Math.Sign(pointDifference())) < _deviceInfo[name].Speed
-                                ? _deviceInfo[name].Speed * Math.Sign(pointDifference())
+                        if (Math.Abs(_deviceInfo[name].CurrentSpeed) > targetSpeed)
+                            updatedSpeedValue = Math.Abs(_deviceInfo[name].CurrentSpeed - decelerationPerInterval * Math.Sign(pointDifference())) < targetSpeed
+                                ? targetSpeed * Math.Sign(pointDifference())
                                 : _deviceInfo[name].CurrentSpeed - decelerationPerInterval * Math.Sign(pointDifference());
 
                         // moving too slow than target speed.
                         else
-                            updatedSpeedValue = Math.Abs(_deviceInfo[name].CurrentSpeed + accelerationPerInterval * Math.Sign(pointDifference())) > _deviceInfo[name].Speed
-                                ? _deviceInfo[name].Speed * Math.Sign(pointDifference())
+                            updatedSpeedValue = Math.Abs(_deviceInfo[name].CurrentSpeed + accelerationPerInterval * Math.Sign(pointDifference())) > targetSpeed
+                                ? targetSpeed * Math.Sign(pointDifference())
                                 : _deviceInfo[name].CurrentSpeed + accelerationPerInterval * Math.Sign(pointDifference());
 
 
@@ -593,7 +599,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 positioner.Value.Deceleration = _deviceInfo[positioner.Key].Deceleration;
                 positioner.Value.Speed = _deviceInfo[positioner.Key].Speed;
 
-                //log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
+                log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
             }
             //await Task.Delay(10);
         }

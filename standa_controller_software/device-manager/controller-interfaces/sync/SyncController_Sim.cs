@@ -139,7 +139,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             while (_buffer.Count > 0)
             {
                 var executionInformation = _buffer.Dequeue();
-
+                if (_buffer.Count == 0)
+                    SendMessage.Invoke("0x03");
 
                 // which devices sync out will we be awaiting here?
 
@@ -195,6 +196,16 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                         else
                             SendSyncIn(_sendSyncInTo.ToArray());
                         millis.Restart();
+                        break;
+                    }
+                    if(executionInformation.Rethrow != 0 && executionInformation.Rethrow <= time)
+                    {
+
+                        _gotSyncOutFrom.Clear();
+                        if (nextCommandUsesShutter)
+                            await SendSyncIn(_sendSyncInTo.ToArray(), shutterDelayOn, shutterDelayOff);
+                        else
+                            SendSyncIn(_sendSyncInTo.ToArray());
                         break;
                     }
 

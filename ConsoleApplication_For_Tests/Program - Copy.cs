@@ -33,7 +33,7 @@ class Program
     static void Main(string[] args)
     {
         _controllerManager = SetupSystemControllersWithMaster();
-        _commandManager = new CommandManager(_controllerManager);
+        _commandManager = new CommandManager(_controllerManager, new System.Collections.Concurrent.ConcurrentQueue<string>());
 
         Task.Run(() => _commandManager.UpdateStatesAsync());
 

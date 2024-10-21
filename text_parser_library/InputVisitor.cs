@@ -85,12 +85,12 @@ namespace text_parser_library
             var propertyName = context.IDENTIFIER(1).GetText();
             var value = Visit(context.expression());
 
-            if(value is null)
-            {
-                State.AddMessage($"Error encountered on when trying to assign null value to {functionName}.{propertyName}.");
-                State.SetState(ParserState.States.Error);
-                throw new Exception();
-            }
+            //if(value is null)
+            //{
+            //    State.AddMessage($"Error encountered on when trying to assign null value to {functionName}.{propertyName}.");
+            //    State.SetState(ParserState.States.Error);
+            //    throw new Exception();
+            //}
 
             try
             {

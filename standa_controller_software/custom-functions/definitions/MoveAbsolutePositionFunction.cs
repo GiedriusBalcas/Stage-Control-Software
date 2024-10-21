@@ -38,11 +38,12 @@ namespace standa_controller_software.custom_functions.definitions
         {
             _commandManager = commandManager;
             _controllerManager = controllerManager;
-            this.SetProperty("Speed", null);
+            this.SetProperty("Speed", null, true);
             this.SetProperty("Shutter", false);
             this.SetProperty("LeadIn", false);
             this.SetProperty("LeadOut", false);
             this.SetProperty("Line", true);
+            this.SetProperty("WaitCondition", null, true);
         }
 
         public override object? Execute(params object[] args)
@@ -165,12 +166,21 @@ namespace standa_controller_software.custom_functions.definitions
             /// Check if kinematic parameters dont need to be changed.
             /// If so, then our quable controllers will be forced to execute their buffers before this.
 
+            // TODO: we should check, maybe starting point has the correct velocity vector. Not just whether the speed doesn't match.
+
             if (positionerMovementInformations.Values.Any(deviceInfo =>
                 (deviceInfo.TargetAcceleration != deviceInfo.StartingAcceleration
                 || deviceInfo.TargetDeceleration != deviceInfo.StartingDeceleration
                 || deviceInfo.TargetSpeed != deviceInfo.CurrentTargetSpeed))
                 )
             {
+                var isAccelChangePending = positionerMovementInformations.Values.Any(deviceInfo =>
+                    (
+                        deviceInfo.TargetAcceleration != deviceInfo.StartingAcceleration
+                        || deviceInfo.TargetDeceleration != deviceInfo.StartingDeceleration
+                    )
+                    );
+
                 List<Command> UpdatePrametersCommandLine = new List<Command>();
 
                 foreach (var controllerGroup in groupedDevicesByController)
@@ -193,7 +203,9 @@ namespace standa_controller_software.custom_functions.definitions
 
                     var commandParameters = new UpdateMovementSettingsParameters
                     {
-                        MovementSettingsInformation = movementSettings
+                        MovementSettingsInformation = movementSettings,
+                        AccelChangePending = isAccelChangePending,
+                        SpeedChangePending = true
                     };
 
                     UpdatePrametersCommandLine.Add(

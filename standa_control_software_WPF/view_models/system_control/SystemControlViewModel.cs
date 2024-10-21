@@ -103,7 +103,15 @@ namespace standa_control_software_WPF.view_models.system_control
 
         private async void UpdateDeviceStates(bool isProbing)
         {
-            Task.Run(() => _commandManager.UpdateStatesAsync());
+            _ = Task.Run(() => _commandManager.UpdateStatesAsync());
+            _ = Task.Run(async () =>
+            {
+                while (true)
+                {
+                    SaveLog();
+                    await Task.Delay(10000);
+                }
+            });
         }
 
         private async void ForceStop()
@@ -127,7 +135,7 @@ namespace standa_control_software_WPF.view_models.system_control
 
                 File.WriteAllText(filePath, content);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 OutputMessage += $"\n{ex.Message}.";
             }
@@ -172,14 +180,7 @@ namespace standa_control_software_WPF.view_models.system_control
 
             //try
             //{
-                _ = Task.Run(async () =>
-                {
-                    while (true)
-                    {
-                        SaveLog();
-                        await Task.Delay(1000);
-                    }
-                });
+                
                 await Task.Run(() => _commandManager.ProcessQueue());
                 OutputMessage += $"\nDone Executing.";
             //}

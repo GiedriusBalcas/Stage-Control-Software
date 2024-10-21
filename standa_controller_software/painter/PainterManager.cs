@@ -125,7 +125,7 @@ namespace standa_controller_software.painter
                 { typeof(BaseShutterController), typeof(ShutterController_Virtual) }
             };
             var controllerManager_virtual = _controllerManager.CreateACopy(rules);
-            var commandManager_virtual = new CommandManager(controllerManager_virtual);
+            var commandManager_virtual = new CommandManager(controllerManager_virtual, new System.Collections.Concurrent.ConcurrentQueue<string>());
 
             var commandLines = _commandManager.GetCommandQueueList();
             var renderObjects = new LineObjectCollection();
@@ -173,7 +173,7 @@ namespace standa_controller_software.painter
                 masterPainterController.AddSlaveController(controller, controllerManager_virtual.ControllerLocks[controllerName]);
             }
             
-            var commandManager_virtual = new CommandManager(controllerManager_virtual);
+            var commandManager_virtual = new CommandManager(controllerManager_virtual, new System.Collections.Concurrent.ConcurrentQueue<string>());
             
             _commandLayer.ClearCollections();
             _lineCollection.ClearCollection();

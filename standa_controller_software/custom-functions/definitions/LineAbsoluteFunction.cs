@@ -17,20 +17,19 @@ using System.Linq;
 
 namespace standa_controller_software.custom_functions.definitions
 {
-    public class JumpAbsoluteFunction : CustomFunction
+    public class LineAbsoluteFunction : CustomFunction
     {
         public string Message { get; set; } = "";
         private readonly CommandManager _commandManager;
         private readonly ControllerManager _controllerManager;
 
-        public JumpAbsoluteFunction(CommandManager commandManager, ControllerManager controllerManager)
+        public LineAbsoluteFunction(CommandManager commandManager, ControllerManager controllerManager)
         {
             _commandManager = commandManager;
             _controllerManager = controllerManager;
             SetProperty("Shutter", false);
             SetProperty("Accuracy", 0.1f);
         }
-
 
         public override object? Execute(params object[] args)
         {
@@ -45,15 +44,9 @@ namespace standa_controller_software.custom_functions.definitions
                 throw new Exception("Failed to get 'Accuracy' property.");
             var accuracy = (float)accuracyObj;
 
-            ExecutionCore(parsedDeviceNames, parsedPositions, isShutterUsed, accuracy);
-
-            return null;
-        }
-
-        public void ExecutionCore(char[] parsedDeviceNames, float[] parsedPositions, bool isShutterUsed, float accuracy)
-        {
             var deviceNameList = new List<char>();
             var positionsList = new List<float>();
+            var waitUntilList = new List<float>();
 
             // Build lists of devices that need to move
             for (int i = 0; i < parsedDeviceNames.Length; i++)
@@ -67,6 +60,8 @@ namespace standa_controller_software.custom_functions.definitions
                     {
                         deviceNameList.Add(parsedDeviceNames[i]);
                         positionsList.Add(parsedPositions[i]);
+                        if (parsedWaitUntil.Length > i)
+                            waitUntilList.Add(parsedWaitUntil[i]);
                     }
                 }
                 else
@@ -76,10 +71,11 @@ namespace standa_controller_software.custom_functions.definitions
             }
 
             if (deviceNameList.Count == 0)
-                return;
+                return null;
 
             var deviceNames = deviceNameList.ToArray();
             var positions = positionsList.ToArray();
+            var waitUntil = waitUntilList.ToArray();
 
             // Map devices and controllers
             var devices = new Dictionary<char, BasePositionerDevice>();
@@ -234,6 +230,8 @@ namespace standa_controller_software.custom_functions.definitions
 
             _commandManager.EnqueueCommandLine(commandsMovement.ToArray());
             _commandManager.ExecuteCommandLine(commandsMovement.ToArray()).GetAwaiter().GetResult();
+
+            return null;
         }
 
         private bool TryParseArguments(object?[] arguments, out char[] devNames, out float[] positions, out float[] waitUntil)

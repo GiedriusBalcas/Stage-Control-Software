@@ -4,6 +4,7 @@ using standa_control_software_WPF.view_models.system_control;
 using standa_control_software_WPF.views;
 using standa_controller_software.command_manager;
 using standa_controller_software.device_manager;
+using System.Collections.Concurrent;
 using System.Configuration;
 using System.Data;
 using System.Windows;
@@ -21,6 +22,10 @@ namespace standa_control_software_WPF
 
         private ControllerManager _controllerManager;
         private CommandManager _commandManager;
+        private ControllerStateUpdater _controllerStateUpdater;
+        private ConcurrentQueue<string> _log;
+
+
         private SystemPropertiesViewModel _systemPropertiesViewModel;
         private SystemControlViewModel _systemControlViewModel;
         private SystemInformtaionViewModel _systemInformationViewModel;
@@ -31,6 +36,7 @@ namespace standa_control_software_WPF
             _navigationStore = new NavigationStore();
             _lscNavigationStore = new NavigationStore();
             _configCreationViewModel = new ConfigurationCreationViewModel(OnInitializationComplete);
+            _log = new ConcurrentQueue<string>();
         }
 
         protected override void OnStartup(StartupEventArgs e)
@@ -49,16 +55,20 @@ namespace standa_control_software_WPF
         private void OnInitializationComplete(ControllerManager controllerManager)
         {
             _controllerManager = controllerManager;
-            _commandManager = new CommandManager(_controllerManager);
+            _controllerStateUpdater = new ControllerStateUpdater(_controllerManager, _log);
+            _commandManager = new CommandManager(_controllerManager, _log);
+
             _systemPropertiesViewModel = new SystemPropertiesViewModel(_controllerManager);
             _systemControlViewModel = new SystemControlViewModel(_controllerManager,_commandManager);
-            _systemInformationViewModel = new SystemInformtaionViewModel();
+            _systemInformationViewModel = new SystemInformtaionViewModel(_controllerStateUpdater);
 
 
             _lscNavigationStore.CurrentViewModel = _systemPropertiesViewModel;
             _systemControlMainViewModel = new SystemControlMainViewModel(_commandManager, _lscNavigationStore, GetSystemConfigurationsViewModel, GetSystemInformtaionViewModel, GetSystemCompilerViewModel);
 
             _navigationStore.CurrentViewModel = _systemControlMainViewModel;
+
+            _ = _controllerStateUpdater.UpdateStatesAsync();
         }
 
 

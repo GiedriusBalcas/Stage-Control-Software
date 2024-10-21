@@ -34,12 +34,13 @@ namespace standa_controller_software.custom_functions
                 { typeof(BaseMasterController), typeof(PositionAndShutterController_Virtual)}
             };
             _controllerManager_virtual = _controllerManager.CreateACopy(rules);
-            _commandManager_virtual = new CommandManager(_controllerManager_virtual);
+            _commandManager_virtual = new CommandManager(_controllerManager_virtual, new System.Collections.Concurrent.ConcurrentQueue<string>());
             _commandManager_virtual.ClearQueue();
             
             Definitions = new Definitions();
             Definitions.AddFunction("moveA", new MoveAbsolutePositionFunction(_commandManager_virtual, _controllerManager_virtual));
             Definitions.AddFunction("jumpA", new JumpAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual));
+            Definitions.AddFunction("arcA", new ArcAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual));
             //Definitions.AddFunction("arcA", new MoveArcAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual));
             //Definitions.AddFunction("shutter", new ChangeShutterStateFunction(_commandManager_virtual, _controllerManager_virtual));
             Definitions.AddVariable("PI", (float)Math.PI);

@@ -35,6 +35,7 @@ namespace standa_controller_software.command_manager.command_parameter_library
         public float TargetPosition { get; set; }
         public float TargetSpeed { get; set; }
         public float? WaitUntil { get; set; }
+        public float? WaitUntilTime { get; set; }
         public bool Direction {  get; set; }
         public LeadInfo? LeadInformation { get; set; }
 

@@ -71,7 +71,7 @@ namespace NUnit_tests
 
 
             // Set-up command manager and definitions
-            _commandManager = new CommandManager(_controllerManager);
+            _commandManager = new CommandManager(_controllerManager, new System.Collections.Concurrent.ConcurrentQueue<string>());
 
             
         }
@@ -81,7 +81,7 @@ namespace NUnit_tests
         {
             var rules = new Dictionary<Type, Type> { { typeof(BasePositionerController), typeof(PositionerController_Virtual) } };
             var controllerManager_virtual = _controllerManager.CreateACopy(rules);
-            var commandManager_virtual = new CommandManager(controllerManager_virtual);
+            var commandManager_virtual = new CommandManager(controllerManager_virtual, new System.Collections.Concurrent.ConcurrentQueue<string>());
             
             _definitions = new Definitions();
             _definitions.AddFunction("moveA", new MoveAbsolutePositionFunction(commandManager_virtual, controllerManager_virtual));

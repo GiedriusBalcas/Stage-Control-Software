@@ -4,227 +4,47 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:standa_control_software_WPF.views.system_control"
+             xmlns:controls="clr-namespace:standa_control_software_WPF.views.system_control.information"
+             xmlns:vms="clr-namespace:standa_control_software_WPF.view_models.system_control.information"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
+
+    <UserControl.Resources>
+        <!-- DataTemplate for PositionerDevice -->
+        <DataTemplate DataType="{x:Type vms:PositionerDeviceViewModel}">
+            <controls:PositionerDeviceControl />
+        </DataTemplate>
+
+        <!-- DataTemplate for ShutterDevice -->
+        <DataTemplate DataType="{x:Type vms:ShutterDeviceViewModel}">
+            <controls:ShutterDeviceControl />
+        </DataTemplate>
+    </UserControl.Resources>
 
 
     <Grid Background="Transparent">
 
-        <!--<Grid.RowDefinitions>
-            <RowDefinition Height="auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="10" />
-        </Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="30"/>
-            <ColumnDefinition Width="280" MinWidth="100"/>
-            <ColumnDefinition Width="3*"/>
-            <ColumnDefinition Width="30"/>
-        </Grid.ColumnDefinitions>
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="30" />
+			<ColumnDefinition Width="auto" />
+			<ColumnDefinition Width="*" />
+		</Grid.ColumnDefinitions>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="*" />
+			<RowDefinition Height="30" />
+		</Grid.RowDefinitions>
 
-        <Label Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2"
-                Padding="20,20,20,15"
-                Content="Positioner control" 
-                FontSize="25" 
-                FontWeight="Thin"
-                VerticalAlignment="Center"
-                Foreground="{StaticResource FontColorBrush}"/>
+        <TextBlock Grid.Column="1" Grid.Row="1" Text="info" />
 
-        <Grid Grid.Column="1" Grid.Row="1">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-
-            <Border Grid.Row="0" 
-                Background="{StaticResource MidBackgroundColorBrush}" BorderBrush="AliceBlue" BorderThickness="0" Margin="20,10,25,10" Padding="10,0,10,10" HorizontalAlignment="Stretch"
-                    Style="{StaticResource parentBorder}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <Button Grid.Column="1"
-                        Content="Home All"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Bottom"
-                            Style="{StaticResource customButtonStyle}"/>
-
-                    <StackPanel Grid.Column="0"
-                        HorizontalAlignment="Left" 
-                        Orientation="Vertical">
-                        <Label Content="Tool position"/>
-                        <StackPanel Orientation="Horizontal" Margin="30,0,0,0">
-                            <TextBlock Text="X: "/>
-                            <TextBox Text="{Binding ToolPosX, Mode=OneWay}" Margin="10,0,0,0" MinWidth="60" IsEnabled="False"/>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="30,0,0,0">
-                            <TextBlock Text="Y: "/>
-                            <TextBox Text="{Binding ToolPosY, Mode=OneWay}" Margin="10,0,0,0" MinWidth="60" IsEnabled="False"/>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="30,0,0,0">
-                            <TextBlock Text="Z: "/>
-                            <TextBox Text="{Binding ToolPosZ, Mode=OneWay}" Margin="10,0,0,0" MinWidth="60" IsEnabled="False"/>
-                        </StackPanel>
-                    </StackPanel>
-
-                </Grid>
-            </Border>
-
-            <ScrollViewer Grid.Row="1" Margin="5,10,0,0"
-                VerticalScrollBarVisibility="Auto"
-                          VerticalAlignment="Center">
-                <ItemsControl ItemsSource="{Binding Positioners}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Border Margin="15,15,0,0" Padding="15,5,5,5" BorderBrush="Black" BorderThickness="1" Background="{StaticResource MidBackgroundColorBrush}" Style="{StaticResource parentBorder}">
-                                <Grid IsEnabled="{Binding IsConnected}">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="auto" />
-                                        <ColumnDefinition Width="60" />
-                                        <ColumnDefinition Width="auto" />
-                                        <ColumnDefinition Width="auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="30" />
-                                        <RowDefinition Height="30" />
-                                        <RowDefinition Height="30" />
-                                    </Grid.RowDefinitions>
-
-                                    <StackPanel Grid.Column="0" Grid.Row="0"
-                                        Orientation="Horizontal">
-                                        <Ellipse Width="7" Height="7" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="8,3,3,0">
-                                            <Ellipse.Style>
-                                                <Style TargetType="Ellipse">
-                                                    <Setter Property="Fill" Value="{StaticResource AccentColorBrush}" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=Grid}}" Value="False">
-                                                            <Setter Property="Fill" Value="{StaticResource FontColorDisabledBrush}" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Ellipse.Style>
-                                        </Ellipse>
-                                        <TextBlock 
-                                            Text="{Binding Name}" VerticalAlignment="Center" FontSize="15"/>
-                                    </StackPanel>
-
-                                    <TextBox Grid.Column="1" Grid.Row="0" Grid.ColumnSpan="1"
-                                             Text="{Binding CurrentPosition, Mode=OneWay}"
-                                             IsEnabled="False"
-                                             VerticalAlignment="Center"/>
-
-                                    <TextBlock Grid.Column="0" Grid.Row="1"
-                                                Text="Absolute: " VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="0" Grid.Row="2"
-                                                Text="Relative: " VerticalAlignment="Center"/>
-
-                                    <TextBox Grid.Column="1" Grid.Row="1"
-                                        Text="{Binding TargetAbsPosition, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"/>
-
-                                    <TextBox Grid.Column="1" Grid.Row="2"
-                                        Text="{Binding TargetRelPosition, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"/>
-
-                                    <Button Grid.Column="3" Grid.Row="0"
-                                    Content="Home"
-                                    Command="{Binding MoveAbsoluteCommand}"
-                                        Style="{StaticResource customButtonStyle}"/>
-                                    <Button Grid.Column="2" Grid.Row="1"
-                                    Content="Move"
-                                    Command="{Binding MoveAbsoluteCommand}"
-                                        Style="{StaticResource customButtonStyle}"/>
-                                    <Button Grid.Column="2" Grid.Row="2"
-                                        Content="Shift"
-                                        Command="{Binding MoveRelativeCommand}"
-                                        Style="{StaticResource customButtonStyle}"/>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel Orientation="Horizontal" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                </ItemsControl>
-            </ScrollViewer>
-
-
-        </Grid>
-
-
-        <Grid  Grid.Column="2" Grid.Row="1" Margin="10">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-
-            <Border Grid.Row="0" 
-                    Background="{StaticResource MidBackgroundColorBrush}" BorderBrush="AliceBlue" BorderThickness="0" Margin="0,0,0,0" Padding="10,10,10,10" HorizontalAlignment="Stretch" Style="{StaticResource parentBorder}">
-                <StackPanel Grid.Row="0"
-                            Orientation="Horizontal">
-                    <TextBlock Text="Number of pts."  VerticalAlignment="center"/>
-                    <TextBox Text="{Binding NumberOfDataPoints}"
-                                VerticalAlignment="center"
-                                MinWidth="30"
-                                Margin="8,0,15,0"/>
-
-                    <TextBlock Text="Duration:"  VerticalAlignment="center"/>
-                    <TextBox Text="{Binding Duration}"
-                                VerticalAlignment="Center" 
-                                MinWidth="30"
-                                Margin="8,0,15,0"/>
-
-                    <Button Content="Start"
-                            VerticalAlignment="Center"
-                            Margin="10,0" Padding="10,2"
-                            Command="{Binding StartCollection}"
-                                        Style="{StaticResource customButtonStyle}"/>
-                    <CheckBox Content="Start on Execution" 
-                                IsChecked="{Binding IsStartOnCommandExecution}"
-                                VerticalAlignment="Center"/>
-                </StackPanel>
-            </Border>
-
-            <ScrollViewer Grid.Row="1"
-                VerticalScrollBarVisibility="Visible"
-                          Padding="0,0,10,0"
-                          Margin="0,10,0,20">
-                <StackPanel>
-                    <ItemsControl ItemsSource="{Binding PositionTrackers}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <infoView:PositionTrackerView DataContext="{Binding}"/>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Orientation="Vertical" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                    </ItemsControl>
-
-                    <StackPanel Orientation="Horizontal"
-                                        Margin="10,0,0,0">
-                        <ComboBox ItemsSource="{Binding Positioners}"
-                                            DisplayMemberPath="Name"
-                                            SelectedItem="{Binding SelectedPositioner, Mode=TwoWay}"
-                                            VerticalAlignment="Center"
-                                            MinWidth="30"/>
-                        <Button Content="Add" 
-                                        HorizontalAlignment="Left"
-                                        Padding="10,0"
-                                        Margin="10,4"
-                                        Command="{Binding AddNewTracker}"
-                                        Style="{StaticResource customButtonStyle}"/>
-
-                    </StackPanel>
-                </StackPanel>
-            </ScrollViewer>
-
-        </Grid>-->
-
-
+        <ScrollViewer Grid.Column="1"
+                      Grid.Row="0"
+                      Margin="5,10,0,0"
+                      VerticalScrollBarVisibility="Auto"
+                      VerticalAlignment="Center">
+            <ItemsControl 
+                      MinWidth="200"
+                      MinHeight="100"
+                      ItemsSource="{Binding Devices}" />
+        </ScrollViewer>
     </Grid>
 </UserControl>

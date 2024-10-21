@@ -41,7 +41,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
         private Queue<MovementInformation> _buffer;
         private bool _launchPending = true;
+        private bool _needToLaunch = false;
         private TaskCompletionSource<bool> _processingCompletionSource;
+        private TaskCompletionSource<bool> _processingLastItemTakenSource;
 
 
         public PositionAndShutterController_Pico(string name) : base(name)
@@ -72,8 +74,15 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         private void OnSyncControllerExecutionEnd()
         {
             _processingCompletionSource.TrySetResult(true);
+            _processingLastItemTakenSource.TrySetResult(true);
 
             _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled that execution finalized.");
+        }
+        private void OnSyncControllerLastBufferItemTaken()
+        {
+            _processingLastItemTakenSource.TrySetResult(true);
+
+            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled that last item was taken.");
         }
         private async Task OnSyncControllerBufferSpaceAvailable()
         {
@@ -105,14 +114,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         {
             log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: asked to process queue");
 
-            if (_processingCompletionSource != null && !_processingCompletionSource.Task.IsCompleted)
-            {
-                // Processing has already started, no need to do anything
-                return;
-            }
-
-            // Initialize the TaskCompletionSource when starting processing
             _processingCompletionSource = new TaskCompletionSource<bool>();
+            _processingLastItemTakenSource = new TaskCompletionSource<bool>();
 
             // Send command to device to start processing
             log.Enqueue($"master: process queue allowed");
@@ -250,24 +253,149 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
         private async Task UpdateMoveSettings(Command[] commands, SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphors, ConcurrentQueue<string> log)
         {
-            _launchPending = true;
-            await AwaitQueuedItems(semaphore, slaveSemaphors, log);
 
-            foreach (Command command in commands)
+
+            //-------------------------------------------------------------//
+
+            foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
             {
-                if (SlaveControllers.TryGetValue(command.TargetController, out var slaveController))
+                if (slaveSemaphore.CurrentCount == 0)
+                    slaveSemaphore.Release();
+            }
+
+
+            var isUpdateNeeded = commands.Any(command =>
+            {
+                if (command.Parameters is UpdateMovementSettingsParameters parameters)
                 {
-                    await slaveController.ExecuteCommandAsync(command, slaveSemaphors[command.TargetController], log);
+                    return parameters.AccelChangePending;
                 }
                 else
-                    throw new Exception($"Slave controller {command.TargetController} was not found.");
+                    return false;
+            });
 
+
+            if (isUpdateNeeded)
+            {
+                _launchPending = true;
+                _needToLaunch = false;
+
+
+
+                // await exec_end
+                if (_processingCompletionSource is not null)
+                    if (!_processingCompletionSource.Task.IsCompleted)
+                    {
+                        await _processingCompletionSource.Task;
+                        _log.Enqueue("master: awaited the exec_end");
+                    }
+                    else
+                    {
+                        _log.Enqueue("master: exec_end was allready complete.");
+
+                    }
+
+                // fill slaves from master buffer.
+                if (_buffer.Count > 0)
+                {
+                    await FillControllerBuffers(slaveSemaphors, log);
+                    _needToLaunch = true;
+                    _log.Enqueue("master: filled slaves to the brim");
+
+
+                }
+
+                //// await exec_end
+                //if (_processingCompletionSource is not null)
+                //    if (!_processingCompletionSource.Task.IsCompleted)
+                //    {
+                //        await _processingCompletionSource.Task;
+                //        _log.Enqueue("master: awaited the exec_end");
+                //    }
+                //    else
+                //    {
+                //        _log.Enqueue("master: exec_end was allready complete.");
+
+                //    }
+
+                // execute sync controller
+                if (_needToLaunch)
+                {
+                    //await SlaveControllersLocks[_syncController.Name].WaitAsync();
+                
+                    _processingCompletionSource = new TaskCompletionSource<bool>();
+                    _processingLastItemTakenSource = new TaskCompletionSource<bool>();
+                
+                    await _syncController.StartExecution();
+
+                    //if(SlaveControllersLocks[_syncController.Name].CurrentCount == 0)
+                    //    SlaveControllersLocks[_syncController.Name].Release();
+                    _log.Enqueue("master: sent Sync Controller to execute its buffer");
+
+                }
+
+                // await last item taken
+                if (_processingLastItemTakenSource is not null)
+                    if (!_processingLastItemTakenSource.Task.IsCompleted)
+                    {
+                        await _processingLastItemTakenSource.Task;
+                        await Task.Delay(10);
+                        _log.Enqueue("master: awaited last item taken signal");
+                    }
+
+
+
+            // update params
+            //isUpdateNeeded = true;
+                foreach (Command command in commands)
+                {
+
+                    if (SlaveControllers.TryGetValue(command.TargetController, out var slaveController))
+                    {
+
+                        //foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
+                        //{
+                        //    await slaveSemaphore.WaitAsync();
+                        //}
+
+                        await slaveController.ExecuteCommandAsync(command, slaveSemaphors[command.TargetController], log);
+
+                        //foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
+                        //{
+                        //    if (slaveSemaphore.CurrentCount == 0)
+                        //        slaveSemaphore.Release();
+                        //}
+                    }
+                    else
+                        throw new Exception($"Slave controller {command.TargetController} was not found.");
+                    _log.Enqueue("master: updated movement settings");
+
+                }
             }
+            else
+            {
+                _log.Enqueue("master: did not updated movement settings");
+            }
+
+            //-------------------------------------------------------------//
+
+            ////          TEST
+            ////// await exec_end
+            if (_processingCompletionSource is not null)
+                if (!_processingCompletionSource.Task.IsCompleted)
+                {
+                    await _processingCompletionSource.Task;
+                    _log.Enqueue("master: awaited the exec_end");
+                }
+
 
         }
 
         private Task MoveAbsolute(Command[] commands, SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphors, ConcurrentQueue<string> log)
         {
+            _log.Enqueue("master: moveAbsolute command encountered");
+
+            float rethrow = 0f;
             var commandParametersFromFirstCommand = commands.FirstOrDefault().Parameters as MoveAbsoluteParameters ?? throw new Exception("Unable to retrive MoveAbsolute parameters.");
 
             bool isLeadInUsed = commandParametersFromFirstCommand.IsLeadInUsed;
@@ -279,6 +407,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             {
                 var command = commands[i];
                 var commandParameters = command.Parameters as MoveAbsoluteParameters ?? throw new Exception("Unable to retrive MoveAbsolute parameters.");
+                var kaka = commandParameters.PositionerInfo.Values.FirstOrDefault();
+                if (kaka is not null && kaka.WaitUntilTime != null)
+                    rethrow = (float)kaka.WaitUntilTime;
 
                 posInfoGroups[command.TargetController] = new PositionerInfo
                 {
@@ -288,13 +419,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     Velocities = command.TargetDevices.Select(deviceName => commandParameters.PositionerInfo[deviceName].TargetSpeed).ToArray(),
                 };
             }
-            //}
 
             var executionParameters = new ExecutionInformation()
             {
                 Devices = commands.SelectMany(comm => comm.TargetDevices).ToArray(),
                 Launch = _launchPending,
-                Rethrow = 0,//posInfoGroups.Values.SelectMany(info => info.AllocatedTimes).Max()*1000*0.5f,
+                //Rethrow = posInfoGroups.Values.SelectMany(info => info.AllocatedTimes).Max()*1000 -5,//,
+                Rethrow = rethrow == 0f ? 0 : rethrow * 1000f,
+                //Rethrow = posInfoGroups.Values.SelectMany(info => info.AllocatedTimes).Max() * 1000 *0.5f,
                 Shutter = commandParametersFromFirstCommand.IsShutterUsed,
                 Shutter_delay_on = commandParametersFromFirstCommand.IsShutterUsed ? commandParametersFromFirstCommand.ShutterInfo.DelayOn *1000: 0f,
                 Shutter_delay_off = commandParametersFromFirstCommand.IsShutterUsed ? commandParametersFromFirstCommand.ShutterInfo.DelayOff *1000: 0f,
@@ -337,10 +469,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 _syncController = syncController;
                 _syncController.BufferHasFreeSpace += async () => await OnSyncControllerBufferSpaceAvailable();
                 _syncController.ExecutionCompleted += () => OnSyncControllerExecutionEnd();
-                //_syncController.LastBufferItemTaken += async () => await SendCommandIfAvailable();
+                _syncController.LastBufferItemTaken += () => OnSyncControllerLastBufferItemTaken();
 
             }
         }
+
 
         public override Task ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
         {
@@ -378,27 +511,29 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         {
             _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: await queued items encountered.");
 
-            foreach (var (slaveControllerName, semaphoreOfSlaveController) in SlaveControllersLocks)
+            if (_processingLastItemTakenSource is not null && !_processingLastItemTakenSource.Task.IsCompleted)
             {
-                if(!slaveSemaphors.ContainsKey(slaveControllerName))
-                    await semaphoreOfSlaveController.WaitAsync();
+                await _processingCompletionSource.Task;
             }
 
-
-            if (_processingCompletionSource == null || _processingCompletionSource.Task.IsCompleted)
+            if (_buffer.Count > 0)
             {
+                foreach (var (slaveControllerName, semaphoreOfSlaveController) in SlaveControllersLocks)
+                {
+                    if (!slaveSemaphors.ContainsKey(slaveControllerName))
+                        await semaphoreOfSlaveController.WaitAsync();
+                }
+
                 await ProcessQueue(SlaveControllersLocks, log);
+
+                foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
+                {
+                    if (slaveSemaphore.CurrentCount == 0)
+                        slaveSemaphore.Release();
+                }
+
+                await _processingCompletionSource.Task;
             }
-
-
-
-            foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
-            {
-                if (slaveSemaphore.CurrentCount == 0)
-                    slaveSemaphore.Release();
-            }
-            // Await the TaskCompletionSource's Task without blocking the thread
-            await _processingCompletionSource.Task;
 
 
         }
@@ -408,54 +543,57 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: stop encountered.");
 
             _buffer.Clear();
+            _launchPending = true;
             _processingCompletionSource?.TrySetResult(true);
-
+            _processingLastItemTakenSource?.TrySetResult(true);
             // lets ask the sync controller to just launch 40 times for now.
             // TODO: do something better here.
 
-            char[] deviceNames = SlaveControllers.Values
-                .Where(controller => controller is BasePositionerController)
-                .SelectMany(controller => controller.GetDevices())
-                .Select(device => device.Name)
-                .ToArray();
+            //char[] deviceNames = SlaveControllers.Values
+            //    .Where(controller => controller is BasePositionerController)
+            //    .SelectMany(controller => controller.GetDevices())
+            //    .Select(device => device.Name)
+            //    .ToArray();
 
 
 
 
-            await _syncController.AddBufferItem(
-            deviceNames,
-            true,
-            1, //   [ms]
-            false,
-            0,
-            0);
-            for (int i = 0; i< 40; i++)
-            {
-                await _syncController.AddBufferItem(
-                deviceNames,
-                false,
-                1, //   [ms]
-                false,
-                0,
-                0);
-            }
+            //await _syncController.AddBufferItem(
+            //deviceNames,
+            //true,
+            //1, //   [ms]
+            //false,
+            //0,
+            //0);
+            //for (int i = 0; i< 40; i++)
+            //{
+            //    await _syncController.AddBufferItem(
+            //    deviceNames,
+            //    false,
+            //    1, //   [ms]
+            //    false,
+            //    0,
+            //    0);
+            //}
 
-            
-            
-            // Set the flag to indicate processing has started
-            _processingCompletionSource = new TaskCompletionSource<bool>();
 
-            await _syncController.StartExecution();
 
-            foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
-            {
-                if (slaveSemaphore.CurrentCount == 0)
-                    slaveSemaphore.Release();
-            }
-            await _processingCompletionSource.Task;
+            //// Set the flag to indicate processing has started
+            //_processingCompletionSource = new TaskCompletionSource<bool>();
+            //_processingLastItemTakenSource = new TaskCompletionSource<bool>();
 
-            _processingCompletionSource?.TrySetResult(true);
-            _launchPending = true;
+            //await _syncController.StartExecution();
+
+            //foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
+            //{
+            //    if (slaveSemaphore.CurrentCount == 0)
+            //        slaveSemaphore.Release();
+            //}
+            //await _processingCompletionSource.Task;
+
+            //_processingCompletionSource?.TrySetResult(true);
+            //_processingLastItemTakenSource?.TrySetResult(true);
+
 
 
         }

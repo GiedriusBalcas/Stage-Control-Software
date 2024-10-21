@@ -53,14 +53,14 @@ namespace standa_controller_software.command_manager
     {
         private readonly ControllerManager _controllerManager;
         private ConcurrentQueue<Command[]> _commandQueue = new ConcurrentQueue<Command[]>();
-        private ConcurrentQueue<string> _log = new ConcurrentQueue<string>();
+        private ConcurrentQueue<string> _log;
         private CommandManagerState _currentState = CommandManagerState.Waiting;
         private string _currentQueueController = string.Empty;
         private bool _allowedToRun = true;
-        public CommandManager(ControllerManager manager)
+        public CommandManager(ControllerManager manager, ConcurrentQueue<string> log)
         {
             this._controllerManager = manager;
-
+            _log = log;
 
             foreach (var (controllerName, controller) in _controllerManager.Controllers)
             {
@@ -236,6 +236,37 @@ namespace standa_controller_software.command_manager
             }
         }
 
+        //public async Task UpdateStatesAsync()
+        //{
+        //    while (true)
+        //    {
+        //        var tasks = new List<Task>();
+
+        //        foreach (var controllerPair in _controllerManager.Controllers)
+        //        {
+
+        //            var controller = controllerPair.Value;
+        //            var semaphore = _controllerManager.ControllerLocks[controller.Name];
+        //            if (semaphore.CurrentCount > 0)
+        //            {
+        //                //await semaphore.WaitAsync();
+
+        //                var task = Task.Run(async () =>
+        //                {
+        //                    await controller.UpdateStatesAsync(_log);
+        //                    //if (semaphore.CurrentCount == 0)
+        //                    //    semaphore.Release();
+        //                });
+        //                tasks.Add(task);
+        //            }
+
+        //        }
+        //        await Task.WhenAll(tasks);
+        //        await Task.Delay(50);
+        //    }
+        //}
+
+
         public async Task UpdateStatesAsync()
         {
             while (true)
@@ -244,25 +275,32 @@ namespace standa_controller_software.command_manager
 
                 foreach (var controllerPair in _controllerManager.Controllers)
                 {
-
                     var controller = controllerPair.Value;
                     var semaphore = _controllerManager.ControllerLocks[controller.Name];
-                    if (semaphore.CurrentCount > 0)
+
+                    // Attempt to acquire the semaphore without waiting
+                    if (await semaphore.WaitAsync(0))
                     {
-                        //await semaphore.WaitAsync();
-
-                        var task = Task.Run(async () =>
+                        // Define an asynchronous method to update and release
+                        async Task UpdateAndReleaseAsync()
                         {
-                            await controller.UpdateStatesAsync(_log);
-                            //if (semaphore.CurrentCount == 0)
-                            //    semaphore.Release();
-                        });
-                        tasks.Add(task);
-                    }
+                            try
+                            {
+                                await controller.UpdateStatesAsync(_log);
+                            }
+                            finally
+                            {
+                                semaphore.Release();
+                            }
+                        }
 
+                        tasks.Add(UpdateAndReleaseAsync());
+                    }
+                    // If semaphore wasn't acquired, skip this controller
                 }
+
                 await Task.WhenAll(tasks);
-                await Task.Delay(100);
+                await Task.Delay(50);
             }
         }
 

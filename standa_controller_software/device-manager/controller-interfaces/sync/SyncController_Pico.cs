@@ -58,8 +58,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
         private readonly SemaphoreSlim commandSemaphore = new SemaphoreSlim(1, 1);
 
+        // Replace commandResponseTcs with pendingCommand
+        private PendingCommand pendingCommand;
         private TaskCompletionSource<int> bufferItemCountTcs;
-        private TaskCompletionSource<bool> commandResponseTcs;
         private readonly object responseLock = new object();
 
         // Events to notify subscribers
@@ -70,6 +71,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         // Buffer for incoming data
         private readonly List<byte> dataBuffer = new List<byte>();
         private CancellationTokenSource readCancellationTokenSource;
+
+        // Define the PendingCommand class
+        private class PendingCommand
+        {
+            public byte CommandId { get; set; }
+            public TaskCompletionSource<bool> Tcs { get; set; }
+        }
 
         public SyncController_Pico(string name) : base(name)
         {
@@ -120,11 +128,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                 var tcs = new TaskCompletionSource<bool>();
                 lock (responseLock)
                 {
-                    if (commandResponseTcs != null)
+                    if (pendingCommand != null)
                     {
                         throw new InvalidOperationException("Another command is already being processed.");
                     }
-                    commandResponseTcs = tcs;
+                    pendingCommand = new PendingCommand { CommandId = CMD_ADD_BUFFER_ITEM, Tcs = tcs };
                 }
 
                 // Send the packet
@@ -133,18 +141,19 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                     throw new InvalidOperationException("Serial port is closed.");
                 }
                 serialPort.Write(packet, 0, packet.Length);
-                _log.Enqueue($"Packet Sent: \nDevices = {string.Join(' ', Devices)} \nLaunch = {Launch}\nRethrow = {Rethrow}\nShutter_on = {Shutter_delay_on}\nShutter_off = {Shutter_delay_off}");
+                _log.Enqueue($"picoWrapper: Packet Sent: \nDevices = {string.Join(' ', Devices)} \nLaunch = {Launch}\nRethrow = {Rethrow / 1000}\nShutter_on = {Shutter_delay_on}\nShutter_off = {Shutter_delay_off}");
                 _log.Enqueue($"pico: sending packet: [{string.Join(' ', packet)}]");
 
                 // Wait for the response with timeout
-                bool success = await WaitForResponseAsync(tcs.Task, timeoutMilliseconds: 10000); // Increased timeout
+                bool success = await WaitForResponseAsync(tcs.Task, timeoutMilliseconds: 10000);
 
                 if (!success)
                 {
-                    throw new Exception("Error executing ADD_BUFFER_ITEM command.");
+                    string commandName = GetCommandName(CMD_ADD_BUFFER_ITEM);
+                    throw new Exception($"Error executing '{commandName}' command.");
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw;
             }
@@ -152,7 +161,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             {
                 lock (responseLock)
                 {
-                    commandResponseTcs = null;
+                    pendingCommand = null;
                 }
                 commandSemaphore.Release();
             }
@@ -171,11 +180,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                 var tcs = new TaskCompletionSource<bool>();
                 lock (responseLock)
                 {
-                    if (commandResponseTcs != null)
+                    if (pendingCommand != null)
                     {
                         throw new InvalidOperationException("Another command is already being processed.");
                     }
-                    commandResponseTcs = tcs;
+                    pendingCommand = new PendingCommand { CommandId = CMD_CLEAR_BUFFER, Tcs = tcs };
                 }
 
                 // Send the packet
@@ -186,14 +195,15 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                 serialPort.Write(packet, 0, packet.Length);
 
                 // Wait for the response with timeout
-                bool success = await WaitForResponseAsync(tcs.Task, timeoutMilliseconds: 10000); // Increased timeout
+                bool success = await WaitForResponseAsync(tcs.Task, timeoutMilliseconds: 10000);
 
                 if (!success)
                 {
-                    throw new Exception("Error executing CLEAR_BUFFER command.");
+                    string commandName = GetCommandName(CMD_CLEAR_BUFFER);
+                    throw new Exception($"Error executing '{commandName}' command.");
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw;
             }
@@ -201,7 +211,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             {
                 lock (responseLock)
                 {
-                    commandResponseTcs = null;
+                    pendingCommand = null;
                 }
                 commandSemaphore.Release();
             }
@@ -220,29 +230,30 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                 var tcs = new TaskCompletionSource<bool>();
                 lock (responseLock)
                 {
-                    if (commandResponseTcs != null)
+                    if (pendingCommand != null)
                     {
-                        throw new InvalidOperationException("Another command is already being processed.");
+                        throw new InvalidOperationException("picoWrapper: Another command is already being processed.");
                     }
-                    commandResponseTcs = tcs;
+                    pendingCommand = new PendingCommand { CommandId = CMD_START_EXECUTION, Tcs = tcs };
                 }
 
                 // Send the packet
                 if (!serialPort.IsOpen)
                 {
-                    throw new InvalidOperationException("Serial port is closed.");
+                    throw new InvalidOperationException("picoWrapper: Serial port is closed.");
                 }
                 serialPort.Write(packet, 0, packet.Length);
 
                 // Wait for the response with timeout
-                bool success = await WaitForResponseAsync(tcs.Task, timeoutMilliseconds: 10000); // Increased timeout
+                bool success = await WaitForResponseAsync(tcs.Task, timeoutMilliseconds: 10000);
 
                 if (!success)
                 {
-                    throw new Exception("Error executing START_EXECUTION command.");
+                    string commandName = GetCommandName(CMD_START_EXECUTION);
+                    throw new Exception($"picoWrapper: Error executing '{commandName}' command.");
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw;
             }
@@ -250,7 +261,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             {
                 lock (responseLock)
                 {
-                    commandResponseTcs = null;
+                    pendingCommand = null;
                 }
                 commandSemaphore.Release();
             }
@@ -271,7 +282,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                 {
                     if (bufferItemCountTcs != null)
                     {
-                        throw new InvalidOperationException("Another command is already being processed.");
+                        throw new InvalidOperationException("picoWrapper: Another command is already being processed.");
                     }
                     bufferItemCountTcs = tcs;
                 }
@@ -279,16 +290,16 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                 // Send the packet
                 if (!serialPort.IsOpen)
                 {
-                    throw new InvalidOperationException("Serial port is closed.");
+                    throw new InvalidOperationException("picoWrapper: Serial port is closed.");
                 }
                 serialPort.Write(packet, 0, packet.Length);
 
                 // Wait for the response with timeout
-                int count = await WaitForResponseAsync(tcs.Task, timeoutMilliseconds: 10000); // Increased timeout
+                int count = await WaitForResponseAsync(tcs.Task, timeoutMilliseconds: 10000);
 
                 return 254 - count;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw;
             }
@@ -341,7 +352,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                     }
                     else
                     {
-                        throw new ArgumentException($"Unknown device '{device}'");
+                        throw new ArgumentException($"picoWrapper: Unknown device '{device}'");
                     }
                 }
                 else
@@ -388,7 +399,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         }
 
         // Helper method to wait for a response with timeout
-        private async Task<T> WaitForResponseAsync<T>(Task<T> task, int timeoutMilliseconds = 10000) // Increased timeout
+        private async Task<T> WaitForResponseAsync<T>(Task<T> task, int timeoutMilliseconds = 10000)
         {
             if (await Task.WhenAny(task, Task.Delay(timeoutMilliseconds)) == task)
             {
@@ -396,7 +407,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             }
             else
             {
-                throw new TimeoutException("No response received from the device within the timeout period.");
+                throw new TimeoutException("picoWrapper: No response received from the device within the timeout period.");
             }
         }
 
@@ -412,8 +423,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                     if (bytesRead > 0)
                     {
                         byte[] receivedData = buffer.Take(bytesRead).ToArray();
-                        _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Raw Data Received: [{string.Join(", ", receivedData.Select(b => $"0x{b:X2}"))}]");
-
+                        //_log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: picoWrapper: Raw Data Received: [{string.Join(", ", receivedData.Select(b => $"0x{b:X2}"))}]");
+                        //ProcessTextData(receivedData);
                         lock (dataBuffer)
                         {
                             dataBuffer.AddRange(receivedData);
@@ -430,7 +441,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             }
             catch (Exception ex)
             {
-                _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Exception in ReadSerialDataAsync: {ex.Message}");
+                _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: picoWrapper: Exception in ReadSerialDataAsync: {ex.Message}");
             }
         }
 
@@ -482,7 +493,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             string text = Encoding.ASCII.GetString(printableData);
             if (!string.IsNullOrWhiteSpace(text))
             {
-                _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Received Text: {text}");
+                _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: picoWrapper: Received Text: {text}");
             }
         }
 
@@ -529,7 +540,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
             if (calculatedChecksum != receivedChecksum)
             {
-                _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Checksum mismatch in response. Expected: 0x{calculatedChecksum:X2}, Received: 0x{receivedChecksum:X2}");
+                _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: picoWrapper: Checksum mismatch in response. Expected: 0x{calculatedChecksum:X2}, Received: 0x{receivedChecksum:X2}");
                 // Remove the RESPONSE_START_BYTE and continue parsing
                 buffer.RemoveAt(0);
                 return false;
@@ -553,42 +564,44 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             {
                 case RESP_CMD_SUCCESS:
                     {
-                        TaskCompletionSource<bool> tcs = null;
+                        PendingCommand cmd = null;
                         lock (responseLock)
                         {
-                            tcs = commandResponseTcs;
-                            commandResponseTcs = null;
+                            cmd = pendingCommand;
+                            pendingCommand = null;
                         }
 
-                        if (tcs != null)
+                        if (cmd != null)
                         {
-                            _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Command executed successfully.");
-                            tcs.SetResult(true);
+                            string commandName = GetCommandName(cmd.CommandId);
+                            _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: picoWrapper: Command '{commandName}' executed successfully.");
+                            cmd.Tcs.SetResult(true);
                         }
                         else
                         {
-                            _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Received success response with no pending command.");
+                            _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: picoWrapper: Received success response with no pending command.");
                         }
                     }
                     break;
 
                 case RESP_CMD_ERROR:
                     {
-                        TaskCompletionSource<bool> tcs = null;
+                        PendingCommand cmd = null;
                         lock (responseLock)
                         {
-                            tcs = commandResponseTcs;
-                            commandResponseTcs = null;
+                            cmd = pendingCommand;
+                            pendingCommand = null;
                         }
 
-                        if (tcs != null)
+                        if (cmd != null)
                         {
-                            _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Command execution failed.");
-                            tcs.SetResult(false);
+                            string commandName = GetCommandName(cmd.CommandId);
+                            _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: picoWrapper: Command '{commandName}' failed.");
+                            cmd.Tcs.SetResult(false);
                         }
                         else
                         {
-                            _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Received error response with no pending command.");
+                            _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: picoWrapper: Received error response with no pending command.");
                         }
                     }
                     break;
@@ -607,40 +620,53 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                             if (payload.Length >= 1)
                             {
                                 int count = payload[0]; // Assuming count is a single byte
-                                _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Buffer item count: {count}");
+                                _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: picoWrapper: Buffer item count: {count}");
                                 countTcs.SetResult(count);
                             }
                             else
                             {
-                                _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Invalid payload length for BUFFER_ITEM_COUNT response.");
+                                _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: picoWrapper: Invalid payload length for BUFFER_ITEM_COUNT response.");
                                 countTcs.SetException(new Exception("Invalid payload length for BUFFER_ITEM_COUNT response."));
                             }
                         }
                         else
                         {
-                            _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Received BUFFER_ITEM_COUNT response with no pending request.");
+                            _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: picoWrapper: Received BUFFER_ITEM_COUNT response with no pending request.");
                         }
                     }
                     break;
 
                 case BUFFER_STATUS_FREE_SPACE:
-                    _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Buffer has free space available.");
+                    _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: picoWrapper: Buffer has free space available.");
                     BufferHasFreeSpace?.Invoke();
                     break;
 
                 case BUFFER_STATUS_LAST_ITEM:
-                    _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Last buffer item has been taken.");
+                    _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: picoWrapper: Last buffer item has been taken.");
                     LastBufferItemTaken?.Invoke();
                     break;
 
                 case EXECUTION_STATUS_END:
-                    _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Execution of all commands completed.");
+                    _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: picoWrapper: Execution of all commands completed.");
                     ExecutionCompleted?.Invoke();
                     break;
 
                 default:
-                    _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Unknown response code: 0x{responseCode:X2}");
+                    _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: picoWrapper: Unknown response code: 0x{responseCode:X2}");
                     break;
+            }
+        }
+
+        // Implement the GetCommandName method
+        private string GetCommandName(byte commandId)
+        {
+            switch (commandId)
+            {
+                case CMD_ADD_BUFFER_ITEM: return "ADD_BUFFER_ITEM";
+                case CMD_CLEAR_BUFFER: return "CLEAR_BUFFER";
+                case CMD_START_EXECUTION: return "START_EXECUTION";
+                case CMD_BUFFER_ITEM_COUNT: return "BUFFER_ITEM_COUNT";
+                default: return $"Unknown Command 0x{commandId:X2}";
             }
         }
 
