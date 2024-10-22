@@ -8,6 +8,7 @@ using standa_controller_software.device_manager;
 using standa_controller_software.device_manager.devices;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Numerics;
 using System.Windows.Input;
 
 namespace standa_control_software_WPF.view_models.system_control
@@ -17,6 +18,12 @@ namespace standa_control_software_WPF.view_models.system_control
         private readonly ControllerManager _controllerManager;
 
         private double _acquisitionDuration;
+
+        public Vector3 ToolPos
+        {
+            get => _controllerManager.ToolInformation.Position;
+        }
+
         public double AcquisitionDuration
         {
             get => _acquisitionDuration;
@@ -27,20 +34,73 @@ namespace standa_control_software_WPF.view_models.system_control
             }
         }
 
+        private bool _isContiniousAcquisition;
+
+        public bool IsContiniousAcquisition
+        {
+            get { return _isContiniousAcquisition; }
+            set
+            {
+                if (value == true && _isContiniousAcquisition == false)
+                {
+                    StartContiniousAcquisition();
+                    _isContiniousAcquisition = value;
+                    OnPropertyChanged(nameof(IsContiniousAcquisition));
+                }
+                else if (value == false && _isContiniousAcquisition == true)
+                {
+                    StopContiniousAcquisition();
+                    _isContiniousAcquisition = value;
+                    OnPropertyChanged(nameof(IsContiniousAcquisition));
+                }
+            }
+        }
+
         public ObservableCollection<DeviceViewModel> Devices { get; set; }
-        
+        public ToolViewModel ToolViewModel { get; set; }
         public SystemInformtaionViewModel(ControllerManager controllerManager)
         {
             _controllerManager = controllerManager;
             Devices = new ObservableCollection<DeviceViewModel>();
 
-            foreach(BaseDevice device in _controllerManager.GetDevices<BaseDevice>())
+            foreach (BaseDevice device in _controllerManager.GetDevices<BaseDevice>())
             {
                 var deviceViewModel = CreateViewModelForDevice(device);
                 Devices.Add(deviceViewModel);
             }
 
+            ToolViewModel = new ToolViewModel(_controllerManager.ToolInformation);
         }
+
+        private void StopContiniousAcquisition()
+        {
+            foreach (var deviceViewModel in Devices.OfType<PositionerDeviceViewModel>())
+            {
+                deviceViewModel.StopAcquisitionCommand.Execute(null);
+            }
+    
+            ToolViewModel.StopAcquisitionCommand.Execute(null);
+        }
+
+        private void StartContiniousAcquisition()
+        {
+            foreach (var deviceViewModel in Devices.OfType<PositionerDeviceViewModel>())
+            {
+                if (deviceViewModel.NeedsToBeTracked)
+                {
+                    deviceViewModel.StartAcquisitionCommand.Execute(null);
+                }
+
+                if (ToolViewModel.NeedsToBeTracked)
+                    ToolViewModel.StartAcquisitionCommand.Execute(null);
+            }
+        }
+
+        private void ToolInformation_PositionChanged(Vector3 obj)
+        {
+            OnPropertyChanged(nameof(ToolPos));
+        }
+
         public ICommand AcquireCommand => new RelayCommand(StartAcquisition);
 
         private void StartAcquisition()
@@ -93,6 +153,7 @@ namespace standa_control_software_WPF.view_models.system_control
 
             throw new NotSupportedException("Device type not supported");
         }
+
 
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged(string propertyName)

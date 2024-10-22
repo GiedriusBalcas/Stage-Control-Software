@@ -216,8 +216,8 @@ namespace standa_controller_software.custom_functions.helpers
 
         public static double CalculateTotalTime(double pathLength, double targetSpeed, double acceleration, double deceleration, double initialSpeed)
         {
-            double tAcc = Math.Abs(targetSpeed - initialSpeed) / acceleration;
-            double dAcc = (Math.Abs(targetSpeed - initialSpeed) * Math.Abs(targetSpeed - initialSpeed)) / (2 * acceleration);
+            double tAcc = (targetSpeed - initialSpeed) / acceleration;
+            double dAcc = (targetSpeed * targetSpeed - initialSpeed * initialSpeed) / (2 * acceleration);
             double tDec = targetSpeed / deceleration;
             double dDec = (targetSpeed * targetSpeed) / (2 * deceleration);
 
@@ -229,10 +229,18 @@ namespace standa_controller_software.custom_functions.helpers
             }
             else
             {
-                double vMax = Math.Sqrt((2 * acceleration * deceleration * pathLength) / (acceleration + deceleration));
-                return (vMax / acceleration) + (vMax / deceleration);
+                // Compute the maximum speed achievable
+                double numerator = 2 * acceleration * deceleration * pathLength + deceleration * initialSpeed * initialSpeed;
+                double denominator = acceleration + deceleration;
+                double vMax = Math.Sqrt(numerator / denominator);
+
+                double tAccNew = (vMax - initialSpeed) / acceleration;
+                double tDecNew = vMax / deceleration;
+
+                return tAccNew + tDecNew;
             }
         }
+
 
 
     }

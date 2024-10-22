@@ -51,23 +51,22 @@ namespace standa_controller_software.device_manager
             foreach (var positioner in positioners)
             {
                 _positionerDevices.Add(positioner);
-                //positioner.PositionChanged += Positioner_PositionChanged;
+                positioner.PositionChanged += Positioner_PositionChanged; ;
             }
 
             _shutterDevice = shutterDevice;
             _shutterDevice.StateChanged += OnShutterStateChanged; ;
         }
 
+        private void Positioner_PositionChanged(object? sender, EventArgs e)
+        {
+            RecalculateToolPosition();
+        }
+
         private void OnShutterStateChanged(object? sender, EventArgs e)
         {
             IsOn = _shutterDevice.IsOn;
 
-        }
-
-
-        private void Positioner_PositionChanged(object sender, EventArgs e)
-        {
-            RecalculateToolPosition();
         }
 
         public void RecalculateToolPosition()

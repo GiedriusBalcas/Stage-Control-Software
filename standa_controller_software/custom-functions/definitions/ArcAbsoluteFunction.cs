@@ -49,7 +49,7 @@ namespace standa_controller_software.custom_functions.definitions
             _controllerManager.TryGetDevice<BasePositionerDevice>('y', out var devicey);
             var currY = devicey.CurrentPosition;
 
-            float radius = 2f;
+            float radius = 100f;
 
 
             // pazek gal accel max koks. o ne apskritimo lygti sprest, gi nemoki.
@@ -58,7 +58,7 @@ namespace standa_controller_software.custom_functions.definitions
             // looks like we need faster updates.
 
             
-            ExecutionCore('x', 'y', radius, 0f, 0f, 0, (float)Math.PI*2*10, 50f, 0.02f);
+            ExecutionCore('x', 'y', radius, 0f, 0f, 0, (float)Math.PI*2*10, 500f, 0.02f);
 
             return null;
         }
@@ -112,7 +112,7 @@ namespace standa_controller_software.custom_functions.definitions
                     deviceName => deviceName,
                     deviceName => new PositionerInfo
                     {
-                        WaitUntilTime = positionerMovementInfos[deviceName].Rethrow, // TODO: Implement waitUntil logic if necessary
+                        WaitUntilTime = positionerMovementInfos[deviceName].Rethrow,
                         TargetSpeed = positionerMovementInfos[deviceName].TargetSpeed,
                         Direction = positionerMovementInfos[deviceName].TargetDirection,
                         TargetPosition = positionerMovementInfos[deviceName].TargetPosition,

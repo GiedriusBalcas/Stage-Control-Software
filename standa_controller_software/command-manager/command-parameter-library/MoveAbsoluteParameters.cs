@@ -13,6 +13,7 @@ namespace standa_controller_software.command_manager.command_parameter_library
         public bool IsLeadInUsed { get; set; }
         public bool IsLeadOutUsed { get; set; }
         public float AllocatedTime { get; set; }
+        public float? WaitUntilTime { get; set; }
         public Dictionary<char, PositionerInfo> PositionerInfo { get; set; } = new Dictionary<char, PositionerInfo>();
         public ShutterInfo? ShutterInfo { get; set; }
 

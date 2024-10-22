@@ -4,6 +4,7 @@ using standa_control_software_WPF.view_models.commands;
 using standa_controller_software.device_manager.devices;
 using System;
 using System.Timers;
+using System.Windows.Automation;
 using System.Windows.Input;
 
 namespace standa_control_software_WPF.view_models.system_control.information
@@ -20,6 +21,7 @@ namespace standa_control_software_WPF.view_models.system_control.information
         private LineSeries _positionSeries;
         private LineSeries _speedSeries;
         private System.Timers.Timer _plotUpdateTimer;
+
 
         public PositionerDeviceViewModel(BaseDevice device) : base(device)
         {

@@ -1,0 +1,148 @@
+﻿<UserControl x:Class="standa_control_software_WPF.views.system_control.information.ToolControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:helper="clr-namespace:standa_control_software_WPF.views.helpers"
+             xmlns:local="clr-namespace:standa_control_software_WPF.views.system_control.information"
+             mc:Ignorable="d"
+             d:DesignHeight="450"
+             d:DesignWidth="800">
+    <UserControl.Resources>
+        <helper:TwoDecimalConverter x:Key="TwoDecimalConverter" />
+    </UserControl.Resources>
+
+
+    <Border Background="{StaticResource MidBackgroundColorBrush}"
+            BorderBrush="AliceBlue"
+            BorderThickness="0"
+            Margin="10,10"
+            Padding="10,10"
+            Style="{StaticResource parentBorder}"
+            Width="auto"
+            Height="auto">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="30" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="auto" />
+                <RowDefinition Height="auto" />
+                <RowDefinition Height="auto" />
+                <RowDefinition Height="auto" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0" Grid.Column="0"
+                        Grid.ColumnSpan="2"
+                        Orientation="Horizontal">
+
+                <Ellipse Grid.Column="0"
+                         Width="7"
+                         Height="7"
+                         VerticalAlignment="Center"
+                         HorizontalAlignment="Center"
+                         Margin="8,3,3,0">
+                    <Ellipse.Style>
+                        <Style TargetType="Ellipse">
+                            <Setter Property="Fill"
+                                    Value="{StaticResource AccentColorBrush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=Grid}}"
+                                             Value="False">
+                                    <Setter Property="Fill"
+                                            Value="{StaticResource FontColorDisabledBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Ellipse.Style>
+                </Ellipse>
+                <TextBlock Grid.Column="1"
+                           Text="Tool"
+                           VerticalAlignment="Center"
+                           FontSize="15" />
+            </StackPanel>
+
+            <StackPanel Grid.Row="1"
+                        Grid.Column="1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="auto" />
+                        <RowDefinition Height="auto" />
+                        <RowDefinition Height="auto" />
+                        <RowDefinition Height="auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Column="0"
+                               Grid.Row="0"
+                               Text="X: " />
+                    
+                    <TextBlock Grid.Column="0"
+                               Grid.Row="1" Text="Y: " />
+
+                    <TextBlock Grid.Column="0"
+                               Grid.Row="2"
+                               Text="Z: " />
+
+                    <TextBlock Grid.Column="0"
+                               Grid.Row="3"
+                               Text="Speed: " />
+
+
+
+                    <TextBox Grid.Column="1"
+                             Grid.Row="0"
+                             Text="{Binding PositionX, Mode=OneWay, Converter={StaticResource TwoDecimalConverter}}"
+                             IsEnabled="False"
+                             VerticalAlignment="Center"
+                             Width="75"
+                             HorizontalAlignment="Left" />
+
+                    <TextBox Grid.Column="1"
+                             Grid.Row="1"
+                             Text="{Binding PositionY, Mode=OneWay, Converter={StaticResource TwoDecimalConverter}}"
+                             IsEnabled="False"
+                             VerticalAlignment="Center"
+                             Width="75"
+                             HorizontalAlignment="Left" />
+
+                    <TextBox Grid.Column="1"
+                             Grid.Row="2"
+                             Text="{Binding PositionZ, Mode=OneWay, Converter={StaticResource TwoDecimalConverter}}"
+                             IsEnabled="False"
+                             VerticalAlignment="Center"
+                             Width="75"
+                             HorizontalAlignment="Left" />
+
+                    <TextBox Grid.Column="1"
+                             Grid.Row="3"
+                             Text="{Binding Speed, Mode=OneWay, Converter={StaticResource TwoDecimalConverter}}"
+                             IsEnabled="False"
+                             VerticalAlignment="Center"
+                             Width="75"
+                             HorizontalAlignment="Left" />
+                    
+                    <StackPanel Grid.Row="3" Grid.Column="1"
+                                HorizontalAlignment="Right"
+                                Orientation="Horizontal">
+                        <TextBlock Text="Track:" />
+                        <CheckBox Margin="5,0,0,0"
+                                  IsChecked="{Binding NeedsToBeTracked}"
+                                  VerticalAlignment="Bottom" />
+                    </StackPanel>
+
+
+                </Grid>
+                
+                
+
+            </StackPanel>
+
+        </Grid>
+    </Border>
+</UserControl>

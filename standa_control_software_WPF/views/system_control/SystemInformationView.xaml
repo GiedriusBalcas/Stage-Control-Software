@@ -22,13 +22,23 @@
             <controls:ShutterDeviceControl />
         </DataTemplate>
 
+        <DataTemplate DataType="{x:Type vms:ToolViewModel}">
+            <controls:ToolControl />
+        </DataTemplate>
+
         <!-- Converter to convert bool to Visibility -->
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-        
+
         <!-- DataTemplate for Positioner Graph -->
         <DataTemplate x:Key="PositionerGraphDataTemplate"
                       DataType="{x:Type vms:PositionerDeviceViewModel}">
             <controls:PositionerGraphControl Visibility="{Binding NeedsToBeTracked, Converter={StaticResource BoolToVisibilityConverter}}" />
+        </DataTemplate>
+        
+        <!-- DataTemplate for Tools Graph -->
+        <DataTemplate x:Key="ToolsGraphDataTemplate"
+                      DataType="{x:Type vms:ToolViewModel}">
+            <controls:ToolGraphControl Visibility="{Binding NeedsToBeTracked, Converter={StaticResource BoolToVisibilityConverter}}" />
         </DataTemplate>
 
     </UserControl.Resources>
@@ -50,9 +60,14 @@
                       Margin="5,10,0,0"
                       VerticalScrollBarVisibility="Auto"
                       VerticalAlignment="Center">
-            <ItemsControl MinWidth="200"
-                          MinHeight="100"
-                          ItemsSource="{Binding Devices}" />
+            <StackPanel>
+
+                <ContentControl Content="{Binding ToolViewModel}" />
+
+                <ItemsControl MinWidth="200"
+                              MinHeight="100"
+                              ItemsSource="{Binding Devices}" />
+            </StackPanel>
         </ScrollViewer>
 
         <!-- Acquisition Controls and Graphs -->
@@ -68,9 +83,16 @@
                          Margin="5,0,0,0"
                          VerticalAlignment="Center" />
                 <Button Content="Acquire"
+                        Style="{StaticResource customButtonStyle}"
                         Command="{Binding AcquireCommand}"
                         Margin="5,0,0,0" />
+                <TextBlock Margin="30,0,0,0" VerticalAlignment="Center" Text="Continious: " />
+                <CheckBox VerticalAlignment="Center" IsChecked="{Binding IsContiniousAcquisition}"/>
             </StackPanel>
+
+
+            <ContentControl Content="{Binding ToolViewModel}"
+                            ContentTemplate="{StaticResource ToolsGraphDataTemplate}" />
 
             <!-- Graphs for Devices Needing Tracking -->
             <ItemsControl ItemsSource="{Binding Devices}"
