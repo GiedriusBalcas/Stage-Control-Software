@@ -107,6 +107,7 @@ namespace standa_controller_software.custom_functions.definitions
             {
                 var controllerName = controllerGroup.Key.Name;
                 var groupedDeviceNames = controllerGroup.Value.Select(device => device.Name).ToArray();
+                var rethorw = positionerMovementInfos.Max(posInfo => posInfo.Value.Rethrow);
 
                 var positionerInfos = groupedDeviceNames.ToDictionary(
                     deviceName => deviceName,
@@ -122,7 +123,8 @@ namespace standa_controller_software.custom_functions.definitions
                 {
                     AllocatedTime = allocatedTime,
                     PositionerInfo = positionerInfos,
-                 
+                    WaitUntilTime = rethorw
+
                 };
 
                 commandsMovement.Add(new Command
@@ -233,31 +235,7 @@ namespace standa_controller_software.custom_functions.definitions
 
             float Ax, Ay, Bx = 0, By = 0;
 
-            for (float theta = startAngle + dtheta; theta <= endAngle - dtheta; theta += dtheta)
-            {
-                Ax = (float)(Math.Cos(theta - dtheta) * radius) + centerX;
-                Ay = (float)(Math.Sin(theta - dtheta) * radius) + centerY;
-
-                Bx = (float)(Math.Cos(theta) * radius) + centerX;
-                By = (float)(Math.Sin(theta) * radius) + centerY;
-
-                float midX = (float)(Math.Cos(theta - dtheta / 2) * radius) + centerX;
-                float midY = (float)(Math.Sin(theta - dtheta / 2) * radius) + centerY;
-
-                // CALCULATE ACCEL/DECELL AT MID POINT
-
-                double accX = Math.Abs(-trajectorySpeed * angularVelocity * Math.Cos(theta - dtheta));
-                double accY = Math.Abs(-trajectorySpeed * angularVelocity * Math.Sin(theta - dtheta));
-
-                double velX = Math.Abs(-trajectorySpeed * Math.Sin(theta));
-                double velY = Math.Abs(trajectorySpeed * Math.Cos(theta));
-
-                double accelX_calc = Math.Abs((prevVelX - velX) / rethrow);
-                neededAccel = Math.Max(neededAccel, accelX_calc);
-
-                prevVelX = velX;
-                prevVelY = velY;
-            }
+            
             prevVelX = 0;
             prevVelY = 0;
 

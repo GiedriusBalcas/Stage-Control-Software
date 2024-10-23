@@ -80,7 +80,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         }
         private void OnSyncControllerLastBufferItemTaken()
         {
-            _processingLastItemTakenSource.TrySetResult(true);
+            if(_processingLastItemTakenSource is not null)
+                _processingLastItemTakenSource.TrySetResult(true);
 
             _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled that last item was taken.");
         }
@@ -269,7 +270,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     return false;
             });
 
-
+            isUpdateNeeded = true;
             if (isUpdateNeeded)
             {
                 _launchPending = true;
@@ -344,10 +345,21 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                         _log.Enqueue("master: awaited last item taken signal");
                     }
 
+                // TEST await exec_end
+                if (_processingCompletionSource is not null)
+                    if (!_processingCompletionSource.Task.IsCompleted)
+                    {
+                        await _processingCompletionSource.Task;
+                        _log.Enqueue("master: awaited the exec_end");
+                    }
+                    else
+                    {
+                        _log.Enqueue("master: exec_end was allready complete.");
 
+                    }
 
-            // update params
-            //isUpdateNeeded = true;
+                // update params
+                //isUpdateNeeded = true;
                 foreach (Command command in commands)
                 {
 
@@ -410,9 +422,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             {
                 var command = commands[i];
                 var commandParameters = command.Parameters as MoveAbsoluteParameters ?? throw new Exception("Unable to retrive MoveAbsolute parameters.");
-                var kaka = commandParameters.PositionerInfo.Values.FirstOrDefault();
-                if (kaka is not null && kaka.WaitUntilTime != null)
-                    rethrow = (float)kaka.WaitUntilTime;
+                var kaka = commandParameters.WaitUntilTime;
+                if (kaka is not null)
+                    rethrow = (float)kaka;
 
                 posInfoGroups[command.TargetController] = new PositionerInfo
                 {

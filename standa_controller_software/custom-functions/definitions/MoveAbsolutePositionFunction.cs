@@ -367,7 +367,7 @@ namespace standa_controller_software.custom_functions.definitions
                         PositionerInfoDictionary[deviceName] = new PositionerInfo
                         {
                             LeadInformation = leadInfo,
-                            WaitUntil = waitUntilPos,
+                            WaitUntilPosition = waitUntilPos,
                             TargetSpeed = positionerMovementInformations_LeadInStart[deviceName].TargetSpeed,
                             Direction = positionerMovementInformations_LeadInStart[deviceName].TargetDirection,
                             TargetPosition = positionerMovementInformations_LeadInStart[deviceName].TargetPosition,
@@ -436,7 +436,7 @@ namespace standa_controller_software.custom_functions.definitions
                         PositionerInfoDictionary[deviceName] = new PositionerInfo
                         {
                             LeadInformation = leadInfo,
-                            WaitUntil = waitUntilPos,
+                            WaitUntilPosition = waitUntilPos,
                             TargetSpeed = positionerMovementInformations[deviceName].TargetSpeed,
                             Direction = positionerMovementInformations[deviceName].TargetPosition >= positionerMovementInformations[deviceName].StartingPosition,
                             TargetPosition = positionerMovementInformations_LeadOut[deviceName].TargetPosition,
@@ -574,7 +574,7 @@ namespace standa_controller_software.custom_functions.definitions
                         PositionerInfoDictionary[deviceName] = new PositionerInfo
                         {
                             LeadInformation = leadInfo,
-                            WaitUntil = waitUntilPos,
+                            WaitUntilPosition = waitUntilPos,
                             TargetSpeed = positionerMovementInformations_LeadOutStart[deviceName].TargetSpeed,
                             Direction = positionerMovementInformations_LeadOutStart[deviceName].TargetDirection,
                             TargetPosition = positionerMovementInformations_LeadOutStart[deviceName].TargetPosition,
@@ -639,7 +639,7 @@ namespace standa_controller_software.custom_functions.definitions
                         PositionerInfoDictionary[deviceName] = new PositionerInfo
                         {
                             LeadInformation = leadInfo,
-                            WaitUntil = waitUntilPos,
+                            WaitUntilPosition = waitUntilPos,
                             TargetSpeed = positionerMovementInformations[deviceName].TargetSpeed,
                             Direction = positionerMovementInformations[deviceName].TargetPosition >= positionerMovementInformations[deviceName].StartingPosition,
                             TargetPosition = positionerMovementInformations[deviceName].TargetPosition,

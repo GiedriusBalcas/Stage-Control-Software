@@ -228,7 +228,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             var directions = new Dictionary<char, bool>();
             foreach (var (deviceName, movementInfo) in movementParameters.PositionerInfo)
             {
-                waitUntilPositions[deviceName] = movementInfo.WaitUntil;
+                waitUntilPositions[deviceName] = movementInfo.WaitUntilPosition;
                 directions[deviceName] = movementInfo.Direction;
             }
 

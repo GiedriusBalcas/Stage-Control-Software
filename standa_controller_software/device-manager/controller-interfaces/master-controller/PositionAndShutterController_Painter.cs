@@ -19,7 +19,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         private LineObjectCollection _lineObjectCollection;
         private ToolInformation _toolInformation;
         private readonly Vector4 _engagedColor = new Vector4(1, 0, 0, 1);
-        private readonly Vector4 _disengagedColor = new Vector4(0.57f,0.69f,0.50f, 1);
+        private readonly Vector4 _leadColor = new Vector4(1f, 1f, 0.0f, 1f);
+        private readonly Vector4 _disengagedColor = new Vector4(0.57f,0.69f,0.50f, 0.5f);
 
         public PositionAndShutterController_Painter(string name, LineObjectCollection lineObjectCollection, ToolInformation toolInformation) : base(name)
         {
@@ -90,7 +91,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 }
 
                 var leadInEndPositions = _toolInformation.CalculateToolPositionUpdate();
-                _lineObjectCollection.AddLine(startPositions, leadInEndPositions, _disengagedColor);
+                _lineObjectCollection.AddLine(startPositions, leadInEndPositions, _leadColor);
                 startPositions = leadInEndPositions;
             }
             if (isLeadOut)
@@ -127,7 +128,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 }
 
                 var constSpeedEndPositions = _toolInformation.CalculateToolPositionUpdate();
-                _lineObjectCollection.AddLine(startPositions, constSpeedEndPositions, _engagedColor);
+                _lineObjectCollection.AddLine(startPositions, constSpeedEndPositions, isEngaged? _engagedColor : _disengagedColor);
                 startPositions = constSpeedEndPositions;
 
                 // go to end
@@ -140,7 +141,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     }
                 }
                 var endPositions = _toolInformation.CalculateToolPositionUpdate();
-                _lineObjectCollection.AddLine(startPositions, endPositions, _disengagedColor);
+                _lineObjectCollection.AddLine(startPositions, endPositions, isLeadOut? _leadColor : _disengagedColor);
 
             }
             else

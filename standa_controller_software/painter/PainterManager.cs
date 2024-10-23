@@ -79,7 +79,7 @@ namespace standa_controller_software.painter
 
             var toolIndeces = _toolPointLayer.RenderCollections.FirstOrDefault()?.GetIndices();
             Vector3 currentPointPos = toolIndeces is not null && toolIndeces.Length == 3 ? new Vector3(toolIndeces[0], toolIndeces[1], toolIndeces[2]) : new Vector3(0, 0, 0);
-            if (_controllerManager.ToolInformation.Position != currentPointPos)
+            if (true || _controllerManager.ToolInformation.Position != currentPointPos)
             {
                 _toolPointLayer.ClearCollections() ;
                 var pointCollection = new PointObjectCollection();

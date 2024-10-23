@@ -61,5 +61,7 @@ namespace standa_controller_software.device_manager.devices
         public virtual float Acceleration { get; set; }
         public virtual float Deceleration { get; set; }
         public virtual float Speed { get; set; }
+
+        public bool UpdatePending { get; set; } = false;
     }
 }

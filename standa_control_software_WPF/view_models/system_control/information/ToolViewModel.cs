@@ -26,6 +26,7 @@ namespace standa_control_software_WPF.view_models.system_control.information
         private LineSeries _positionSeriesX;
         private LineSeries _positionSeriesY;
         private LineSeries _positionSeriesZ;
+        private LineSeries _shutterSeries;
         private LineSeries _speedSeries;
         private System.Timers.Timer _plotUpdateTimer;
 
@@ -128,6 +129,7 @@ namespace standa_control_software_WPF.view_models.system_control.information
                     _positionSeriesX.Points.Add(new DataPoint(_timeElapsed, Position.X));
                     _positionSeriesY.Points.Add(new DataPoint(_timeElapsed, Position.Y));
                     _positionSeriesZ.Points.Add(new DataPoint(_timeElapsed, Position.Z));
+                    _shutterSeries.Points.Add(new DataPoint(_timeElapsed, _tool.IsOn ? 100 : 0));
                     _speedSeries.Points.Add(new DataPoint(_timeElapsed, Speed));
                 }
             }
@@ -143,11 +145,13 @@ namespace standa_control_software_WPF.view_models.system_control.information
             _positionSeriesX = new LineSeries { Title = "X", Color = OxyColors.Blue };
             _positionSeriesY = new LineSeries { Title = "Y", Color = OxyColors.Green };
             _positionSeriesZ = new LineSeries { Title = "Z", Color = OxyColors.RosyBrown };
-            _speedSeries = new LineSeries { Title = "Speed", Color = OxyColors.Red };
+            _shutterSeries = new LineSeries { Title = "Shutter", Color = OxyColors.Red };
+            _speedSeries = new LineSeries { Title = "Speed", Color = OxyColors.LightGray };
 
             PlotModel.Series.Add(_positionSeriesX);
             PlotModel.Series.Add(_positionSeriesY);
             PlotModel.Series.Add(_positionSeriesZ);
+            PlotModel.Series.Add(_shutterSeries);
             PlotModel.Series.Add(_speedSeries);
         }
 
@@ -159,6 +163,7 @@ namespace standa_control_software_WPF.view_models.system_control.information
             _positionSeriesX.Points.Clear();
             _positionSeriesY.Points.Clear();
             _positionSeriesZ.Points.Clear();
+            _shutterSeries.Points.Clear();
             _speedSeries.Points.Clear();
 
             if (_plotUpdateTimer == null)

@@ -298,9 +298,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             {
                 var command = commands[i];
                 var commandParameters = command.Parameters as MoveAbsoluteParameters ?? throw new Exception("Unable to retrive MoveAbsolute parameters.");
-                var kaka = commandParameters.PositionerInfo.Values.FirstOrDefault();
-                if (kaka is not null && kaka.WaitUntilTime != null)
-                    rethrow = (float)kaka.WaitUntilTime;
+                var kaka = commandParameters.WaitUntilTime;
+                if (kaka is not null)
+                    rethrow = (float)kaka;
 
                 posInfoGroups[command.TargetController] = new PositionerInfo
                 {

@@ -91,7 +91,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     var targetPosition = parameters.MovementInformation[deviceName].Position;
                     var allocatedTime = parameters.MovementInformation[deviceName].Time;    // [s]
                     var velocity = parameters.MovementInformation[deviceName].Velocity;    // [s]
-
+                    //allocatedTime = Math.Abs((parameters.MovementInformation[deviceName].Position - Devices[deviceName].CurrentPosition) / velocity);
                     var syncInAction = new command_add_sync_in_action_calb_t
                     {
                         //Time = (uint)allocatedTime * 100000000,    // [us]
@@ -295,9 +295,16 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 _deviceInfo[device.Name].moveSettings_t.Accel = accelValue;
                 _deviceInfo[device.Name].moveSettings_t.Decel = decelValue;
 
-                CallResponse = API.set_move_settings_calb(_deviceInfo[device.Name].id, ref _deviceInfo[device.Name].moveSettings_t, ref _deviceInfo[device.Name].calibration_t);
+                if(accelValue != 0 && decelValue != 0 && speedValue != 0)
+                {
+                    CallResponse = API.set_move_settings_calb(_deviceInfo[device.Name].id, ref _deviceInfo[device.Name].moveSettings_t, ref _deviceInfo[device.Name].calibration_t);
+                    _log.Enqueue($"ximc: updated move settings on {device.Name}. Speed: {_deviceInfo[device.Name].moveSettings_t.Speed};   Accel: {_deviceInfo[device.Name].moveSettings_t.Accel};  Decel: {_deviceInfo[device.Name].moveSettings_t.Decel}");
+                }
+                else
+                {
+                    _log.Enqueue($"ximc: ---------FAILED TO UPDATE move settings on {device.Name}. Speed: {_deviceInfo[device.Name].moveSettings_t.Speed};   Accel: {_deviceInfo[device.Name].moveSettings_t.Accel};  Decel: {_deviceInfo[device.Name].moveSettings_t.Decel}");
 
-                _log.Enqueue($"ximc: updated move settings on {device.Name}. Speed: {_deviceInfo[device.Name].moveSettings_t.Speed};   Accel: {_deviceInfo[device.Name].moveSettings_t.Accel};  Decel: {_deviceInfo[device.Name].moveSettings_t.Decel}");
+                }
 
             }
             return Task.CompletedTask;
@@ -355,7 +362,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             var directions = new Dictionary<char, bool>();
             foreach (var (deviceName, movementInfo) in movementParameters.PositionerInfo)
             {
-                waitUntilPositions[deviceName] = movementInfo.WaitUntil;
+                waitUntilPositions[deviceName] = movementInfo.WaitUntilPosition;
                 directions[deviceName] = movementInfo.Direction;
             }
 

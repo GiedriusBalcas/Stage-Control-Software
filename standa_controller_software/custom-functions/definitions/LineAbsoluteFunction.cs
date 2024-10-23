@@ -1,39 +1,49 @@
 ﻿using standa_controller_software.command_manager;
 using standa_controller_software.device_manager;
 using standa_controller_software.device_manager.controller_interfaces;
-using standa_controller_software.custom_functions.helpers;
-using text_parser_library;
 using standa_controller_software.device_manager.devices;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.controller_interfaces.shutter;
-using System.ComponentModel;
-using System.Xml.Linq;
-using standa_controller_software.command_manager.command_parameter_library;
-using System.Reflection;
-using standa_controller_software.device_manager.devices.shutter;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using standa_controller_software.command_manager.command_parameter_library;
+using standa_controller_software.custom_functions.helpers;
+using text_parser_library;
+using System.Xml.Linq;
 
 namespace standa_controller_software.custom_functions.definitions
 {
     public class LineAbsoluteFunction : CustomFunction
     {
+        public enum WaitUntilCondition
+        {
+            LeadInEnd,
+            LeadOutStart
+        }
+
         public string Message { get; set; } = "";
         private readonly CommandManager _commandManager;
         private readonly ControllerManager _controllerManager;
+        private readonly JumpAbsoluteFunction _jumpAbsoluteFunction;
 
-        public LineAbsoluteFunction(CommandManager commandManager, ControllerManager controllerManager)
+        public LineAbsoluteFunction(CommandManager commandManager, ControllerManager controllerManager, JumpAbsoluteFunction jumpFunction)
         {
             _commandManager = commandManager;
             _controllerManager = controllerManager;
+            _jumpAbsoluteFunction = jumpFunction;
             SetProperty("Shutter", false);
-            SetProperty("Accuracy", 0.1f);
+            SetProperty("Accuracy", 0.05f);
+            SetProperty("LeadIn", false);
+            SetProperty("LeadOut", false);
+            SetProperty("WaitUntilCondition", null, true);
+            SetProperty("Speed", 100f);
+
         }
 
         public override object? Execute(params object[] args)
         {
-            if (!TryParseArguments(args, out var parsedDeviceNames, out var parsedPositions, out var parsedWaitUntil))
+            if (!TryParseArguments(args, out var parsedDeviceNames, out var parsedStartPositions, out var parsedEndPositions))
                 throw new ArgumentException("Argument parsing was unsuccessful. Wrong types.");
 
             if (!TryGetProperty("Shutter", out var isShutterUsedObj))
@@ -44,178 +54,645 @@ namespace standa_controller_software.custom_functions.definitions
                 throw new Exception("Failed to get 'Accuracy' property.");
             var accuracy = (float)accuracyObj;
 
-            var deviceNameList = new List<char>();
-            var positionsList = new List<float>();
-            var waitUntilList = new List<float>();
+            if (!TryGetProperty("Speed", out var trajSpeedObj))
+                throw new Exception("Failed to get 'Speed' property.");
+            var trajectorySpeed = (float)trajSpeedObj;
 
-            // Build lists of devices that need to move
-            for (int i = 0; i < parsedDeviceNames.Length; i++)
+            if (!TryGetProperty("LeadIn", out var leadInObj))
+                throw new Exception("Failed to get 'LeadIn' property.");
+            var leadIn = (bool)leadInObj;
+
+            if (!TryGetProperty("LeadOut", out var leadOutObj))
+                throw new Exception("Failed to get 'LeadOut' property.");
+            var leadOut = (bool)leadOutObj;
+
+            WaitUntilCondition? waitUntilCondition = null;
+            if (!TryGetProperty("WaitUntilCondition", out var waitUntilConditionObj))
+                throw new Exception("Failed to get 'WaitUntilCondition' property.");
+            if (waitUntilConditionObj is not null)
             {
-                if (_controllerManager.TryGetDevice<BasePositionerDevice>(parsedDeviceNames[i], out var positioner))
+                if (Enum.TryParse(waitUntilConditionObj.ToString(), ignoreCase: true, out WaitUntilCondition parsedWaitUntilCondition))
                 {
-                    var isAtTargetPosition = Math.Abs(positioner.CurrentPosition - parsedPositions[i]) < accuracy;
-                    var isMoving = positioner.CurrentSpeed > 0;
+                    waitUntilCondition = parsedWaitUntilCondition;
+                }
+                else
+                {
+                    throw new ArgumentException($"Invalid 'WaitUntilCondition' property value: '{waitUntilConditionObj}'. Supported values are: {string.Join(", ", Enum.GetNames(typeof(WaitUntilCondition)))}");
+                }
+            }
 
-                    if (!isAtTargetPosition || !isMoving)
+            ExecutionCore(parsedDeviceNames, parsedStartPositions, parsedEndPositions, trajectorySpeed, isShutterUsed, accuracy, leadIn, leadOut, waitUntilCondition);
+
+            return null;
+        }
+
+        public void ExecutionCore(
+    char[] deviceNames,
+    float[] startPositions,
+    float[] endPositions,
+    float trajectorySpeed,
+    bool isShutterUsed,
+    float accuracy,
+    bool leadIn,
+    bool leadOut,
+    WaitUntilCondition? waitUntilCondition)
+        {
+            // STEP 1: Filter out devices that need to move
+            var devicesToMove = new List<char>();
+            var devicesStartPositions = new List<float>();
+            var devicesEndPositions = new List<float>();
+
+            for (int i = 0; i < deviceNames.Length; i++)
+            {
+                if (_controllerManager.TryGetDevice<BasePositionerDevice>(deviceNames[i], out var positioner))
+                {
+                    var startPos = startPositions[i];
+                    var endPos = endPositions[i];
+
+                    // Check if movement is needed
+                    if (Math.Abs(startPos - endPos) > accuracy)
                     {
-                        deviceNameList.Add(parsedDeviceNames[i]);
-                        positionsList.Add(parsedPositions[i]);
-                        if (parsedWaitUntil.Length > i)
-                            waitUntilList.Add(parsedWaitUntil[i]);
+                        devicesToMove.Add(deviceNames[i]);
+                        devicesStartPositions.Add(startPos);
+                        devicesEndPositions.Add(endPos);
                     }
                 }
                 else
                 {
-                    throw new Exception($"Unable to retrieve positioner device {parsedDeviceNames[i]}.");
+                    throw new Exception($"Unable to retrieve positioner device {deviceNames[i]}.");
                 }
             }
 
-            if (deviceNameList.Count == 0)
-                return null;
+            if (devicesToMove.Count == 0)
+                return;
 
-            var deviceNames = deviceNameList.ToArray();
-            var positions = positionsList.ToArray();
-            var waitUntil = waitUntilList.ToArray();
+            var deviceNamesFiltered = devicesToMove.ToArray();
+            var startPositionsFiltered = devicesStartPositions.ToArray();
+            var endPositionsFiltered = devicesEndPositions.ToArray();
 
-            // Map devices and controllers
-            var devices = new Dictionary<char, BasePositionerDevice>();
-            var positionerMovementInfos = new Dictionary<char, PositionerMovementInformation>();
-            float allocatedTime = 0f;
-
-            foreach (var name in deviceNames)
+            Dictionary<char, LeadInfo>? leadInfo = null;
+            if (leadIn || leadOut)
             {
-                if (_controllerManager.TryGetDevice<BasePositionerDevice>(name, out var positioner))
+                leadInfo = new Dictionary<char, LeadInfo>();
+                foreach (char name in deviceNamesFiltered)
                 {
-                    devices[name] = positioner;
-
-                    var targetPosition = positions[Array.IndexOf(deviceNames, name)];
-                    var targetDistance = Math.Abs(targetPosition - positioner.CurrentPosition);
-                    var targetDirection = targetPosition > positioner.CurrentPosition;
-
-                    var movementInfo = new PositionerMovementInformation
-                    {
-                        TargetPosition = targetPosition,
-                        TargetDistance = targetDistance,
-                        TargetDirection = targetDirection,
-                        StartingPosition = positioner.CurrentPosition,
-                        StartingSpeed = positioner.CurrentSpeed,
-                        CurrentTargetSpeed = positioner.Speed,
-                        StartingAcceleration = positioner.Acceleration,
-                        StartingDeceleration = positioner.Deceleration,
-                        MaxAcceleration = positioner.MaxAcceleration,
-                        MaxDeceleration = positioner.MaxDeceleration,
-                        MaxSpeed = positioner.MaxSpeed,
-                        TargetAcceleration = positioner.MaxAcceleration,
-                        TargetDeceleration = positioner.MaxDeceleration,
-                        TargetSpeed = positioner.DefaultSpeed,
-                    };
-
-                    positionerMovementInfos[name] = movementInfo;
-
-                    allocatedTime = (float)Math.Max(allocatedTime, CustomFunctionHelper.CalculateTotalTime(
-                        movementInfo.TargetDistance,
-                        movementInfo.TargetSpeed,
-                        movementInfo.TargetAcceleration,
-                        movementInfo.TargetDeceleration,
-                        movementInfo.StartingSpeed));
-                }
-                else
-                {
-                    throw new Exception($"Unable to retrieve positioner device {name}.");
+                    leadInfo[name] = new LeadInfo();
                 }
             }
 
-            // Retrieve controllers and group devices by controller
-            var controllers = new Dictionary<BasePositionerDevice, BasePositionerController>();
-            foreach (var device in devices.Values)
-            {
-                if (_controllerManager.TryGetDeviceController<BasePositionerController>(device.Name, out var controller))
+
+            // STEP 2: Map devices and controllers
+            var devices = deviceNamesFiltered
+                .Select(name => (success: _controllerManager.TryGetDevice<BasePositionerDevice>(name, out var positioner), name, positioner))
+                .Where(t => t.success)
+                .ToDictionary(t => t.name, t => t.positioner);
+
+            var controllers = devices.Values
+                .ToDictionary(device => device, device =>
                 {
-                    controllers[device] = controller;
-                }
-                else
-                {
-                    throw new Exception($"Unable to retrieve controller for device {device.Name}.");
-                }
-            }
+                    if (_controllerManager.TryGetDeviceController<BasePositionerController>(device.Name, out BasePositionerController controller))
+                        return controller;
+                    else
+                        throw new Exception($"Unable to find controller for device: {device.Name}.");
+                });
 
             var groupedDevicesByController = devices.Values
                 .GroupBy(device => controllers[device])
                 .ToDictionary(group => group.Key, group => group.ToList());
 
-            // Check if kinematic parameters need to be updated
-            bool kinematicParametersNeedUpdate = positionerMovementInfos.Values.Any(info =>
-                info.TargetAcceleration != info.StartingAcceleration ||
-                info.TargetDeceleration != info.StartingDeceleration ||
-                info.TargetSpeed != info.CurrentTargetSpeed);
+            // STEP 3: Prepare main movement
+            var positionerMovementInfos = new Dictionary<char, PositionerMovementInformation>();
 
-            if (kinematicParametersNeedUpdate)
+            foreach (var name in deviceNamesFiltered)
             {
-                var updateParametersCommandLine = new List<Command>();
+                var positioner = devices[name];
+                var startPos = startPositionsFiltered[Array.IndexOf(deviceNamesFiltered, name)];
+                var endPos = endPositionsFiltered[Array.IndexOf(deviceNamesFiltered, name)];
+                var targetDistance = Math.Abs(endPos - startPos);
+                var targetDirection = endPos > startPos;
 
-                foreach (var controllerGroup in groupedDevicesByController)
+                positionerMovementInfos[name] = new PositionerMovementInformation
                 {
-                    var controllerName = controllerGroup.Key.Name;
-                    var groupedDeviceNames = controllerGroup.Value.Select(device => device.Name).ToArray();
-
-                    var movementSettings = groupedDeviceNames.ToDictionary(
-                        deviceName => deviceName,
-                        deviceName => new MovementSettingsInfo
-                        {
-                            TargetAcceleration = positionerMovementInfos[deviceName].TargetAcceleration,
-                            TargetDeceleration = positionerMovementInfos[deviceName].TargetDeceleration,
-                            TargetSpeed = positionerMovementInfos[deviceName].TargetSpeed,
-                        });
-
-                    var commandParameters = new UpdateMovementSettingsParameters
-                    {
-                        MovementSettingsInformation = movementSettings
-                    };
-
-                    updateParametersCommandLine.Add(new Command
-                    {
-                        Action = CommandDefinitions.UpdateMoveSettings,
-                        Await = true,
-                        Parameters = commandParameters,
-                        TargetController = controllerName,
-                        TargetDevices = groupedDeviceNames
-                    });
-                }
-
-                _commandManager.EnqueueCommandLine(updateParametersCommandLine.ToArray());
-                _commandManager.ExecuteCommandLine(updateParametersCommandLine.ToArray()).GetAwaiter().GetResult();
+                    StartingPosition = startPos,
+                    StartingSpeed = 0f, // Starting from rest
+                    MaxAcceleration = positioner.MaxAcceleration,
+                    MaxDeceleration = positioner.MaxDeceleration,
+                    MaxSpeed = positioner.MaxSpeed,
+                    TargetPosition = endPos,
+                    TargetDirection = targetDirection,
+                    TargetDistance = targetDistance,
+                };
             }
 
-            // Prepare movement commands
-            var commandsMovement = new List<Command>();
+            // STEP 4: Calculate line kinematic parameters
+            if (!TryGetLineKinParameters(trajectorySpeed, ref positionerMovementInfos, out float allocatedTimeLine))
+                throw new Exception("Failed to calculate kinematic parameters for line movement.");
+
+            // Now that we have TargetAcceleration and TargetDeceleration, we can calculate lead-in and lead-out offsets
+
+            // STEP 5: Adjust positions based on lead-in and lead-out
+            var initialPositions = new Dictionary<char, float>();
+            var needToMoveToInitialPositions = false;
+
+            foreach (var name in deviceNamesFiltered)
+            {
+                var positioner = devices[name];
+                var info = positionerMovementInfos[name];
+                float initialPos = info.StartingPosition;
+
+                // Adjust starting position for lead-in
+                if (leadIn)
+                {
+                    // Calculate LeadIn offset using TargetAcceleration and TargetSpeed
+                    var leadInOffset = CalculateLeadInOffset(info, out float allocatedTime_LeadIn);
+                    initialPos -= leadInOffset;
+
+                    leadInfo[name].LeadInStartPos = initialPos;
+                    leadInfo[name].LeadInEndPos = info.StartingPosition;
+                    leadInfo[name].LeadInAllocatedTime = allocatedTime_LeadIn;
+                }
+
+                initialPositions[name] = initialPos;
+                info.StartingPosition = initialPos;
+                // Adjust target position for lead-out
+                if (leadOut)
+                {
+                    var leadOutOffset = CalculateLeadOutOffset(info, out float allocatedTime_leadOut);
+                    var leadOutEndPosition = info.TargetPosition + leadOutOffset;
+                    leadInfo[name].LeadOutStartPos = info.TargetPosition;
+                    leadInfo[name].LeadOutEndPos = leadOutEndPosition;
+                    leadInfo[name].LeadOutAllocatedTime = allocatedTime_leadOut;
+
+                    info.TargetPosition = leadOutEndPosition;
+                    // Update TargetDistance after adjusting TargetPosition
+                    info.TargetDistance = Math.Abs(info.TargetPosition - info.StartingPosition);
+                    positionerMovementInfos[name] = info;
+
+
+                }
+            }
+
+            // Create arrays to jump to start.
+            var deviceNamesToInitialize = new List<char>();
+            var deviceInitialPositions = new List<float>();
+            foreach (var name in deviceNamesFiltered)
+            {
+                var positioner = devices[name];
+                //var info = positionerMovementInfos[name];
+                var currentPos = positioner.CurrentPosition;
+                var initialPos = initialPositions[name];
+
+                // Check if movement to initial position is needed
+                if (Math.Abs(currentPos - initialPos) > accuracy)
+                {
+                    needToMoveToInitialPositions = true;
+                    deviceNamesToInitialize.Add(name);
+                    deviceInitialPositions.Add(initialPos);
+                }
+
+            }
+            // let's check for non moving devices, that need to relocate
+            for (int i = 0; i < deviceNames.Length; i++)
+            {
+                var name = deviceNames[i];
+                if (!deviceNamesFiltered.Contains(name))
+                {
+                    if (_controllerManager.TryGetDevice<BasePositionerDevice>(name, out var positioner))
+                    {
+                        var startPos = startPositions[i];
+                        // check if movement to start pos is needed
+                        if (Math.Abs(startPos - positioner.CurrentPosition) > accuracy)
+                        {
+                            needToMoveToInitialPositions = true;
+                            deviceNamesToInitialize.Add(name);
+                            deviceInitialPositions.Add(startPos);
+                        }
+                    }
+                }
+            }
+
+            // STEP 6: Move to initial positions if needed
+            if (needToMoveToInitialPositions)
+            {
+
+                //// Use JumpAbsoluteFunction to move devices to initial positions
+                var jumpDeviceNames = deviceNamesToInitialize.ToArray();
+                var jumpPositions = deviceInitialPositions.ToArray();
+
+                // Call the ExecutionCore method of JumpAbsoluteFunction
+                _jumpAbsoluteFunction.ExecutionCore(jumpDeviceNames, jumpPositions, false, accuracy, null, null, false);
+            }
+
+            // STEP 7: Recalculate allocated times for LeadIn and LeadOut
+            float allocatedTimeLeadIn = 0f;
+            float allocatedTimeLeadOut = 0f;
+
+            if (leadIn)
+            {
+                foreach(var (name, leadInformation) in leadInfo)
+                {
+                    float timeToReachSpeed = leadInformation.LeadInAllocatedTime;
+                    allocatedTimeLeadIn = Math.Max(allocatedTimeLeadIn, timeToReachSpeed);
+                }
+            }
+
+            if (leadOut)
+            {
+                foreach (var (name, leadInformation) in leadInfo)
+                {
+                    float timeToStop = leadInformation.LeadOutAllocatedTime;
+                    allocatedTimeLeadOut = Math.Max(allocatedTimeLeadOut, timeToStop);
+                }
+            }
+
+            // STEP 8: Total allocated time
+            float totalAllocatedTime = allocatedTimeLeadIn + allocatedTimeLine + allocatedTimeLeadOut;
+
+            // let's update the line kin parameters
+            if (!TryGetLineKinParameters(trajectorySpeed, ref positionerMovementInfos, out float totalAllocatedTime_calculated))
+                throw new Exception("Failed to calculate kinematic parameters for line movement.");
+
+            // STEP 9: Update movement settings if necessary
+            List<Command> updateParametersCommandLine = CreateUpdateCommands(positionerMovementInfos, groupedDevicesByController);
+
+            _commandManager.EnqueueCommandLine(updateParametersCommandLine.ToArray());
+            _commandManager.ExecuteCommandLine(updateParametersCommandLine.ToArray()).GetAwaiter().GetResult();
+
+            // STEP 10: Create and execute movement commands
+
+            Dictionary<char, float>? waitUntilPosDict = null;
+            float? waitUntilTIme = null;
+
+            var movementCommandsLine = CreateMovementCommands(
+                isShutterUsed,
+                groupedDevicesByController,
+                positionerMovementInfos,
+                leadInfo,
+                totalAllocatedTime_calculated,
+                waitUntilTIme,
+                waitUntilPosDict,
+                leadIn,
+                leadOut);
+
+            _commandManager.EnqueueCommandLine(movementCommandsLine.ToArray());
+            _commandManager.ExecuteCommandLine(movementCommandsLine.ToArray()).GetAwaiter().GetResult();
+        }
+
+
+        // Helper Methods
+
+        private List<Command> CreateUpdateCommands(Dictionary<char, PositionerMovementInformation> positionerMovementInfos, Dictionary<BasePositionerController, List<BasePositionerDevice>> groupedDevicesByController)
+        {
+            var updateParametersCommandLine = new List<Command>();
 
             foreach (var controllerGroup in groupedDevicesByController)
             {
                 var controllerName = controllerGroup.Key.Name;
                 var groupedDeviceNames = controllerGroup.Value.Select(device => device.Name).ToArray();
-
-                var positionerInfos = groupedDeviceNames.ToDictionary(
-                    deviceName => deviceName,
-                    deviceName => new PositionerInfo
+                bool isAccelChangeNeeded = groupedDeviceNames.Any(deviceName =>
+                {
+                    if (_controllerManager.TryGetDevice<BasePositionerDevice>(deviceName, out BasePositionerDevice positionerDevice))
                     {
-                        WaitUntil = null, // TODO: Implement waitUntil logic if necessary
+                        if (positionerDevice.Acceleration != positionerMovementInfos[deviceName].TargetAcceleration || positionerDevice.Deceleration != positionerMovementInfos[deviceName].TargetDeceleration)
+                            return true;
+                        else
+                            return false;
+                    }
+                    else
+                        return true;
+                });
+
+                var movementSettings = groupedDeviceNames.ToDictionary(
+                    deviceName => deviceName,
+                    deviceName => new MovementSettingsInfo
+                    {
+                        TargetAcceleration = positionerMovementInfos[deviceName].TargetAcceleration,
+                        TargetDeceleration = positionerMovementInfos[deviceName].TargetDeceleration,
                         TargetSpeed = positionerMovementInfos[deviceName].TargetSpeed,
-                        Direction = positionerMovementInfos[deviceName].TargetDirection,
-                        TargetPosition = positionerMovementInfos[deviceName].TargetPosition,
                     });
+
+                var commandParameters = new UpdateMovementSettingsParameters
+                {
+                    MovementSettingsInformation = movementSettings,
+                    AccelChangePending = isAccelChangeNeeded,
+                };
+
+                updateParametersCommandLine.Add(new Command
+                {
+                    Action = CommandDefinitions.UpdateMoveSettings,
+                    Await = true,
+                    Parameters = commandParameters,
+                    TargetController = controllerName,
+                    TargetDevices = groupedDeviceNames
+                });
+            }
+
+            return updateParametersCommandLine;
+        }
+
+        private float CalculateLeadInOffset(PositionerMovementInformation info, out float timeToReachSpeed)
+        {
+            float acceleration = info.TargetAcceleration;
+            timeToReachSpeed = info.TargetSpeed / acceleration;
+            float offset = 0.5f * acceleration * timeToReachSpeed * timeToReachSpeed;
+            // Adjust offset based on direction
+            if (!info.TargetDirection)
+                offset = -offset;
+            return offset;
+        }
+
+        private float CalculateLeadOutOffset(PositionerMovementInformation info, out float timeToStop)
+        {
+            float deceleration = info.TargetDeceleration;
+            timeToStop = info.TargetSpeed / deceleration;
+            float offset = 0.5f * deceleration * timeToStop * timeToStop;
+            // Adjust offset based on direction
+            if (!info.TargetDirection)
+                offset = -offset;
+            return offset;
+        }
+
+        private void GetLeadInKinParameters(float trajectorySpeed, ref Dictionary<char, PositionerMovementInformation> positionerMovementInfos, out float allocatedTime)
+        {
+            allocatedTime = 0f;
+            foreach (var info in positionerMovementInfos.Values)
+            {
+                float maxAccel = info.MaxAcceleration;
+                float timeToReachSpeed = trajectorySpeed / maxAccel;
+                allocatedTime = Math.Max(allocatedTime, timeToReachSpeed);
+                info.StartingSpeed = 0f;
+                info.TargetSpeed = trajectorySpeed;
+                info.TargetAcceleration = maxAccel;
+            }
+        }
+
+        private void GetLeadOutKinParameters(float trajectorySpeed, ref Dictionary<char, PositionerMovementInformation> positionerMovementInfos, out float allocatedTime)
+        {
+            allocatedTime = 0f;
+            foreach (var info in positionerMovementInfos.Values)
+            {
+                float maxDecel = info.MaxDeceleration;
+                float timeToStop = trajectorySpeed / maxDecel;
+                allocatedTime = Math.Max(allocatedTime, timeToStop);
+                info.TargetSpeed = 0f;
+                info.TargetDeceleration = maxDecel;
+            }
+        }
+
+        private bool TryGetLineKinParameters(
+    float trajectorySpeed,
+    ref Dictionary<char, PositionerMovementInformation> positionerMovementInfos,
+    out float allocatedTime)
+        {
+            char[] deviceNames = positionerMovementInfos.Keys.ToArray();
+            Dictionary<char, float> movementRatio = new Dictionary<char, float>();
+
+            //Calculate the initial and final tool positions
+            var startToolPoint = _controllerManager.ToolInformation.CalculateToolPositionUpdate
+                (
+                    positionerMovementInfos.ToDictionary(positionerInfo => positionerInfo.Key, kvp => kvp.Value.StartingPosition)
+                );
+
+            var endToolPoint = _controllerManager.ToolInformation.CalculateToolPositionUpdate
+                (
+                    positionerMovementInfos.ToDictionary(positionerInfo => positionerInfo.Key, kvp => kvp.Value.TargetPosition)
+                );
+
+            if (startToolPoint == endToolPoint)
+            {
+                throw new Exception("Error encountered, when trying to get kinematic parameters. Starting point and end point are the same.");
+            }
+
+            // TODO: calculate the speed according to DefaultSpeed of positioners used.
+
+            float trajectorySpeedCalculated = trajectorySpeed;
+
+            // Calculate trajectory length
+            float trajectoryLength = (endToolPoint - startToolPoint).Length();
+
+
+            // Calculate the target kinematic parameters
+            var projectedMaxAccelerations = new Dictionary<char, float>();
+            var projectedMaxDecelerations = new Dictionary<char, float>();
+            var projectedMaxSpeeds = new Dictionary<char, float>();
+
+            foreach (char name in deviceNames)
+            {
+                movementRatio[name] = trajectoryLength / positionerMovementInfos[name].TargetDistance;
+                projectedMaxAccelerations[name] = positionerMovementInfos[name].MaxAcceleration * movementRatio[name];
+                projectedMaxDecelerations[name] = positionerMovementInfos[name].MaxDeceleration * movementRatio[name];
+                projectedMaxSpeeds[name] = positionerMovementInfos[name].MaxSpeed * movementRatio[name];
+            }
+            var projectedMaxAcceleration = projectedMaxAccelerations.Min(kvp => kvp.Value);
+            var projectedMaxDeceleration = projectedMaxDecelerations.Min(kvp => kvp.Value);
+            var projectedMaxSpeed = Math.Min(trajectorySpeedCalculated, projectedMaxSpeeds.Min(kvp => kvp.Value));
+
+            var timesToAccel = new Dictionary<char, float>();
+            var timesToDecel = new Dictionary<char, float>();
+
+            foreach (char name in deviceNames)
+            {
+                positionerMovementInfos[name].MaxAcceleration = projectedMaxAcceleration / movementRatio[name];
+                positionerMovementInfos[name].MaxDeceleration = projectedMaxDeceleration / movementRatio[name];
+                positionerMovementInfos[name].TargetSpeed = projectedMaxSpeed / movementRatio[name];
+
+                // TODO: check if direction is needed here. Also include addiotional deceleration when changing directions.
+
+                int direction = positionerMovementInfos[name].TargetDirection ? 1 : -1;
+                timesToAccel[name] = Math.Abs(positionerMovementInfos[name].TargetSpeed * direction - positionerMovementInfos[name].StartingSpeed) / positionerMovementInfos[name].MaxAcceleration;
+                timesToDecel[name] = Math.Abs(positionerMovementInfos[name].TargetSpeed * direction - 0) / positionerMovementInfos[name].MaxDeceleration;
+            }
+
+            var maxTimeToAccel = timesToAccel.Max(kvp => kvp.Value);
+            var maxTimeToDecel = timesToAccel.Max(kvp => kvp.Value);
+
+            foreach (char name in deviceNames)
+            {
+                positionerMovementInfos[name].TargetAcceleration = positionerMovementInfos[name].MaxAcceleration * (timesToAccel[name] / maxTimeToAccel);
+                positionerMovementInfos[name].TargetDeceleration = positionerMovementInfos[name].MaxDeceleration * (timesToDecel[name] / maxTimeToDecel);
+            }
+
+            var selectedPosInfo = positionerMovementInfos.Where(kvp => kvp.Value.TargetAcceleration > 0).First();
+            var projectedAccel = positionerMovementInfos[selectedPosInfo.Key].TargetAcceleration * movementRatio[selectedPosInfo.Key];
+            var projectedDecel = positionerMovementInfos[selectedPosInfo.Key].TargetDeceleration * movementRatio[selectedPosInfo.Key];
+            var projectedTargetSpeed = positionerMovementInfos[selectedPosInfo.Key].TargetSpeed * movementRatio[selectedPosInfo.Key];
+
+            allocatedTime = CalculateTotalTimeForMovementInfo(selectedPosInfo.Value);
+
+            return true;
+        }
+
+
+        private float CalculateTotalTimeForMovementInfo(PositionerMovementInformation info)
+        {
+            float x0 = info.StartingPosition;
+            float v0 = info.StartingSpeed;
+            float vt = info.TargetSpeed;
+            float a = info.TargetAcceleration;
+            float d = info.TargetDeceleration;
+            float x_target = info.TargetPosition;
+
+            // Calculate total movement direction
+            float deltaX_total = x_target - x0;
+            float direction = Math.Sign(deltaX_total); // +1 for positive, -1 for negative
+
+            // Adjust initial speed to movement direction
+            float v0_dir = v0 * direction;
+
+            // Keep accelerations and speeds positive
+            a = Math.Abs(a);
+            d = Math.Abs(d);
+            vt = Math.Abs(vt);
+
+            float totalTime = 0f;
+
+            // If initial speed is in the opposite direction, decelerate to zero first
+            if (v0_dir < 0)
+            {
+                // Time to decelerate to zero speed
+                float t_stop = -v0_dir / d;
+                totalTime += t_stop;
+                v0_dir = 0; // Reset initial speed after stopping
+            }
+
+            // Remaining distance after any initial deceleration
+            float deltaX_remaining = Math.Abs(deltaX_total);
+
+            // Compute candidate maximum speed
+            float numerator = 2 * a * d * deltaX_remaining + d * v0_dir * v0_dir;
+            float denominator = a + d;
+            float vMaxSquaredCandidate = numerator / denominator;
+
+            // Ensure vMaxSquaredCandidate is non-negative
+            if (vMaxSquaredCandidate < 0)
+                vMaxSquaredCandidate = 0;
+
+            float vMaxCandidate = (float)Math.Sqrt(vMaxSquaredCandidate);
+
+            // Limit maximum speed to the target speed
+            float vMax = Math.Min(vMaxCandidate, vt);
+
+            // Calculate distances for acceleration and deceleration phases
+            float s1 = (vMax * vMax - v0_dir * v0_dir) / (2 * a);
+            float s3 = (vMax * vMax) / (2 * d);
+            float s_total_required = s1 + s3;
+
+            if (s_total_required > deltaX_remaining)
+            {
+                // Triangular profile
+                vMaxSquaredCandidate = (2 * a * d * deltaX_remaining + d * v0_dir * v0_dir) / (a + d);
+                if (vMaxSquaredCandidate < 0)
+                    vMaxSquaredCandidate = 0;
+
+                vMax = (float)Math.Sqrt(vMaxSquaredCandidate);
+
+                // Recalculate times
+                float t1 = (vMax - v0_dir) / a;
+                float t3 = vMax / d;
+                totalTime += t1 + t3;
+            }
+            else
+            {
+                // Trapezoidal profile
+                float s2 = deltaX_remaining - s1 - s3;
+
+                // Calculate times for each phase
+                float t1 = (vMax - v0_dir) / a;
+                float t2 = s2 / vMax;
+                float t3 = vMax / d;
+
+                totalTime += t1 + t2 + t3;
+            }
+
+            return totalTime;
+        }
+
+
+        private List<Command> CreateMovementCommands(
+    bool isShutterUsed,
+    Dictionary<BasePositionerController, List<BasePositionerDevice>> groupedDevicesByController,
+    Dictionary<char, PositionerMovementInformation> positionerMovementInfos,
+    Dictionary<char, LeadInfo>? leadInfo,
+    float allocatedTime,
+    float? waitUntilTime,
+    Dictionary<char, float>? waitUntilPosDict,
+    bool leadIn,
+    bool leadOut)
+        {
+            var commandsMovement = new List<Command>();
+
+            foreach (var controllerGroup in groupedDevicesByController)
+            {
+                var controller = controllerGroup.Key;
+                var controllerName = controller.Name;
+                var devicesInGroup = controllerGroup.Value;
+                var groupedDeviceNames = devicesInGroup.Select(device => device.Name).ToArray();
+
+                var positionerInfos = new Dictionary<char, PositionerInfo>();
+                foreach (var device in devicesInGroup)
+                {
+                    var deviceName = device.Name;
+                    var info = positionerMovementInfos[deviceName];
+
+                    
+
+                    //// Handle WaitUntil
+                    //float? waitUntil = null;
+                    //if (waitUntilCondition.HasValue)
+                    //{
+                    //    switch (waitUntilCondition.Value)
+                    //    {
+                    //        case WaitUntilCondition.LeadInEnd:
+                    //            waitUntil = leadIn ? leadInfo?.LeadInAllocatedTime : (float?)null;
+                    //            break;
+                    //        case WaitUntilCondition.LeadOutStart:
+                    //            waitUntil = leadOut ? allocatedTime - (leadInfo?.LeadOutAllocatedTime ?? 0f) : (float?)null;
+                    //            break;
+                    //    }
+                    //}
+
+                    float? waitUntilPos = null;
+                    if (waitUntilPosDict is not null && waitUntilPosDict.ContainsKey(deviceName))
+                        waitUntilPos = waitUntilPosDict[deviceName];
+
+                    LeadInfo? leadInformation = null;
+                    if (leadInfo is not null && leadInfo.ContainsKey(deviceName))
+                        leadInformation = leadInfo[deviceName];
+
+                    positionerInfos[deviceName] = new PositionerInfo
+                    {
+                        LeadInformation = leadInformation,
+                        WaitUntilPosition = waitUntilPos,
+                        TargetSpeed = info.TargetSpeed,
+                        Direction = info.TargetDirection,
+                        TargetPosition = info.TargetPosition,
+                    };
+                }
+
+                // Build ShutterInfo if shutter is used
+                ShutterInfo? shutterInfo = null;
+                if (isShutterUsed)
+                {
+                    // Assuming that DelayOn and DelayOff are relative to the movement start time
+                    float delayOn = leadIn ? positionerInfos.Values.Max(pi => pi.LeadInformation?.LeadInAllocatedTime ?? 0f) : 0f;
+                    float delayOff = leadOut ? allocatedTime - positionerInfos.Values.Max(pi => pi.LeadInformation?.LeadOutAllocatedTime ?? 0f) : allocatedTime;
+
+                    shutterInfo = new ShutterInfo
+                    {
+                        DelayOn = delayOn,
+                        DelayOff = delayOff,
+                    };
+                }
 
                 var moveAParameters = new MoveAbsoluteParameters
                 {
+                    WaitUntilTime = waitUntilTime, // Set if there's a global wait until time
                     IsShutterUsed = isShutterUsed,
-                    IsLeadOutUsed = false,
-                    IsLeadInUsed = false,
+                    IsLeadOutUsed = leadOut,
+                    IsLeadInUsed = leadIn,
                     AllocatedTime = allocatedTime,
                     PositionerInfo = positionerInfos,
-                    ShutterInfo = isShutterUsed ? new ShutterInfo
-                    {
-                        DelayOn = 0f,
-                        DelayOff = 0f,
-                    } : null
+                    ShutterInfo = shutterInfo,
                 };
 
                 commandsMovement.Add(new Command
@@ -228,17 +705,14 @@ namespace standa_controller_software.custom_functions.definitions
                 });
             }
 
-            _commandManager.EnqueueCommandLine(commandsMovement.ToArray());
-            _commandManager.ExecuteCommandLine(commandsMovement.ToArray()).GetAwaiter().GetResult();
-
-            return null;
+            return commandsMovement;
         }
 
-        private bool TryParseArguments(object?[] arguments, out char[] devNames, out float[] positions, out float[] waitUntil)
+        private bool TryParseArguments(object?[] arguments, out char[] devNames, out float[] startPositions, out float[] endPositions)
         {
             devNames = Array.Empty<char>();
-            positions = Array.Empty<float>();
-            waitUntil = Array.Empty<float>();
+            startPositions = Array.Empty<float>();
+            endPositions = Array.Empty<float>();
 
             if (arguments == null || arguments.Length == 0)
                 return false;
@@ -249,21 +723,20 @@ namespace standa_controller_software.custom_functions.definitions
             devNames = firstArg.ToCharArray();
             int expectedPositionsCount = devNames.Length;
 
-            if (arguments.Length < 1 + expectedPositionsCount)
+            if (arguments.Length < 1 + expectedPositionsCount * 2)
                 return false;
 
-            positions = new float[expectedPositionsCount];
+            startPositions = new float[expectedPositionsCount];
             for (int i = 0; i < expectedPositionsCount; i++)
             {
-                if (!TryConvertToFloat(arguments[i + 1], out positions[i]))
+                if (!TryConvertToFloat(arguments[i + 1], out startPositions[i]))
                     return false;
             }
 
-            int waitUntilCount = arguments.Length - (1 + expectedPositionsCount);
-            waitUntil = new float[waitUntilCount];
-            for (int i = 0; i < waitUntilCount; i++)
+            endPositions = new float[expectedPositionsCount];
+            for (int i = 0; i < expectedPositionsCount; i++)
             {
-                if (!TryConvertToFloat(arguments[i + 1 + expectedPositionsCount], out waitUntil[i]))
+                if (!TryConvertToFloat(arguments[i + 1 + expectedPositionsCount], out endPositions[i]))
                     return false;
             }
 

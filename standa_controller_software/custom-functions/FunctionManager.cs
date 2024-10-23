@@ -38,9 +38,14 @@ namespace standa_controller_software.custom_functions
             _commandManager_virtual.ClearQueue();
             
             Definitions = new Definitions();
-            Definitions.AddFunction("moveA", new MoveAbsolutePositionFunction(_commandManager_virtual, _controllerManager_virtual));
-            Definitions.AddFunction("jumpA", new JumpAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual));
+            var moveFunction = new MoveAbsolutePositionFunction(_commandManager_virtual, _controllerManager_virtual);
+            var jumpFuntion = new JumpAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual);
+            var lineFunction = new LineAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual, jumpFuntion);
+            Definitions.AddFunction("moveA", moveFunction);
+            Definitions.AddFunction("jumpA", jumpFuntion);
+            Definitions.AddFunction("lineA", lineFunction);
             Definitions.AddFunction("arcA", new ArcAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual));
+            Definitions.AddFunction("set", new SetDeviceProperty(_controllerManager_virtual));
             //Definitions.AddFunction("arcA", new MoveArcAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual));
             //Definitions.AddFunction("shutter", new ChangeShutterStateFunction(_commandManager_virtual, _controllerManager_virtual));
             Definitions.AddVariable("PI", (float)Math.PI);

@@ -122,7 +122,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
             var movementParams = command.Parameters as MoveAbsoluteParameters;
 
-            if(movementParams.PositionerInfo.First().Value.WaitUntil == null)
+            if(movementParams.PositionerInfo.First().Value.WaitUntilPosition == null)
             {
                 for (int i = 0; i < command.TargetDevices.Length; i++)
                 {
@@ -175,7 +175,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     // Phase 2: Calculate the constant speed phase distance (if applicable)
                     double constantSpeedDistance = totalDistance - accelDistance - decelDistance;
                     var endVelocity = 0f;
-                    var position = Math.Abs((double)(posInfo.WaitUntil - device.CurrentPosition));
+                    var position = Math.Abs((double)(posInfo.WaitUntilPosition - device.CurrentPosition));
 
                     if (position <= accelDistance)
                     {
@@ -196,10 +196,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
                     device.CurrentSpeed = 0f;
                     device.CurrentSpeed = endVelocity * direction;
-
+                    device.CurrentPosition = (float)position;
                 }
 
-                throw new NotImplementedException();
+                //throw new NotImplementedException();
             }
 
             return Task.CompletedTask;

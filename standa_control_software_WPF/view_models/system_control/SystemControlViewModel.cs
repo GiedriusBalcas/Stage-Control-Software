@@ -99,6 +99,8 @@ namespace standa_control_software_WPF.view_models.system_control
             CreateCommandQueueFromInputCommand = new RelayCommand(CreateCommandQueueFromInputAsync);
             ExecuteCommandQueueCommand = new RelayCommand(ExecuteCommandsQueueAsync);
             ForceStopCommand = new RelayCommand(ForceStop);
+
+            ClearOutputMessageCommand = new RelayCommand(() => OutputMessage = "");
         }
 
         private async void UpdateDeviceStates(bool isProbing)

@@ -96,10 +96,6 @@ namespace standa_control_software_WPF.view_models.system_control
             }
         }
 
-        private void ToolInformation_PositionChanged(Vector3 obj)
-        {
-            OnPropertyChanged(nameof(ToolPos));
-        }
 
         public ICommand AcquireCommand => new RelayCommand(StartAcquisition);
 
