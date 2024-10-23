@@ -22,10 +22,14 @@ namespace standa_controller_software.custom_functions.definitions
             LeadOutStart
         }
 
+
+        private readonly float _jerkValue = 20000f;
+
         public string Message { get; set; } = "";
         private readonly CommandManager _commandManager;
         private readonly ControllerManager _controllerManager;
         private readonly JumpAbsoluteFunction _jumpAbsoluteFunction;
+        private float JerkTime = 0.0003f;
 
         public LineAbsoluteFunction(CommandManager commandManager, ControllerManager controllerManager, JumpAbsoluteFunction jumpFunction)
         {
@@ -328,7 +332,7 @@ namespace standa_controller_software.custom_functions.definitions
                 groupedDevicesByController,
                 positionerMovementInfos,
                 leadInfo,
-                totalAllocatedTime_calculated,
+                totalAllocatedTime_calculated - (totalAllocatedTime_calculated - allocatedTimeLine)/2, // why STANDA WHYYYYY
                 waitUntilTIme,
                 waitUntilPosDict,
                 leadIn,
@@ -390,54 +394,94 @@ namespace standa_controller_software.custom_functions.definitions
             return updateParametersCommandLine;
         }
 
-        private float CalculateLeadInOffset(PositionerMovementInformation info, out float timeToReachSpeed)
+
+        private float CalculateLeadInOffset(PositionerMovementInformation info, out float totalTime)
         {
             float acceleration = info.TargetAcceleration;
-            timeToReachSpeed = info.TargetSpeed / acceleration;
-            float offset = 0.5f * acceleration * timeToReachSpeed * timeToReachSpeed;
+            float targetSpeed = info.TargetSpeed;
+            float directionMultiplier = info.TargetDirection ? 1 : -1;
+
+            // Acceleration ramp-up time
+            float t_jerk = JerkTime;
+
+            // Velocity at the end of jerk phase
+            float v_jerk = (acceleration * t_jerk) / 2;
+
+            // Time to reach target speed after jerk phase
+            float t_const_accel = (targetSpeed - v_jerk) / acceleration;
+
+            // Total time
+            totalTime = t_jerk + t_const_accel;
+
+            // Distance during jerk phase
+            float s_jerk = (acceleration * t_jerk * t_jerk) / 6;
+
+            // Distance during constant acceleration
+            float s_const_accel = v_jerk * t_const_accel + 0.5f * acceleration * t_const_accel * t_const_accel;
+
+            float offset = s_jerk + s_const_accel;
+
             // Adjust offset based on direction
-            if (!info.TargetDirection)
-                offset = -offset;
+            offset *= directionMultiplier;
+
             return offset;
         }
 
-        private float CalculateLeadOutOffset(PositionerMovementInformation info, out float timeToStop)
+        private float CalculateLeadOutOffset(PositionerMovementInformation info, out float totalTime)
         {
             float deceleration = info.TargetDeceleration;
-            timeToStop = info.TargetSpeed / deceleration;
-            float offset = 0.5f * deceleration * timeToStop * timeToStop;
+            float targetSpeed = info.TargetSpeed;
+            float directionMultiplier = info.TargetDirection ? 1 : -1;
+
+            // Deceleration ramp-up time
+            float t_jerk = JerkTime;
+
+            // Velocity at the start of deceleration jerk phase
+            float v_jerk = (deceleration * t_jerk) / 2;
+
+            // Time to decelerate from target speed to v_jerk
+            float t_const_decel = (targetSpeed - v_jerk) / deceleration;
+
+            // Total time
+            totalTime = t_jerk + t_const_decel;
+
+            // Distance during jerk phase
+            float s_jerk = (deceleration * t_jerk * t_jerk) / 6;
+
+            // Distance during constant deceleration
+            float s_const_decel = v_jerk * t_const_decel + 0.5f * deceleration * t_const_decel * t_const_decel;
+
+            float offset = s_jerk + s_const_decel;
+
             // Adjust offset based on direction
-            if (!info.TargetDirection)
-                offset = -offset;
+            offset *= directionMultiplier;
+
             return offset;
         }
 
-        private void GetLeadInKinParameters(float trajectorySpeed, ref Dictionary<char, PositionerMovementInformation> positionerMovementInfos, out float allocatedTime)
-        {
-            allocatedTime = 0f;
-            foreach (var info in positionerMovementInfos.Values)
-            {
-                float maxAccel = info.MaxAcceleration;
-                float timeToReachSpeed = trajectorySpeed / maxAccel;
-                allocatedTime = Math.Max(allocatedTime, timeToReachSpeed);
-                info.StartingSpeed = 0f;
-                info.TargetSpeed = trajectorySpeed;
-                info.TargetAcceleration = maxAccel;
-            }
-        }
 
-        private void GetLeadOutKinParameters(float trajectorySpeed, ref Dictionary<char, PositionerMovementInformation> positionerMovementInfos, out float allocatedTime)
-        {
-            allocatedTime = 0f;
-            foreach (var info in positionerMovementInfos.Values)
-            {
-                float maxDecel = info.MaxDeceleration;
-                float timeToStop = trajectorySpeed / maxDecel;
-                allocatedTime = Math.Max(allocatedTime, timeToStop);
-                info.TargetSpeed = 0f;
-                info.TargetDeceleration = maxDecel;
-            }
-        }
+        //private float CalculateLeadInOffset(PositionerMovementInformation info, out float timeToReachSpeed)
+        //{
+        //    float acceleration = info.TargetAcceleration;
+        //    timeToReachSpeed = info.TargetSpeed / acceleration;
+        //    float offset = 0.5f * acceleration * timeToReachSpeed * timeToReachSpeed;
+        //    // Adjust offset based on direction
+        //    if (!info.TargetDirection)
+        //        offset = -offset;
+        //    return offset;
+        //}
+
+        //private float CalculateLeadOutOffset(PositionerMovementInformation info, out float timeToStop)
+        //{
+        //    float deceleration = info.TargetDeceleration;
+        //    timeToStop = info.TargetSpeed / deceleration;
+        //    float offset = 0.5f * deceleration * timeToStop * timeToStop;
+        //    // Adjust offset based on direction
+        //    if (!info.TargetDirection)
+        //        offset = -offset;
+        //    return offset;
+        //}
+
 
         private bool TryGetLineKinParameters(
     float trajectorySpeed,
@@ -558,54 +602,53 @@ namespace standa_controller_software.custom_functions.definitions
             // Remaining distance after any initial deceleration
             float deltaX_remaining = Math.Abs(deltaX_total);
 
-            // Compute candidate maximum speed
-            float numerator = 2 * a * d * deltaX_remaining + d * v0_dir * v0_dir;
-            float denominator = a + d;
-            float vMaxSquaredCandidate = numerator / denominator;
+            // Calculate velocities at the end of acceleration and deceleration jerk phases
+            float v_accel_jerk = (a * JerkTime) / 2;
+            float v_decel_jerk = (d * JerkTime) / 2;
 
-            // Ensure vMaxSquaredCandidate is non-negative
-            if (vMaxSquaredCandidate < 0)
-                vMaxSquaredCandidate = 0;
+            // Time after jerk phases to reach target speed
+            float t_accel_const = (vt - v_accel_jerk) / a;
+            float t_decel_const = (vt - v_decel_jerk) / d;
 
-            float vMaxCandidate = (float)Math.Sqrt(vMaxSquaredCandidate);
+            // Total acceleration and deceleration times
+            float t1 = JerkTime + t_accel_const;
+            float t3 = JerkTime + t_decel_const;
 
-            // Limit maximum speed to the target speed
-            float vMax = Math.Min(vMaxCandidate, vt);
+            // Distances during acceleration and deceleration
+            float s_accel = (a * JerkTime * JerkTime) / 6 + v_accel_jerk * t_accel_const + 0.5f * a * t_accel_const * t_accel_const;
+            float s_decel = (d * JerkTime * JerkTime) / 6 + v_decel_jerk * t_decel_const + 0.5f * d * t_decel_const * t_decel_const;
 
-            // Calculate distances for acceleration and deceleration phases
-            float s1 = (vMax * vMax - v0_dir * v0_dir) / (2 * a);
-            float s3 = (vMax * vMax) / (2 * d);
-            float s_total_required = s1 + s3;
+            // Total distance required for acceleration and deceleration
+            float s_total_required = s_accel + s_decel;
 
             if (s_total_required > deltaX_remaining)
             {
-                // Triangular profile
-                vMaxSquaredCandidate = (2 * a * d * deltaX_remaining + d * v0_dir * v0_dir) / (a + d);
-                if (vMaxSquaredCandidate < 0)
-                    vMaxSquaredCandidate = 0;
+                // Not enough distance for acceleration and deceleration
+                // Adjust target speed (vt) accordingly
+                vt = (float)Math.Sqrt((2 * a * d * deltaX_remaining) / (a + d));
+                // Recalculate times and distances with adjusted vt
+                v_accel_jerk = (a * JerkTime) / 2;
+                t_accel_const = (vt - v_accel_jerk) / a;
+                t1 = JerkTime + t_accel_const;
+                s_accel = (a * JerkTime * JerkTime) / 6 + v_accel_jerk * t_accel_const + 0.5f * a * t_accel_const * t_accel_const;
 
-                vMax = (float)Math.Sqrt(vMaxSquaredCandidate);
+                v_decel_jerk = (d * JerkTime) / 2;
+                t_decel_const = (vt - v_decel_jerk) / d;
+                t3 = JerkTime + t_decel_const;
+                s_decel = (d * JerkTime * JerkTime) / 6 + v_decel_jerk * t_decel_const + 0.5f * d * t_decel_const * t_decel_const;
 
-                // Recalculate times
-                float t1 = (vMax - v0_dir) / a;
-                float t3 = vMax / d;
-                totalTime += t1 + t3;
+                s_total_required = s_accel + s_decel;
             }
-            else
-            {
-                // Trapezoidal profile
-                float s2 = deltaX_remaining - s1 - s3;
 
-                // Calculate times for each phase
-                float t1 = (vMax - v0_dir) / a;
-                float t2 = s2 / vMax;
-                float t3 = vMax / d;
+            // Distance and time for constant speed phase
+            float s2 = deltaX_remaining - s_total_required;
+            float t2 = s2 / vt;
 
-                totalTime += t1 + t2 + t3;
-            }
+            totalTime += t1 + t2 + t3;
 
             return totalTime;
         }
+
 
 
         private List<Command> CreateMovementCommands(

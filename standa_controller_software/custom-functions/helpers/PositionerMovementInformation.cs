@@ -23,6 +23,7 @@ namespace standa_controller_software.custom_functions.helpers
         public float MaxDeceleration { get; set; }
         public float MaxSpeed { get; set; }
         public float Rethrow { get; set; }
+        public float Jerk { get; set; }
 
     }
 }
