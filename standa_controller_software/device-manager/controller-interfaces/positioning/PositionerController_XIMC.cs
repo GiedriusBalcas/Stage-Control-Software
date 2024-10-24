@@ -305,7 +305,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     _log.Enqueue($"ximc: ---------FAILED TO UPDATE move settings on {device.Name}. Speed: {_deviceInfo[device.Name].moveSettings_t.Speed};   Accel: {_deviceInfo[device.Name].moveSettings_t.Accel};  Decel: {_deviceInfo[device.Name].moveSettings_t.Decel}");
 
                 }
-
             }
             return Task.CompletedTask;
 

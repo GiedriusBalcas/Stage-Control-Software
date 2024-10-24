@@ -124,6 +124,7 @@ namespace standa_controller_software.custom_functions.definitions
 
             var positionerMovementInfos = new Dictionary<char, PositionerMovementInformation>();
             float allocatedTime = 0f;
+            float allocatedTimeWithoutDecel = 0f;
 
 
             // Set-up movement parameters for each device.
@@ -164,8 +165,9 @@ namespace standa_controller_software.custom_functions.definitions
 
                     // Try to calculate total time for the movement.
                     // Trivial, no Jerk.
-                    var calculatedTime = CalculateTotalTimeForMovementInfo(movementInfo);
+                    var calculatedTime = CalculateTotalTimeForMovementInfo(movementInfo, out float timeToAccel, out float timeToDecel, out float totalTime);
                     allocatedTime = (float)Math.Max(allocatedTime, calculatedTime);
+                    allocatedTimeWithoutDecel = (float)Math.Max(allocatedTimeWithoutDecel, totalTime - timeToDecel/2);
                 }
                 else
                 {
@@ -233,15 +235,19 @@ namespace standa_controller_software.custom_functions.definitions
             }
 
             // Create the movement commands.
-            List<Command> commandsMovement = CreateMovementCommands(isShutterUsed, groupedDevicesByController, positionerMovementInfos, allocatedTime, waitUntilTime, waitUntilPosDict);
+            List<Command> commandsMovement = CreateMovementCommands(isShutterUsed, groupedDevicesByController, positionerMovementInfos, allocatedTimeWithoutDecel, waitUntilTime, waitUntilPosDict);
 
             _commandManager.EnqueueCommandLine(commandsMovement.ToArray());
             _commandManager.ExecuteCommandLine(commandsMovement.ToArray()).GetAwaiter().GetResult();
         }
 
 
-        private float CalculateTotalTimeForMovementInfo(PositionerMovementInformation info)
+        private float CalculateTotalTimeForMovementInfo(PositionerMovementInformation info, out float timeToAccel, out float timeToDecel, out float totalTime)
         {
+            timeToAccel = 0f;
+            timeToDecel = 0f;
+            totalTime = 0f;
+
             float x0 = info.StartingPosition;
             float v0 = info.StartingSpeed;
             float vt = info.TargetSpeed;
@@ -261,7 +267,6 @@ namespace standa_controller_software.custom_functions.definitions
             d = Math.Abs(d);
             vt = Math.Abs(vt);
 
-            float totalTime = 0f;
 
             // If initial speed is in the opposite direction, decelerate to zero first
             if (v0_dir < 0)
@@ -304,6 +309,9 @@ namespace standa_controller_software.custom_functions.definitions
                 float t1 = (vMax - v0_dir) / a;
                 float t3 = vMax / d;
                 totalTime += t1 + t3;
+
+                timeToAccel = t1;
+                timeToDecel = t3;
             }
             else
             {
@@ -316,6 +324,8 @@ namespace standa_controller_software.custom_functions.definitions
                 float t3 = vMax / d;
 
                 totalTime += t1 + t2 + t3;
+                timeToAccel = t1;
+                timeToDecel = t3;
             }
 
             return totalTime;

@@ -189,7 +189,7 @@ namespace standa_controller_software.custom_functions.definitions
             }
 
             // STEP 4: Calculate line kinematic parameters
-            if (!TryGetLineKinParameters(trajectorySpeed, ref positionerMovementInfos, out float allocatedTimeLine))
+            if (!TryGetLineKinParameters(trajectorySpeed, ref positionerMovementInfos, out float allocatedTimeLine, out float timeToAccel, out float timeToDecel, out float totalTime))
                 throw new Exception("Failed to calculate kinematic parameters for line movement.");
 
             // Now that we have TargetAcceleration and TargetDeceleration, we can calculate lead-in and lead-out offsets
@@ -313,7 +313,7 @@ namespace standa_controller_software.custom_functions.definitions
             float totalAllocatedTime = allocatedTimeLeadIn + allocatedTimeLine + allocatedTimeLeadOut;
 
             // let's update the line kin parameters
-            if (!TryGetLineKinParameters(trajectorySpeed, ref positionerMovementInfos, out float totalAllocatedTime_calculated))
+            if (!TryGetLineKinParameters(trajectorySpeed, ref positionerMovementInfos, out float totalAllocatedTime_calculated, out float timeToAccel_recalc, out float timeToDecel_recalc, out float totalTime_recalc))
                 throw new Exception("Failed to calculate kinematic parameters for line movement.");
 
             // STEP 9: Update movement settings if necessary
@@ -332,7 +332,8 @@ namespace standa_controller_software.custom_functions.definitions
                 groupedDevicesByController,
                 positionerMovementInfos,
                 leadInfo,
-                totalAllocatedTime_calculated - (totalAllocatedTime_calculated - allocatedTimeLine)/2, // why STANDA WHYYYYY
+                //totalAllocatedTime_calculated - (totalAllocatedTime_calculated - allocatedTimeLine)/2, // why STANDA WHYYYYY
+                totalTime_recalc - timeToDecel_recalc/2,
                 waitUntilTIme,
                 waitUntilPosDict,
                 leadIn,
@@ -486,7 +487,7 @@ namespace standa_controller_software.custom_functions.definitions
         private bool TryGetLineKinParameters(
     float trajectorySpeed,
     ref Dictionary<char, PositionerMovementInformation> positionerMovementInfos,
-    out float allocatedTime)
+    out float allocatedTime, out float timeToAccel, out float timeToDecel, out float totalTime)
         {
             char[] deviceNames = positionerMovementInfos.Keys.ToArray();
             Dictionary<char, float> movementRatio = new Dictionary<char, float>();
@@ -561,14 +562,104 @@ namespace standa_controller_software.custom_functions.definitions
             var projectedDecel = positionerMovementInfos[selectedPosInfo.Key].TargetDeceleration * movementRatio[selectedPosInfo.Key];
             var projectedTargetSpeed = positionerMovementInfos[selectedPosInfo.Key].TargetSpeed * movementRatio[selectedPosInfo.Key];
 
-            allocatedTime = CalculateTotalTimeForMovementInfo(selectedPosInfo.Value);
+            allocatedTime = CalculateTotalTimeForMovementInfo(selectedPosInfo.Value, out timeToAccel, out timeToDecel, out totalTime);
 
             return true;
         }
 
 
-        private float CalculateTotalTimeForMovementInfo(PositionerMovementInformation info)
+        //private float CalculateTotalTimeForMovementInfo(PositionerMovementInformation info, out float timeToAccel, out float timeToDecel, out float totalTime)
+        //{
+        //    timeToAccel = 0f;
+        //    timeToDecel = 0f;
+        //    totalTime = 0f;
+
+        //    float x0 = info.StartingPosition;
+        //    float v0 = info.StartingSpeed;
+        //    float vt = info.TargetSpeed;
+        //    float a = info.TargetAcceleration;
+        //    float d = info.TargetDeceleration;
+        //    float x_target = info.TargetPosition;
+
+        //    // Calculate total movement direction
+        //    float deltaX_total = x_target - x0;
+        //    float direction = Math.Sign(deltaX_total); // +1 for positive, -1 for negative
+
+        //    // Adjust initial speed to movement direction
+        //    float v0_dir = v0 * direction;
+
+        //    // Keep accelerations and speeds positive
+        //    a = Math.Abs(a);
+        //    d = Math.Abs(d);
+        //    vt = Math.Abs(vt);
+
+
+        //    // If initial speed is in the opposite direction, decelerate to zero first
+        //    if (v0_dir < 0)
+        //    {
+        //        // Time to decelerate to zero speed
+        //        float t_stop = -v0_dir / d;
+        //        totalTime += t_stop;
+        //        v0_dir = 0; // Reset initial speed after stopping
+        //    }
+
+        //    // Remaining distance after any initial deceleration
+        //    float deltaX_remaining = Math.Abs(deltaX_total);
+
+        //    // Calculate velocities at the end of acceleration and deceleration jerk phases
+        //    float v_accel_jerk = (a * JerkTime) / 2;
+        //    float v_decel_jerk = (d * JerkTime) / 2;
+
+        //    // Time after jerk phases to reach target speed
+        //    float t_accel_const = (vt - v_accel_jerk) / a;
+        //    float t_decel_const = (vt - v_decel_jerk) / d;
+
+        //    // Total acceleration and deceleration times
+        //    float t1 = JerkTime + t_accel_const;
+        //    float t3 = JerkTime + t_decel_const;
+
+        //    // Distances during acceleration and deceleration
+        //    float s_accel = (a * JerkTime * JerkTime) / 6 + v_accel_jerk * t_accel_const + 0.5f * a * t_accel_const * t_accel_const;
+        //    float s_decel = (d * JerkTime * JerkTime) / 6 + v_decel_jerk * t_decel_const + 0.5f * d * t_decel_const * t_decel_const;
+
+        //    // Total distance required for acceleration and deceleration
+        //    float s_total_required = s_accel + s_decel;
+
+        //    if (s_total_required > deltaX_remaining)
+        //    {
+        //        // Not enough distance for acceleration and deceleration
+        //        // Adjust target speed (vt) accordingly
+        //        vt = (float)Math.Sqrt((2 * a * d * deltaX_remaining) / (a + d));
+        //        // Recalculate times and distances with adjusted vt
+        //        v_accel_jerk = (a * JerkTime) / 2;
+        //        t_accel_const = (vt - v_accel_jerk) / a;
+        //        t1 = JerkTime + t_accel_const;
+        //        s_accel = (a * JerkTime * JerkTime) / 6 + v_accel_jerk * t_accel_const + 0.5f * a * t_accel_const * t_accel_const;
+
+        //        v_decel_jerk = (d * JerkTime) / 2;
+        //        t_decel_const = (vt - v_decel_jerk) / d;
+        //        t3 = JerkTime + t_decel_const;
+        //        s_decel = (d * JerkTime * JerkTime) / 6 + v_decel_jerk * t_decel_const + 0.5f * d * t_decel_const * t_decel_const;
+
+        //        s_total_required = s_accel + s_decel;
+        //    }
+
+        //    // Distance and time for constant speed phase
+        //    float s2 = deltaX_remaining - s_total_required;
+        //    float t2 = s2 / vt;
+
+        //    totalTime += t1 + t2 + t3;
+        //    timeToAccel = t1;
+        //    timeToDecel = t3;
+
+        //    return totalTime;
+        //}
+        private float CalculateTotalTimeForMovementInfo(PositionerMovementInformation info, out float timeToAccel, out float timeToDecel, out float totalTime)
         {
+            timeToAccel = 0f;
+            timeToDecel = 0f;
+            totalTime = 0f;
+
             float x0 = info.StartingPosition;
             float v0 = info.StartingSpeed;
             float vt = info.TargetSpeed;
@@ -588,67 +679,69 @@ namespace standa_controller_software.custom_functions.definitions
             d = Math.Abs(d);
             vt = Math.Abs(vt);
 
-            float totalTime = 0f;
 
             // If initial speed is in the opposite direction, decelerate to zero first
             if (v0_dir < 0)
             {
                 // Time to decelerate to zero speed
                 float t_stop = -v0_dir / d;
+                // Distance covered during deceleration
+                float s_stop = v0_dir * t_stop + 0.5f * (-d) * t_stop * t_stop;
+                s_stop = Math.Abs(s_stop);
+
                 totalTime += t_stop;
+                deltaX_total -= s_stop * direction; // Remaining distance after stopping
+
                 v0_dir = 0; // Reset initial speed after stopping
             }
 
-            // Remaining distance after any initial deceleration
             float deltaX_remaining = Math.Abs(deltaX_total);
 
-            // Calculate velocities at the end of acceleration and deceleration jerk phases
-            float v_accel_jerk = (a * JerkTime) / 2;
-            float v_decel_jerk = (d * JerkTime) / 2;
+            // Compute candidate maximum speed
+            float numerator = 2 * a * d * deltaX_remaining + d * v0_dir * v0_dir;
+            float denominator = a + d;
+            float vMaxSquaredCandidate = numerator / denominator;
+            float vMaxCandidate = (float)Math.Sqrt(vMaxSquaredCandidate);
 
-            // Time after jerk phases to reach target speed
-            float t_accel_const = (vt - v_accel_jerk) / a;
-            float t_decel_const = (vt - v_decel_jerk) / d;
+            // Limit maximum speed to the target speed
+            float vMax = Math.Min(vMaxCandidate, vt);
 
-            // Total acceleration and deceleration times
-            float t1 = JerkTime + t_accel_const;
-            float t3 = JerkTime + t_decel_const;
-
-            // Distances during acceleration and deceleration
-            float s_accel = (a * JerkTime * JerkTime) / 6 + v_accel_jerk * t_accel_const + 0.5f * a * t_accel_const * t_accel_const;
-            float s_decel = (d * JerkTime * JerkTime) / 6 + v_decel_jerk * t_decel_const + 0.5f * d * t_decel_const * t_decel_const;
-
-            // Total distance required for acceleration and deceleration
-            float s_total_required = s_accel + s_decel;
+            // Calculate distances for acceleration and deceleration phases
+            float s1 = (vMax * vMax - v0_dir * v0_dir) / (2 * a);
+            float s3 = (vMax * vMax) / (2 * d);
+            float s_total_required = s1 + s3;
 
             if (s_total_required > deltaX_remaining)
             {
-                // Not enough distance for acceleration and deceleration
-                // Adjust target speed (vt) accordingly
-                vt = (float)Math.Sqrt((2 * a * d * deltaX_remaining) / (a + d));
-                // Recalculate times and distances with adjusted vt
-                v_accel_jerk = (a * JerkTime) / 2;
-                t_accel_const = (vt - v_accel_jerk) / a;
-                t1 = JerkTime + t_accel_const;
-                s_accel = (a * JerkTime * JerkTime) / 6 + v_accel_jerk * t_accel_const + 0.5f * a * t_accel_const * t_accel_const;
+                // Triangular profile
+                vMaxSquaredCandidate = (2 * a * d * deltaX_remaining + d * v0_dir * v0_dir) / (a + d);
+                vMax = (float)Math.Sqrt(vMaxSquaredCandidate);
 
-                v_decel_jerk = (d * JerkTime) / 2;
-                t_decel_const = (vt - v_decel_jerk) / d;
-                t3 = JerkTime + t_decel_const;
-                s_decel = (d * JerkTime * JerkTime) / 6 + v_decel_jerk * t_decel_const + 0.5f * d * t_decel_const * t_decel_const;
+                // Recalculate times
+                float t1 = (vMax - v0_dir) / a;
+                float t3 = vMax / d;
+                totalTime += t1 + t3;
 
-                s_total_required = s_accel + s_decel;
+                timeToAccel = t1;
+                timeToDecel = t3;
             }
+            else
+            {
+                // Trapezoidal profile
+                float s2 = deltaX_remaining - s1 - s3;
 
-            // Distance and time for constant speed phase
-            float s2 = deltaX_remaining - s_total_required;
-            float t2 = s2 / vt;
+                // Calculate times for each phase
+                float t1 = (vMax - v0_dir) / a;
+                float t2 = s2 / vMax;
+                float t3 = vMax / d;
 
-            totalTime += t1 + t2 + t3;
+                totalTime += t1 + t2 + t3;
+                timeToAccel = t1;
+                timeToDecel = t3;
+            }
 
             return totalTime;
         }
-
 
 
         private List<Command> CreateMovementCommands(

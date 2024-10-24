@@ -14,6 +14,7 @@ using standa_controller_software.device_manager.devices.shutter;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using static standa_controller_software.custom_functions.definitions.LineAbsoluteFunction;
 
 namespace standa_controller_software.custom_functions.definitions
 {
@@ -29,28 +30,45 @@ namespace standa_controller_software.custom_functions.definitions
             _controllerManager = controllerManager;
             SetProperty("Shutter", false);
             SetProperty("Accuracy", 0.1f);
+            SetProperty("LeadIn", false);
+            SetProperty("Speed", 100f);
+            SetProperty("WaitUntilCondition", null, true);
+            SetProperty("LeadOut", false);
         }
 
         public override object? Execute(params object[] args)
         {
-            //if (!TryParseArguments(args, out var parsedDeviceNames, out var parsedPositions, out var parsedWaitUntil))
-            //    throw new ArgumentException("Argument parsing was unsuccessful. Wrong types.");
+            // arcA("xy", radius, centerX, centerY, startAngle, endAngle, CCW);
 
-            //if (!TryGetProperty("Shutter", out var isShutterUsedObj))
-            //    throw new Exception("Failed to get 'Shutter' property.");
-            //var isShutterUsed = (bool)isShutterUsedObj;
+            if (!TryParseArguments(args, out var parsedDeviceNames, out var parsedCenterPositions, out var parsedWaitUntil))
+                throw new ArgumentException("Argument parsing was unsuccessful. Wrong types.");
 
-            //if (!TryGetProperty("Accuracy", out var accuracyObj))
-            //    throw new Exception("Failed to get 'Accuracy' property.");
-            //var accuracy = (float)accuracyObj;
+            if (!TryGetProperty("Shutter", out var isShutterUsedObj))
+                throw new Exception("Failed to get 'Shutter' property.");
+            var isShutterUsed = (bool)isShutterUsedObj;
 
-            _controllerManager.TryGetDevice<BasePositionerDevice>('x', out var devicex);
-            var currX = devicex.CurrentPosition;
-            _controllerManager.TryGetDevice<BasePositionerDevice>('y', out var devicey);
-            var currY = devicey.CurrentPosition;
+            if (!TryGetProperty("Accuracy", out var accuracyObj))
+                throw new Exception("Failed to get 'Accuracy' property.");
+            var accuracy = (float)accuracyObj;
 
-            float radius = 100f;
+            if (!TryGetProperty("Speed", out var trajSpeedObj))
+                throw new Exception("Failed to get 'Speed' property.");
+            var trajectorySpeed = (float)trajSpeedObj;
 
+            if (!TryGetProperty("LeadIn", out var leadInObj))
+                throw new Exception("Failed to get 'LeadIn' property.");
+            var leadIn = (bool)leadInObj;
+
+            if (!TryGetProperty("LeadOut", out var leadOutObj))
+                throw new Exception("Failed to get 'LeadOut' property.");
+            var leadOut = (bool)leadOutObj;
+
+            WaitUntilCondition? waitUntilCondition = null;
+            if (!TryGetProperty("WaitUntilCondition", out var waitUntilConditionObj))
+                throw new Exception("Failed to get 'WaitUntilCondition' property.");
+            if (waitUntilConditionObj is not null)
+
+            
 
             // pazek gal accel max koks. o ne apskritimo lygti sprest, gi nemoki.
             // greiti reik padidint kolkas. gal tas accel maiso kazkur.

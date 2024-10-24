@@ -36,8 +36,29 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             public ExecutionInformation ExecutionInformation;
         }
 
+        //private struct UpdateMovementSettingsInformation
+        //{
+        //    Command[] command;
+        //}
 
         private SyncController_Pico _syncController;
+
+
+        //private class BufferItem
+        //{
+        //    public enum ItemType
+        //    {
+        //        Movement,
+        //        UpdateMovementSettings
+        //    }
+
+        //    public ItemType Type { get; set; }
+        //    public MovementInformation MovementInfo { get; set; }
+        //    public UpdateMovementSettingsInformation UpdateMoveSettingsInfo { get; set; }
+        //}
+
+        //private Queue<BufferItem> _newBuffer;
+
 
         private Queue<MovementInformation> _buffer;
         private bool _launchPending = true;
@@ -255,22 +276,17 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         private async Task UpdateMoveSettings(Command[] commands, SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphors, ConcurrentQueue<string> log)
         {
 
-
-            //-------------------------------------------------------------//
-
-
-
             var isUpdateNeeded = commands.Any(command =>
             {
                 if (command.Parameters is UpdateMovementSettingsParameters parameters)
                 {
-                    return parameters.AccelChangePending;
+                    return parameters.AccelChangePending || !parameters.Blending;
                 }
                 else
                     return false;
             });
 
-            isUpdateNeeded = true;
+            //isUpdateNeeded = true;
             if (isUpdateNeeded)
             {
                 _launchPending = true;
@@ -301,31 +317,15 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
                 }
 
-                //// await exec_end
-                //if (_processingCompletionSource is not null)
-                //    if (!_processingCompletionSource.Task.IsCompleted)
-                //    {
-                //        await _processingCompletionSource.Task;
-                //        _log.Enqueue("master: awaited the exec_end");
-                //    }
-                //    else
-                //    {
-                //        _log.Enqueue("master: exec_end was allready complete.");
-
-                //    }
 
                 // execute sync controller
                 if (_needToLaunch)
                 {
-                    //await SlaveControllersLocks[_syncController.Name].WaitAsync();
-                
                     _processingCompletionSource = new TaskCompletionSource<bool>();
                     _processingLastItemTakenSource = new TaskCompletionSource<bool>();
                 
                     await _syncController.StartExecution();
 
-                    //if(SlaveControllersLocks[_syncController.Name].CurrentCount == 0)
-                    //    SlaveControllersLocks[_syncController.Name].Release();
                     _log.Enqueue("master: sent Sync Controller to execute its buffer");
 
                 }
@@ -337,15 +337,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                         slaveSemaphore.Release();
                 }
 
-                // await last item taken
-                if (_processingLastItemTakenSource is not null)
-                    if (!_processingLastItemTakenSource.Task.IsCompleted)
-                    {
-                        await _processingLastItemTakenSource.Task;
-                        _log.Enqueue("master: awaited last item taken signal");
-                    }
-
-                // TEST await exec_end
+                // await exec_end, we can't actually update the move settings during movement of last item.
                 if (_processingCompletionSource is not null)
                     if (!_processingCompletionSource.Task.IsCompleted)
                     {
@@ -359,7 +351,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     }
 
                 // update params
-                //isUpdateNeeded = true;
                 foreach (Command command in commands)
                 {
 
@@ -391,18 +382,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                         slaveSemaphore.Release();
                 }
             }
-
-            //-------------------------------------------------------------//
-
-            ////          TEST
-            ////// await exec_end
-            if (_processingCompletionSource is not null)
-                if (!_processingCompletionSource.Task.IsCompleted)
-                {
-                    await _processingCompletionSource.Task;
-                    _log.Enqueue("master: awaited the exec_end");
-                }
-
 
         }
 

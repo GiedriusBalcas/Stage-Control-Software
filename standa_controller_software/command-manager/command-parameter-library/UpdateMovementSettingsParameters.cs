@@ -6,6 +6,7 @@ namespace standa_controller_software.command_manager.command_parameter_library
         public Dictionary<char, MovementSettingsInfo> MovementSettingsInformation { get; set; } = new Dictionary<char, MovementSettingsInfo>();
         public bool AccelChangePending = true;
         public bool SpeedChangePending = true;
+        public bool Blending = false;
 
         public override string ToString()
         {
