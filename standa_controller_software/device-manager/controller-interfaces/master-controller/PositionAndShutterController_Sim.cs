@@ -266,6 +266,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     _log.Enqueue("master: awaited last item taken signal");
                 }
 
+            // await exec_end
+            if (_processingCompletionSource is not null)
+                if (!_processingCompletionSource.Task.IsCompleted)
+                {
+                    await _processingCompletionSource.Task;
+                    _log.Enqueue("master: awaited the exec_end");
+                }
+
             // update params
             foreach (Command command in commands)
             {

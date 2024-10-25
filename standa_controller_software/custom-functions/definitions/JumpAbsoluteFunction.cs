@@ -186,7 +186,7 @@ namespace standa_controller_software.custom_functions.definitions
 
             if (kinematicParametersNeedUpdate)
             {
-                List<Command> updateParametersCommandLine = CreateUpdateCommands(positionerMovementInfos, groupedDevicesByController);
+                List<Command> updateParametersCommandLine = CreateUpdateCommands(positionerMovementInfos, groupedDevicesByController, blending);
 
                 _commandManager.EnqueueCommandLine(updateParametersCommandLine.ToArray());
                 _commandManager.ExecuteCommandLine(updateParametersCommandLine.ToArray()).GetAwaiter().GetResult();
@@ -226,9 +226,11 @@ namespace standa_controller_software.custom_functions.definitions
                     // Calculate time to reach waitUntilPosition
                     float timeToPosition = CalculateTimeToReachPosition(info, waitUntilPosition);
 
-                    timeToWaitUntilPosition[name] = timeToPosition;
+                    if(float.IsNormal(timeToPosition))
+                        timeToWaitUntilPosition[name] = timeToPosition;
                 }
 
+                //TODO : check if we want min or max.
                 // Find the minimal time among all devices
                 float minTime = timeToWaitUntilPosition.Values.Min();
                 waitUntilTime = minTime;
@@ -388,7 +390,7 @@ namespace standa_controller_software.custom_functions.definitions
                 // Trapezoidal profile
                 float dConst = Math.Abs(deltaX_total) - totalDistanceAccDec;
                 float tConst = dConst / vt;
-                totalTime += tAcc + tConst + tDec;
+                //totalTime += tAcc + tConst + tDec;
 
                 // Positions at the end of each phase
                 float xEndAcc = x0 + direction * dAcc;
@@ -698,7 +700,7 @@ namespace standa_controller_software.custom_functions.definitions
             return commandsMovement;
         }
 
-        private List<Command> CreateUpdateCommands(Dictionary<char, PositionerMovementInformation> positionerMovementInfos, Dictionary<BasePositionerController, List<BasePositionerDevice>> groupedDevicesByController)
+        private List<Command> CreateUpdateCommands(Dictionary<char, PositionerMovementInformation> positionerMovementInfos, Dictionary<BasePositionerController, List<BasePositionerDevice>> groupedDevicesByController, bool blending)
         {
             var updateParametersCommandLine = new List<Command>();
 
@@ -732,6 +734,7 @@ namespace standa_controller_software.custom_functions.definitions
                 {
                     MovementSettingsInformation = movementSettings,
                     AccelChangePending = isAccelChangeNeeded,
+                    Blending = blending
                 };
 
                 updateParametersCommandLine.Add(new Command

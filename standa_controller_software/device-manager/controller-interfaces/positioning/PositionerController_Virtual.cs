@@ -175,17 +175,17 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     // Phase 2: Calculate the constant speed phase distance (if applicable)
                     double constantSpeedDistance = totalDistance - accelDistance - decelDistance;
                     var endVelocity = 0f;
-                    var position = Math.Abs((double)(posInfo.WaitUntilPosition - device.CurrentPosition));
+                    var distanceToWaitUntilPosition = Math.Abs((double)(posInfo.WaitUntilPosition - device.CurrentPosition));
 
-                    if (position <= accelDistance)
+                    if (distanceToWaitUntilPosition <= accelDistance)
                     {
                         // In the acceleration phase: use the equation v^2 = v0^2 + 2 * a * d
-                        endVelocity = (float)Math.Sqrt(Math.Pow(device.CurrentSpeed, 2) + 2 * device.Acceleration * position);
+                        endVelocity = (float)Math.Sqrt(Math.Pow(device.CurrentSpeed, 2) + 2 * device.Acceleration * distanceToWaitUntilPosition);
                     }
-                    else if(position > accelDistance + constantSpeedDistance)
+                    else if(distanceToWaitUntilPosition > accelDistance + constantSpeedDistance)
                     {
                         // In the deceleration phase: calculate the position in the deceleration phase
-                        double decelPosition = position - accelDistance - constantSpeedDistance;
+                        double decelPosition = distanceToWaitUntilPosition - accelDistance - constantSpeedDistance;
                         endVelocity = (float)Math.Sqrt(Math.Pow(targetSpeed, 2) - 2 * device.Deceleration * decelPosition);
                     }
                     else
@@ -194,9 +194,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                         endVelocity = targetSpeed;
                     }
 
-                    device.CurrentSpeed = 0f;
+                    //device.CurrentSpeed = 0f;
                     device.CurrentSpeed = endVelocity * direction;
-                    device.CurrentPosition = (float)position;
+                    device.CurrentPosition = (float)posInfo.WaitUntilPosition;
                 }
 
                 //throw new NotImplementedException();
