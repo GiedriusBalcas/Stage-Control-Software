@@ -120,8 +120,21 @@ namespace standa_control_software_WPF.view_models.system_control.information
         {
             PlotModel = new PlotModel { Title = $"{Name} Position and Speed" };
 
-            _positionSeries = new LineSeries { Title = "Position", Color = OxyColors.Blue };
-            _speedSeries = new LineSeries { Title = "Speed", Color = OxyColors.Red };
+            _positionSeries = new LineSeries
+            {
+                Title = "Position",
+                Color = OxyColors.Blue,
+                MarkerType = MarkerType.Circle,
+                MarkerSize = 2
+            };
+            
+            _speedSeries = new LineSeries
+            {
+                Title = "Speed",
+                Color = OxyColors.Red,
+                MarkerType = MarkerType.Circle,
+                MarkerSize = 2
+            };
 
             PlotModel.Series.Add(_positionSeries);
             PlotModel.Series.Add(_speedSeries);
@@ -162,7 +175,7 @@ namespace standa_control_software_WPF.view_models.system_control.information
         {
             Position = _positioner.CurrentPosition;
             Speed = _positioner.CurrentSpeed;
-
+            
             if (_isAcquiring)
             {
                 _timeElapsed = (DateTime.Now - _acquisitionStartTime).TotalSeconds;

@@ -498,11 +498,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 if (positioner.Value.IsConnected)
                 {
                     var deviceInfo = _deviceInfo[positioner.Key];
-                    CallResponse = API.get_status_calb(deviceInfo.id, out deviceInfo.statusCalibrated_t, ref deviceInfo.calibration_t);
-
-                    positioner.Value.CurrentPosition = deviceInfo.statusCalibrated_t.CurPosition;
-                    positioner.Value.CurrentSpeed = deviceInfo.statusCalibrated_t.CurSpeed;
-
                     CallResponse = API.get_move_settings_calb(deviceInfo.id, out deviceInfo.moveSettings_t, ref deviceInfo.calibration_t);
 
                     positioner.Value.Acceleration = deviceInfo.moveSettings_t.Accel;
@@ -511,6 +506,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     positioner.Value.MaxAcceleration = _deviceInfo[positioner.Key].maxAcceleration;
                     positioner.Value.MaxDeceleration = _deviceInfo[positioner.Key].maxDeceleration;
                     positioner.Value.MaxSpeed = _deviceInfo[positioner.Key].maxSpeed;
+                    
+                    CallResponse = API.get_status_calb(deviceInfo.id, out deviceInfo.statusCalibrated_t, ref deviceInfo.calibration_t);
+
+                    positioner.Value.CurrentPosition = deviceInfo.statusCalibrated_t.CurPosition;
+                    positioner.Value.CurrentSpeed = deviceInfo.statusCalibrated_t.CurSpeed;
+
                     log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
                 }
             }

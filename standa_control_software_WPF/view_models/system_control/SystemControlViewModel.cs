@@ -230,6 +230,9 @@ namespace standa_control_software_WPF.view_models.system_control
                 _textInterpreter.DefinitionLibrary = _functionDefinitionLibrary.Definitions;
                 _textInterpreter.ReadInput(inputText);
                 _painterManager.PaintCommandQueue(_functionDefinitionLibrary.ExtractCommands());
+
+                OutputMessage += $"\nParsed.";
+
             }
             catch (Exception ex)
             {
