@@ -159,12 +159,13 @@ namespace standa_control_software_WPF.view_models.system_control
         private async void ExecuteCommandsQueueAsync()
         {
             ClearLog();
+            //ForceStop();
 
             //OutputMessage += $"\nStop.";
             //_commandManager.Stop();
             //OutputMessage += $"\ndone Stop.";
 
-            foreach(var (controllerName, controller) in _controllerManager.Controllers)
+            foreach (var (controllerName, controller) in _controllerManager.Controllers)
             {
                 if (_controllerManager.ControllerLocks[controllerName].CurrentCount == 0)
                     _controllerManager.ControllerLocks[controllerName].Release();

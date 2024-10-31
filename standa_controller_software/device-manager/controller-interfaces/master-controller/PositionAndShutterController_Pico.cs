@@ -94,8 +94,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
         private void OnSyncControllerExecutionEnd()
         {
-            _processingCompletionSource.TrySetResult(true);
-            _processingLastItemTakenSource.TrySetResult(true);
+            if(_processingCompletionSource is not null)
+                _processingCompletionSource.TrySetResult(true);
+            if (_processingLastItemTakenSource is not null)
+                _processingLastItemTakenSource.TrySetResult(true);
 
             _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled that execution finalized.");
         }
@@ -543,50 +545,50 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             // lets ask the sync controller to just launch 40 times for now.
             // TODO: do something better here.
 
-            //char[] deviceNames = SlaveControllers.Values
-            //    .Where(controller => controller is BasePositionerController)
-            //    .SelectMany(controller => controller.GetDevices())
-            //    .Select(device => device.Name)
-            //    .ToArray();
+            char[] deviceNames = SlaveControllers.Values
+                .Where(controller => controller is BasePositionerController)
+                .SelectMany(controller => controller.GetDevices())
+                .Select(device => device.Name)
+                .ToArray();
 
 
 
 
-            //await _syncController.AddBufferItem(
-            //deviceNames,
-            //true,
-            //1, //   [ms]
-            //false,
-            //0,
-            //0);
-            //for (int i = 0; i< 40; i++)
-            //{
-            //    await _syncController.AddBufferItem(
-            //    deviceNames,
-            //    false,
-            //    1, //   [ms]
-            //    false,
-            //    0,
-            //    0);
-            //}
+            await _syncController.AddBufferItem(
+            deviceNames,
+            true,
+            1, //   [ms]
+            false,
+            0,
+            0);
+            for (int i = 0; i < 40; i++)
+            {
+                await _syncController.AddBufferItem(
+                deviceNames,
+                false,
+                1, //   [ms]
+                false,
+                0,
+                0);
+            }
 
 
 
-            //// Set the flag to indicate processing has started
-            //_processingCompletionSource = new TaskCompletionSource<bool>();
-            //_processingLastItemTakenSource = new TaskCompletionSource<bool>();
+            // Set the flag to indicate processing has started
+            _processingCompletionSource = new TaskCompletionSource<bool>();
+            _processingLastItemTakenSource = new TaskCompletionSource<bool>();
 
-            //await _syncController.StartExecution();
+            await _syncController.StartExecution();
 
-            //foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
-            //{
-            //    if (slaveSemaphore.CurrentCount == 0)
-            //        slaveSemaphore.Release();
-            //}
-            //await _processingCompletionSource.Task;
+            foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
+            {
+                if (slaveSemaphore.CurrentCount == 0)
+                    slaveSemaphore.Release();
+            }
+            await _processingCompletionSource.Task;
 
-            //_processingCompletionSource?.TrySetResult(true);
-            //_processingLastItemTakenSource?.TrySetResult(true);
+            _processingCompletionSource?.TrySetResult(true);
+            _processingLastItemTakenSource?.TrySetResult(true);
 
 
 
