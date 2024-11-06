@@ -15,7 +15,7 @@ namespace standa_controller_software.command_manager.command_parameter_library
         public float AllocatedTime { get; set; }
         public float? WaitUntilTime { get; set; }
         public Dictionary<char, PositionerInfo> PositionerInfo { get; set; } = new Dictionary<char, PositionerInfo>();
-        public ShutterInfo? ShutterInfo { get; set; }
+        public ShutterInfo ShutterInfo { get; set; } = new ShutterInfo();
 
         public override string ToString()
         {
@@ -44,8 +44,8 @@ namespace standa_controller_software.command_manager.command_parameter_library
 
     public class ShutterInfo
     {
-        public float DelayOn { get; set; }
-        public float DelayOff { get; set; }
+        public float DelayOn { get; set; } = float.NaN;
+        public float DelayOff { get; set; } = float.NaN;
     }
 
     public class LeadInfo

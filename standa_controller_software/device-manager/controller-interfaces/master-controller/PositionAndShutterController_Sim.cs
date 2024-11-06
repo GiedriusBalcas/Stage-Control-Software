@@ -301,15 +301,15 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
 
             Dictionary<string, PositionerInfo> posInfoGroups = new Dictionary<string, PositionerInfo>();
+            List<MoveAbsoluteParameters> moveAbsoluteParameterList = new List<MoveAbsoluteParameters>();
             float rethrow = 0f;
             for (int i = 0; i < commands.Length; i++)
             {
                 var command = commands[i];
                 var commandParameters = command.Parameters as MoveAbsoluteParameters ?? throw new Exception("Unable to retrive MoveAbsolute parameters.");
-                var kaka = commandParameters.WaitUntilTime;
-                if (kaka is not null)
-                    rethrow = (float)kaka;
-
+                
+                moveAbsoluteParameterList.Add(commandParameters);
+                
                 posInfoGroups[command.TargetController] = new PositionerInfo
                 {
                     Devices = command.TargetDevices,
@@ -318,15 +318,26 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 };
             }
             //}
+            var rethrow_ms = moveAbsoluteParameterList.Select(moveParam => moveParam.WaitUntilTime *1000f).Max();
+            var maxAllocatedTime = posInfoGroups.Select(info => info.Value.AllocatedTimes.Max()).Max()*1000;
+            bool isShutterUsed = moveAbsoluteParameterList.Any(moveParam => moveParam.IsShutterUsed);
+
+            var shutter_on_delays = moveAbsoluteParameterList.Select(moveParam => moveParam.ShutterInfo.DelayOn).Where(n => !float.IsNaN(n));
+            float shutter_on_delay_ms = shutter_on_delays.Any() ? shutter_on_delays.Max() : float.NaN;
+
+            var shutter_off_delays = moveAbsoluteParameterList.Select(moveParam => moveParam.ShutterInfo.DelayOff).Where(n => !float.IsNaN(n));
+            float shutter_off_delay_ms = shutter_off_delays.Any() ? Math.Max(maxAllocatedTime - shutter_off_delays.Min(), shutter_on_delay_ms) : float.NaN;
+
+            //bool isShutterUsed = commands.Any( cmd => cmd.Parameters. );
 
             var executionParameters = new ExecutionInformation()
             {
                 Devices = commands.SelectMany(comm => comm.TargetDevices).ToArray(),
                 Launch = _launchPending,
-                Rethrow = rethrow*1000f,
-                Shutter = commandParametersFromFirstCommand.IsShutterUsed,
-                Shutter_delay_off = commandParametersFromFirstCommand.IsShutterUsed ? commandParametersFromFirstCommand.ShutterInfo.DelayOff : 0f,
-                Shutter_delay_on = commandParametersFromFirstCommand.IsShutterUsed ? commandParametersFromFirstCommand.ShutterInfo.DelayOn : 0f,
+                Rethrow = rethrow_ms ?? 0f,
+                Shutter = isShutterUsed,
+                Shutter_delay_on = shutter_on_delay_ms,
+                Shutter_delay_off = shutter_off_delay_ms,
             };
 
             var moveInfo = new MovementInformation()

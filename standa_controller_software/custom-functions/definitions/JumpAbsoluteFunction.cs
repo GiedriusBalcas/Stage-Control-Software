@@ -652,7 +652,6 @@ namespace standa_controller_software.custom_functions.definitions
         }
 
 
-
         private List<Command> CreateMovementCommands(bool isShutterUsed, Dictionary<BasePositionerController, List<BasePositionerDevice>> groupedDevicesByController, Dictionary<char, PositionerMovementInformation> positionerMovementInfos, float allocatedTime, float? waitUntilTime, Dictionary<char,float>? waitUntilPosDict)
         {
             var commandsMovement = new List<Command>();
@@ -672,6 +671,8 @@ namespace standa_controller_software.custom_functions.definitions
                         TargetPosition = positionerMovementInfos[deviceName].TargetPosition,
                     });
 
+                var shutterDevice = _controllerManager.GetDevices<ShutterDevice>().First();
+
                 var moveAParameters = new MoveAbsoluteParameters
                 {
                     WaitUntilTime = waitUntilTime,
@@ -682,9 +683,9 @@ namespace standa_controller_software.custom_functions.definitions
                     PositionerInfo = positionerInfos,
                     ShutterInfo = isShutterUsed ? new ShutterInfo
                     {
-                        DelayOn = 0f,
-                        DelayOff = 0f,
-                    } : null
+                        DelayOn = shutterDevice is not null? Math.Max(shutterDevice.DelayOn,0) : float.NaN,
+                        DelayOff = shutterDevice is not null ? Math.Max(shutterDevice.DelayOff, 0) : float.NaN,
+                    } : new ShutterInfo()
                 };
 
                 commandsMovement.Add(new Command

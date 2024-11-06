@@ -11,6 +11,7 @@ using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.custom_functions.helpers;
 using text_parser_library;
 using System.Xml.Linq;
+using standa_controller_software.device_manager.devices.shutter;
 
 namespace standa_controller_software.custom_functions.definitions
 {
@@ -806,12 +807,14 @@ namespace standa_controller_software.custom_functions.definitions
                 }
 
                 // Build ShutterInfo if shutter is used
-                ShutterInfo? shutterInfo = null;
+                ShutterInfo shutterInfo = new ShutterInfo();
                 if (isShutterUsed)
                 {
+                    var shutterDevice = _controllerManager.GetDevices<ShutterDevice>().First();
+
                     // Assuming that DelayOn and DelayOff are relative to the movement start time
-                    float delayOn = leadIn ? positionerInfos.Values.Max(pi => pi.LeadInformation?.LeadInAllocatedTime ?? 0f) : 0f;
-                    float delayOff = leadOut ? allocatedTime - positionerInfos.Values.Max(pi => pi.LeadInformation?.LeadOutAllocatedTime ?? 0f) : allocatedTime;
+                    float delayOn = leadIn ? Math.Max( positionerInfos.Values.Max(pi => pi.LeadInformation?.LeadInAllocatedTime*1000f ?? 0f) - shutterDevice.DelayOn, 0) : 0f;
+                    float delayOff = leadOut ? Math.Max( positionerInfos.Values.Max(pi => pi.LeadInformation?.LeadOutAllocatedTime*1000f ?? 0f) + shutterDevice.DelayOff, 0) : 0f;
 
                     shutterInfo = new ShutterInfo
                     {

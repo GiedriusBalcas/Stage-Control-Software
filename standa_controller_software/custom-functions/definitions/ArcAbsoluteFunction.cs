@@ -217,7 +217,7 @@ namespace standa_controller_software.custom_functions.definitions
 
 
 
-            float accelerationForArc = trajectorySpeed * trajectorySpeed / radius * 2f;
+            float accelerationForArc = trajectorySpeed * trajectorySpeed / radius * 1.5f;
 
             if (accelerationForArc > xDevice.MaxAcceleration || accelerationForArc > yDevice.MaxAcceleration)
                 throw new Exception("Max Acceleration value of the device is issuficient for the arc movement.");
@@ -303,8 +303,14 @@ namespace standa_controller_software.custom_functions.definitions
                 waitUntilPos_start[xDevice.Name] = startPosX;
                 waitUntilPos_start[yDevice.Name] = startPosY;
 
+                ShutterInfo shutterInfo = new ShutterInfo();
+                var shutterDevice = _controllerManager.GetDevices<ShutterDevice>().First();
+
+                shutterInfo.DelayOn = Math.Max( timeToAccelerate*1000f - shutterDevice.DelayOn, 0 );
+                shutterInfo.DelayOff = float.NaN;
+
                 // Create the movement commands.
-                List<Command> commandsMovement_start = CreateMovementCommands(false, groupedDevicesByController, positionerMovementInformation_start, allocatedTime_guess_start, timeToAccelerate, waitUntilPos_start); //rethrow_guess* multiplier     allocatedTime_guess * multiplier
+                List<Command> commandsMovement_start = CreateMovementCommands(shutter, groupedDevicesByController, positionerMovementInformation_start, allocatedTime_guess_start, timeToAccelerate, waitUntilPos_start, shutterInfo); //rethrow_guess* multiplier     allocatedTime_guess * multiplier
 
                 _commandManager.EnqueueCommandLine(commandsMovement_start.ToArray());
                 _commandManager.ExecuteCommandLine(commandsMovement_start.ToArray()).GetAwaiter().GetResult();
@@ -322,8 +328,9 @@ namespace standa_controller_software.custom_functions.definitions
             double maxAccelSoFarX = 0f;
             double maxAccelSoFarY = 0f;
 
+            float allocatedTime_guess = (arcLength + additionalDistanceToStop) / trajectorySpeed;
 
-            for (float theta = startAngle + dtheta; theta <= endAngle; theta += dtheta)
+            for (float theta = startAngle + dtheta; theta <= endAngle - dtheta; theta += dtheta)
             {
                 Ax = (float)(Math.Cos(theta - dtheta) * radius) + centerX;
                 Ay = (float)(Math.Sin(theta - dtheta) * radius) + centerY;
@@ -331,32 +338,10 @@ namespace standa_controller_software.custom_functions.definitions
                 Bx = (float)(Math.Cos(theta) * radius) + centerX;
                 By = (float)(Math.Sin(theta) * radius) + centerY;
 
-                var midX = (Bx - Ax) / 2;
-                var midY = (By - Ay) / 2;
-
                 // CALCULATE ACCEL/DECELL AT MID POINT
 
-                double accX = Math.Abs(-trajectorySpeed * angularVelocity * Math.Cos(theta - dtheta));
-                double accY = Math.Abs(-trajectorySpeed * angularVelocity * Math.Sin(theta - dtheta));
-
-                double velX = Math.Abs(-trajectorySpeed * Math.Sin(theta));
-                double velY = Math.Abs(trajectorySpeed * Math.Cos(theta));
-
-                prevVelX = velX;
-                prevVelY = velY;
-
-                var velX_avg = trajectorySpeed * (Math.Cos(theta) - Math.Cos(theta - dtheta)) / dtheta;
-                var velY_avg = trajectorySpeed * (Math.Sin(theta) - Math.Sin(theta - dtheta)) / dtheta;
-
-                velX_avg = (Bx - xDevice.CurrentPosition) / rethrow;
-                velY_avg = (By - yDevice.CurrentPosition) / rethrow;
-
-
-                double accelX_calc = (xDevice.CurrentSpeed - velX_avg) / (rethrow);
-                double accelY_calc = (yDevice.CurrentSpeed - velY_avg) / (rethrow);
-
-                maxAccelSoFarX = Math.Max(maxAccelSoFarX, Math.Abs(accelX_calc));
-                maxAccelSoFarY = Math.Max(maxAccelSoFarY, Math.Abs(accelY_calc));
+                float velX_avg = (Bx - xDevice.CurrentPosition) / rethrow;
+                float velY_avg = (By - yDevice.CurrentPosition) / rethrow;
 
 
                 // CALCULATE THE TANGENT ENDPOINT
@@ -371,32 +356,77 @@ namespace standa_controller_software.custom_functions.definitions
                 var positionerMovementInformation = GetMovementInformation(xDevice, yDevice, (float)x_tang, (float)y_tang, trajectorySpeed, (float)velX_avg, (float)velY_avg, (float)prevVelX, (float)prevVelY, accelerationForArc, out float allocatedTime);
 
 
-                float allocatedTime_guess = (arcLength + additionalDistanceToStop) / trajectorySpeed;
 
                 var waitUntilPos = new Dictionary<char, float>();
                 waitUntilPos[xDevice.Name] = Bx;
                 waitUntilPos[yDevice.Name] = By;
 
+                var shutterInfo_segments = new ShutterInfo()
+                {
+                    DelayOn = float.NaN,
+                    DelayOff = float.NaN
+                };
+
                 // Create the movement commands.
-                List<Command> commandsMovement = CreateMovementCommands(false, groupedDevicesByController, positionerMovementInformation, allocatedTime_guess, rethrow, waitUntilPos); //rethrow_guess* multiplier     allocatedTime_guess * multiplier
+                List<Command> commandsMovement = CreateMovementCommands(shutter, groupedDevicesByController, positionerMovementInformation, allocatedTime_guess, rethrow, waitUntilPos, shutterInfo_segments); //rethrow_guess* multiplier     allocatedTime_guess * multiplier
 
                 _commandManager.EnqueueCommandLine(commandsMovement.ToArray());
                 _commandManager.ExecuteCommandLine(commandsMovement.ToArray()).GetAwaiter().GetResult();
+
+
+                prevVelX = velX_avg;
+                prevVelY = velY_avg;
             }
 
 
 
 
             // move to end.
-            var endPosX = (float)(Math.Cos(endAngle) * radius) + centerX;
-            var endPosY = (float)(Math.Sin(endAngle) * radius) + centerY;
+            bool endIsNeeded = true;
+            if (endIsNeeded)
+            {
+                Ax = (float)(Math.Cos(endAngle - dtheta) * radius) + centerX;
+                Ay = (float)(Math.Sin(endAngle - dtheta) * radius) + centerY;
 
-            double endVelX = Math.Abs(-trajectorySpeed * Math.Sin(endAngle));
-            double endVelY = Math.Abs(trajectorySpeed * Math.Cos(endAngle));
+                Bx = (float)(Math.Cos(endAngle) * radius) + centerX;
+                By = (float)(Math.Sin(endAngle) * radius) + centerY;
+                
+                float velX_avg_end = (Bx - xDevice.CurrentPosition) / rethrow;
+                float velY_avg_end = (By - yDevice.CurrentPosition) / rethrow;
+                
+                // CALCULATE THE TANGENT ENDPOINT
+                CalculateTangentEndpoint(
+                    centerX, centerY,
+                    (double)Bx, (double)By,
+                    additionalDistanceToStop,
+                    true,
+                    out double x_tang_end, out double y_tang_end);
+                
+                // CREATE UPDATE MOVEMENT SETTINGS COMMANDS
+                var positionerMovementInformation_end = GetMovementInformation(xDevice, yDevice, (float)x_tang_end, (float)y_tang_end, trajectorySpeed, (float)velX_avg_end, (float)velY_avg_end, (float)prevVelX, (float)prevVelY, accelerationForArc, out float allocatedTime);
 
+                var waitUntilPos_end = new Dictionary<char, float>();
+                waitUntilPos_end[xDevice.Name] = Bx;
+                waitUntilPos_end[yDevice.Name] = By;
+
+                float timeToDecelerate = allocatedTime_guess - rethrow;
+
+                ShutterInfo shutterInfo = new ShutterInfo();
+                var shutterDevice = _controllerManager.GetDevices<ShutterDevice>().First();
+
+                shutterInfo.DelayOn = float.NaN;
+                shutterInfo.DelayOff = Math.Max(timeToDecelerate*1000f + shutterDevice.DelayOff, 0);
+
+                // Create the movement commands.
+                List<Command> commandsMovement_end = CreateMovementCommands(shutter, groupedDevicesByController, positionerMovementInformation_end, allocatedTime_guess, rethrow, waitUntilPos_end, shutterInfo); //
+
+                _commandManager.EnqueueCommandLine(commandsMovement_end.ToArray());
+                _commandManager.ExecuteCommandLine(commandsMovement_end.ToArray()).GetAwaiter().GetResult();
+            }
 
         }
-        private List<Command> CreateMovementCommands(bool isShutterUsed, Dictionary<BasePositionerController, List<BasePositionerDevice>> groupedDevicesByController, Dictionary<char, PositionerMovementInformation> positionerMovementInfos, float allocatedTime, float? waitUntilTime, Dictionary<char, float>? waitUntilPosDict)
+
+        private List<Command> CreateMovementCommands(bool isShutterUsed, Dictionary<BasePositionerController, List<BasePositionerDevice>> groupedDevicesByController, Dictionary<char, PositionerMovementInformation> positionerMovementInfos, float allocatedTime, float? waitUntilTime, Dictionary<char, float>? waitUntilPosDict, ShutterInfo shutterInfo)
         {
             var commandsMovement = new List<Command>();
 
@@ -423,11 +453,7 @@ namespace standa_controller_software.custom_functions.definitions
                     IsLeadInUsed = false,
                     AllocatedTime = allocatedTime,
                     PositionerInfo = positionerInfos,
-                    ShutterInfo = isShutterUsed ? new ShutterInfo
-                    {
-                        DelayOn = 0f,
-                        DelayOff = 0f,
-                    } : null
+                    ShutterInfo = isShutterUsed ? shutterInfo : new ShutterInfo()
                 };
 
                 commandsMovement.Add(new Command
