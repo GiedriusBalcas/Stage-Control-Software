@@ -32,16 +32,16 @@ namespace standa_control_software_WPF.view_models.config_creation
             }
         }
 
-        private string _name;
-        public string Name
+        private char _name;
+        public char Name
         {
             get 
             {
                 var nameProp = DeviceProperties.FirstOrDefault(prop => prop.PropertyName == "Name");
-                if (nameProp != null && nameProp.PropertyValue is string stringVal)
-                    if(stringVal != string.Empty)
-                        return stringVal;
-                return "u";
+                if (nameProp != null && nameProp.PropertyValue is char charVal)
+                    if(charVal != '\0')
+                        return charVal;
+                return 'u';
             }
             set {
                 _name = value;
@@ -78,7 +78,7 @@ namespace standa_control_software_WPF.view_models.config_creation
                 OnPropertyChanged(nameof(SelectedDeviceType));
             }
         }
-        public ObservableCollection<PropertyDisplayItem> DeviceProperties { get; } = new ObservableCollection<PropertyDisplayItem>();
+        public ObservableCollection<PropertyDisplayItem> DeviceProperties { get; }
 
         public ObservableCollection<string> DeviceTypes => new ObservableCollection<string>( 
             DeviceDefinitionLibrary.ControllerDefinitions.GetAllControllerTypes()
@@ -93,6 +93,7 @@ namespace standa_control_software_WPF.view_models.config_creation
         {
             this._controller = controller;
             IsEnabled = controller.IsEnabled;
+            DeviceProperties = new ObservableCollection<PropertyDisplayItem>();
 
             RemoveDeviceCommand = new RelayCommand<DeviceConfigViewModel>(ExecuteRemoveDevice);
             DeviceProperties.Clear();
@@ -120,8 +121,6 @@ namespace standa_control_software_WPF.view_models.config_creation
                         PropertyValue = defaultValue,
                         PropertyType = property.PropertyType,
                     };
-                    
-                    //TODO: IF property allready exists, skippidy skip. REMOVE WHATS NOT REQUIRED THOUGH
 
                     if (!DeviceProperties.Any(prop => prop.PropertyName == property.Name))
                     {
@@ -150,7 +149,8 @@ namespace standa_control_software_WPF.view_models.config_creation
                 catch (Exception)
                 {
                     // Handle conversion error, e.g., log or notify the user
-                    return false; // Update failed
+                    //return false; // Update failed
+                    throw;
                 }
             }
             return false; // Property not found

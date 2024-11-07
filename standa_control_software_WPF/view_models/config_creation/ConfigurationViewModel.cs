@@ -103,7 +103,7 @@ namespace standa_control_software_WPF.view_models.config_creation
             ConfigManager.ClearConfiguration();
         }
 
-        public IEnumerable<string> GetAllDeviceNames()
+        public IEnumerable<char> GetAllDeviceNames()
         {
             return Controllers.SelectMany(controller => controller.Devices.Select(device => device.Name)).Distinct();
         }

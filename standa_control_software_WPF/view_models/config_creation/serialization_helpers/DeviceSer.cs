@@ -2,7 +2,7 @@
 {
     public class DeviceSer
     {
-        public string Name { get; set; }
+        public char Name { get; set; }
         public string SelectedDeviceType { get; set; } = string.Empty;
         public List<PropertyDisplayItemSer> DeviceProperties { get; set; } = new List<PropertyDisplayItemSer>();
     }
