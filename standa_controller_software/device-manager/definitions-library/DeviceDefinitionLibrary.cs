@@ -4,6 +4,7 @@ using standa_controller_software.device_manager.controller_interfaces.positionin
 using standa_controller_software.device_manager.controller_interfaces.shutter;
 using standa_controller_software.device_manager.controller_interfaces.sync;
 using standa_controller_software.device_manager.devices;
+using standa_controller_software.device_manager.devices.positioning;
 using standa_controller_software.device_manager.devices.shutter;
 using System;
 using System.Collections.Generic;
@@ -26,7 +27,7 @@ namespace standa_controller_software.device_manager
             var positionerDeviceDefinitions = new List<DeviceInfo>
             {
                 new DeviceInfo { Name = "Linear Positioner", Type = typeof(LinearPositionerDevice) },
-                new DeviceInfo { Name = "Rotary Positioner", Type = typeof(LinearPositionerDevice) }
+                new DeviceInfo { Name = "Attenuator Positioner", Type = typeof(AttenuatorPositionerDevice) }
             };
 
             var positionerControllerTypeDefinitions = new List<ControllerInfo>
@@ -60,14 +61,7 @@ namespace standa_controller_software.device_manager
                     Name = "Virtual Shutter Controller",
                     Type = typeof(ShutterController_Sim),
                     AllowedDevices = shutterDeviceDefinitions
-                },
-
-                //new ControllerInfo
-                //{
-                //    Name = "Arduino Shutter Controller",
-                //    Type = typeof(ShutterController_Arduino),
-                //    AllowedDevices = shutterDeviceDefinitions
-                //}
+                }
             };
 
             var masterControllerTypeDefinitions = new List<ControllerInfo>

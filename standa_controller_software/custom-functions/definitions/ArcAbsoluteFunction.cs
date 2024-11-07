@@ -217,13 +217,13 @@ namespace standa_controller_software.custom_functions.definitions
 
 
 
-            float accelerationForArc = trajectorySpeed * trajectorySpeed / radius * 1.5f;
+            float accelerationForArc = trajectorySpeed * trajectorySpeed / radius * 1.1f;
 
             if (accelerationForArc > xDevice.MaxAcceleration || accelerationForArc > yDevice.MaxAcceleration)
                 throw new Exception("Max Acceleration value of the device is issuficient for the arc movement.");
 
 
-            float additionalDistanceToStop = accuracy_time * trajectorySpeed + trajectorySpeed * trajectorySpeed / (2 * accelerationForArc); // [um
+            float additionalDistanceToStop = accuracy_time * trajectorySpeed + 2 * trajectorySpeed * trajectorySpeed / (2 * accelerationForArc); // [um
 
 
             var arcLength = dtheta * radius;
@@ -248,7 +248,7 @@ namespace standa_controller_software.custom_functions.definitions
             if (needPositionChange | needSpeedChange)
                 needStartMovement = true;
 
-            if (needSpeedChange)
+            if (true)
             {
                 float distanceToAccelerate = trajectorySpeed * trajectorySpeed / (2 * accelerationForArc); // [um
                 float timeToAccelerate = trajectorySpeed / accelerationForArc;
@@ -330,7 +330,7 @@ namespace standa_controller_software.custom_functions.definitions
 
             float allocatedTime_guess = (arcLength + additionalDistanceToStop) / trajectorySpeed;
 
-            for (float theta = startAngle + dtheta; theta <= endAngle - dtheta; theta += dtheta)
+            for (float theta = startAngle + dtheta; theta < endAngle ; theta += dtheta)
             {
                 Ax = (float)(Math.Cos(theta - dtheta) * radius) + centerX;
                 Ay = (float)(Math.Sin(theta - dtheta) * radius) + centerY;
@@ -393,12 +393,15 @@ namespace standa_controller_software.custom_functions.definitions
                 
                 float velX_avg_end = (Bx - xDevice.CurrentPosition) / rethrow;
                 float velY_avg_end = (By - yDevice.CurrentPosition) / rethrow;
-                
+
+                float additionalDistanceToStop_end = trajectorySpeed * trajectorySpeed / (2 * accelerationForArc); // [um
+
+
                 // CALCULATE THE TANGENT ENDPOINT
                 CalculateTangentEndpoint(
                     centerX, centerY,
                     (double)Bx, (double)By,
-                    additionalDistanceToStop,
+                    additionalDistanceToStop_end,
                     true,
                     out double x_tang_end, out double y_tang_end);
                 
@@ -418,7 +421,7 @@ namespace standa_controller_software.custom_functions.definitions
                 shutterInfo.DelayOff = Math.Max(timeToDecelerate*1000f + shutterDevice.DelayOff, 0);
 
                 // Create the movement commands.
-                List<Command> commandsMovement_end = CreateMovementCommands(shutter, groupedDevicesByController, positionerMovementInformation_end, allocatedTime_guess, rethrow, waitUntilPos_end, shutterInfo); //
+                List<Command> commandsMovement_end = CreateMovementCommands(shutter, groupedDevicesByController, positionerMovementInformation_end, allocatedTime_guess, null, waitUntilPos_end, shutterInfo); //
 
                 _commandManager.EnqueueCommandLine(commandsMovement_end.ToArray());
                 _commandManager.ExecuteCommandLine(commandsMovement_end.ToArray()).GetAwaiter().GetResult();

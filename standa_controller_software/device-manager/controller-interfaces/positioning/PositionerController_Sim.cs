@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
 using System.Xml.Linq;
+using ximcWrapper;
 
 namespace standa_controller_software.device_manager.controller_interfaces.positioning
 {
@@ -604,6 +605,27 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
             }
             //await Task.Delay(10);
+        }
+
+        public override Task ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
+        {
+            if (device is BasePositionerDevice positioningDevice && _deviceInfo.TryGetValue(positioningDevice.Name, out DeviceInformation deviceInfo))
+            {
+
+
+                deviceInfo.MaxSpeed = positioningDevice.MaxSpeed;
+
+
+                positioningDevice.Speed = positioningDevice.DefaultSpeed;
+                positioningDevice.Acceleration = positioningDevice.MaxAcceleration;
+                positioningDevice.Deceleration = positioningDevice.MaxDeceleration;
+
+                deviceInfo.Speed = Math.Min(positioningDevice.Speed, positioningDevice.MaxSpeed);
+                deviceInfo.Acceleration = Math.Min(positioningDevice.Acceleration, positioningDevice.MaxAcceleration);
+                deviceInfo.Deceleration = Math.Min(positioningDevice.Deceleration, positioningDevice.MaxDeceleration);
+            }
+
+            return base.ConnectDevice(device, semaphore);
         }
 
         public override BaseController GetCopy()

@@ -503,9 +503,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     positioner.Value.Acceleration = deviceInfo.moveSettings_t.Accel;
                     positioner.Value.Deceleration = deviceInfo.moveSettings_t.Decel;
                     positioner.Value.Speed = deviceInfo.moveSettings_t.Speed;
-                    positioner.Value.MaxAcceleration = _deviceInfo[positioner.Key].maxAcceleration;
-                    positioner.Value.MaxDeceleration = _deviceInfo[positioner.Key].maxDeceleration;
-                    positioner.Value.MaxSpeed = _deviceInfo[positioner.Key].maxSpeed;
+                    //positioner.Value.MaxAcceleration = _deviceInfo[positioner.Key].maxAcceleration;
+                    //positioner.Value.MaxDeceleration = _deviceInfo[positioner.Key].maxDeceleration;
+                    //positioner.Value.MaxSpeed = _deviceInfo[positioner.Key].maxSpeed;
                     
                     CallResponse = API.get_status_calb(deviceInfo.id, out deviceInfo.statusCalibrated_t, ref deviceInfo.calibration_t);
 
