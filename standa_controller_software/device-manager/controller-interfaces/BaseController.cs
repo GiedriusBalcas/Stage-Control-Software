@@ -1,5 +1,6 @@
 ﻿using OpenTK.Audio.OpenAL;
 using standa_controller_software.command_manager;
+using standa_controller_software.command_manager.command_parameter_library.Common;
 using standa_controller_software.device_manager.attributes;
 using standa_controller_software.device_manager.devices;
 using System;
@@ -94,11 +95,12 @@ namespace standa_controller_software.device_manager.controller_interfaces
         public abstract BaseController GetVirtualCopy();
         public abstract void AddDevice(BaseDevice device);
 
-        protected abstract Task ConnectDevice(Command command, SemaphoreSlim semaphore);
         protected virtual Task InitializeController(Command command, SemaphoreSlim semaphore)
         {
             return Task.CompletedTask;
         }
+
+        protected abstract Task ConnectDevice(Command command, SemaphoreSlim semaphore);
         protected abstract Task Stop(Command command, SemaphoreSlim semaphore);
         protected abstract Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore);
 

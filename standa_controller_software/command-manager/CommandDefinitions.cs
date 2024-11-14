@@ -22,9 +22,7 @@ namespace standa_controller_software.command_manager
         AwaitQueuedItems,
         // positioners
         MoveAbsolute,
-        WaitUntilStop,
         UpdateMoveSettings,
-        WaitUntilStopPolar,
         AddSyncInAction,
         // shutters
         ChangeShutterStateOnInterval,

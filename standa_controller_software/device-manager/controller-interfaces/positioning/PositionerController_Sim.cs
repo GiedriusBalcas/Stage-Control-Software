@@ -1,5 +1,6 @@
 ﻿using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
+using standa_controller_software.command_manager.command_parameter_library.Common;
 using standa_controller_software.device_manager.attributes;
 using standa_controller_software.device_manager.devices;
 using System;
@@ -16,7 +17,7 @@ using ximcWrapper;
 
 namespace standa_controller_software.device_manager.controller_interfaces.positioning
 {
-    public partial class PositionerController_Sim : BasePositionerController
+    public partial class PositionerController_Sim : BasePositionerController, IQuableController 
     {
         //----------Virtual axes private data---------------
         private class DeviceInformation
@@ -52,35 +53,26 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             public float AllocatedTime;
         }
         private Dictionary<char, Queue<SyncInAction>> _buffer = new Dictionary<char, Queue<SyncInAction>>();
-        private ConcurrentQueue<string>? _log;
-
         //---------------------------------------------------
 
         public event Action<char> OnSyncOut;
         public event  Action<char> OnSyncIn;
 
-        public PositionerController_Sim(string name) : base(name)
+        public PositionerController_Sim(string name, ConcurrentQueue<string> log) : base(name, log)
         {
-            _methodMap[CommandDefinitions.AddSyncInAction] = new MethodInformation()
-            {
-                MethodHandle = AddSyncInAction,
-                Quable = false,
-                State = MethodState.Free,
-            };
-
 
 
             OnSyncIn += (char name) => OnSyncInAction(name).GetAwaiter().GetResult();
         }
 
-        public int CheckBufferFreeSpace()
+        protected Task<int> IQuableController.GetBufferFreeSpace(Command command, SemaphoreSlim semaphore)
         {
-            var maxItemSize = 1000000;
+            var maxItemSize = 20;
             var currentSize = _buffer.Count;
 
             return maxItemSize - currentSize;
         }
-        public void InvokeSynIn(char deviceName)
+        public void InvokeSyncIn(char deviceName)
         {
             OnSyncIn?.Invoke(deviceName);
         }
@@ -102,9 +94,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             }
         }
 
-        private Task AddSyncInAction(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override Task AddSyncInAction(Command command, SemaphoreSlim semaphore)
         {
-            _log = log;
                 var deviceNames = command.TargetDevices;
             var parameters = command.Parameters as AddSyncInActionParameters;
             for (int i = 0; i < deviceNames.Length; i++)
@@ -193,7 +184,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return Math.Max(v_target1, v_target2);
         }
 
-        protected override async Task MoveAbsolute(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override async Task MoveAbsolute(Command command, SemaphoreSlim semaphore)
         {
             // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: move start");
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
@@ -236,13 +227,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             }
 
             _ = Task.WhenAll(tasks);
-            await WaitUntilStopAsync(waitUntilPositions, directions, semaphore, log);
+            await WaitUntilStopAsync(waitUntilPositions, directions, semaphore);
             // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: move end");
 
 
         }
 
-        protected override async Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override async Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore)
         {
             // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: upd start");
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
@@ -259,10 +250,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 var task = UpdateMovementSettings(device.Name, speedValue, accelValue, decelValue);
                 await task;
             }
-            // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: upd end");
-
-
-            //semaphore.Release();
         }
 
         private Task UpdateMovementSettings(char name, float speedValue, float accelValue, float decelValue)
@@ -274,7 +261,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return Task.CompletedTask;
         }
 
-        protected async Task WaitUntilStopAsync(Dictionary<char, float?> waitUntilPositions, Dictionary<char, bool> directions, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected async Task WaitUntilStopAsync(Dictionary<char, float?> waitUntilPositions, Dictionary<char, bool> directions, SemaphoreSlim semaphore)
         {
             //var devices = waitUntilPositions.Keys.Select(deviceName => Devices[deviceName]).ToArray();
             var queuedItems = new List<Func<Task<bool>>>();
@@ -356,114 +343,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         }
 
 
-
-        protected override async Task WaitUntilStopPolar(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
-        {
-            // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: wait start");
-            // only works for a device pair.
-
-            //var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
-
-            //try
-            //{ 
-            //    if (command.Parameters[0] == null || command.Parameters[0].Length == 0)
-            //    {
-            //        await Task.Delay(2);
-
-            //        var moveStatusX = _deviceInfo[devices[0].Name].MoveStatus != 0;
-            //        var moveStatusY = _deviceInfo[devices[1].Name].MoveStatus != 0;
-
-            //        bool boolCheck = moveStatusX && moveStatusY;
-            //    }
-            //    else
-            //    {
-            //        await Task.Delay(2);
-
-            //        var targetAngle = (float)command.Parameters[0][0];
-            //        var direction = (bool)command.Parameters[0][1];
-            //        var centerX = (float)command.Parameters[0][2];
-            //        var centerY = (float)command.Parameters[1][2];
-            //        bool boolCheck = true;
-
-            //        var moveStatusX = _deviceInfo[devices[0].Name].MoveStatus != 0;
-            //        var moveStatusY = _deviceInfo[devices[1].Name].MoveStatus != 0;
-
-            //        var currentPositionX = _deviceInfo[devices[0].Name].CurrentPosition;
-            //        Devices[devices[0].Name].CurrentPosition = currentPositionX;
-            //        var currentPositionY = _deviceInfo[devices[1].Name].CurrentPosition;
-            //        Devices[devices[1].Name].CurrentPosition = currentPositionY;
-
-            //        double deltaX = currentPositionX - centerX;
-            //        double deltaY = currentPositionY - centerY;
-            //        var angleRadians = Math.Atan2((currentPositionY - centerY), (currentPositionX - centerX));
-
-            //        if (direction)
-            //        {
-            //            // target angle is ahead one revolution
-            //            if (angleRadians > targetAngle)
-            //            {
-            //                targetAngle += (float)Math.PI * 2;
-            //            }
-            //        } 
-            //        else
-            //        {
-            //            if (angleRadians < targetAngle)
-            //            {
-            //                targetAngle -= (float)Math.PI * 2;
-            //            }
-            //        }
-
-            //        var angleRadians_prev = angleRadians;
-
-            //        boolCheck = moveStatusX && moveStatusY && (direction ? angleRadians < targetAngle : angleRadians > targetAngle);
-
-
-            //        while (boolCheck)
-            //        {
-            //            await Task.Delay(1);
-
-            //            moveStatusX = _deviceInfo[devices[0].Name].MoveStatus != 0;
-            //            moveStatusY = _deviceInfo[devices[1].Name].MoveStatus != 0;
-
-            //            currentPositionX = _deviceInfo[devices[0].Name].CurrentPosition;
-            //            Devices[devices[0].Name].CurrentPosition = currentPositionX;
-
-            //            currentPositionY = _deviceInfo[devices[1].Name].CurrentPosition;
-            //            Devices[devices[1].Name].CurrentPosition = currentPositionY;
-
-            //            angleRadians = Math.Atan2((currentPositionY - centerY), (currentPositionX - centerX));
-                        
-            //            if (direction)
-            //            {
-            //                // target angle is ahead one revolution
-            //                if (angleRadians < angleRadians_prev)
-            //                {
-            //                    targetAngle -= (float)Math.PI * 2;
-            //                }
-            //            }
-            //            else
-            //            {
-            //                if (angleRadians > angleRadians_prev)
-            //                {
-            //                    targetAngle += (float)Math.PI * 2;
-            //                }
-            //            }
-
-            //            angleRadians_prev = angleRadians;
-
-            //            boolCheck = moveStatusX && moveStatusY && (direction ? angleRadians < targetAngle : angleRadians > targetAngle);
-            //        }
-                   
-            //    }
-            //}
-            //catch
-            //{
-            //    throw;
-            //}
-
-            // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: wait end");
-
-        }
 
         private async Task UpdateCommandMoveA(char name, float targetPosition, CancellationToken cancellationToken)
         {
@@ -548,7 +427,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
                     }
                 }
-                // moving to the wrong direction.
                 else
                 {
                     updatedSpeedValue = Math.Abs(_deviceInfo[name].CurrentSpeed) - decelerationPerInterval * Math.Sign(_deviceInfo[name].CurrentSpeed) > distanceToTarget()
@@ -559,14 +437,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
                 _deviceInfo[name].CurrentSpeed = updatedSpeedValue;
                 float updatedPositionValue;
-
-                //float updatedPositionValue = Math.Sign(pointDifference()) != Math.Sign(movementPerInterval)
-                //    ? _deviceInfo[name].CurrentPosition + movementPerInterval
-                //    : distanceToTarget() < Math.Abs(movementPerInterval)
-                //        ? targetPosition
-                //        : _deviceInfo[name].CurrentPosition + movementPerInterval;
-
-
                 if (Math.Sign(pointDifference()) != Math.Sign(movementPerInterval))
                     updatedPositionValue = _deviceInfo[name].CurrentPosition + movementPerInterval;
                 else if (distanceToTarget() < Math.Abs(movementPerInterval))
@@ -574,16 +444,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 else
                     updatedPositionValue = _deviceInfo[name].CurrentPosition + movementPerInterval;
 
-                //float updatedPositionValue = Math.Sign(pointDifference()) != Math.Sign(movementPerInterval)
-                //    ? _deviceInfo[name].CurrentPosition + movementPerInterval
-                //    : distanceToTarget() < Math.Abs(movementPerInterval)
-                //        ? targetPosition
-                //        : _deviceInfo[name].CurrentPosition + movementPerInterval;
-
                 _deviceInfo[name].CurrentPosition = float.IsFinite(updatedPositionValue) ? updatedPositionValue : 0;
 
-
-                //await Task.Delay(1, cancellationToken);  // Allow the task to yield control to other tasks.
                 await Task.Yield();
             }
 
@@ -594,7 +456,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             OnSyncOut?.Invoke(name);
         }
 
-        public override async Task UpdateStatesAsync(ConcurrentQueue<string> log)
+        protected override async Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore)
         {
             foreach (var positioner in Devices)
             {
@@ -604,35 +466,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 positioner.Value.Deceleration = _deviceInfo[positioner.Key].Deceleration;
                 positioner.Value.Speed = _deviceInfo[positioner.Key].Speed;
 
-                log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
+                _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
             }
-            //await Task.Delay(10);
-        }
-
-        public override Task ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
-        {
-            if (device is BasePositionerDevice positioningDevice && _deviceInfo.TryGetValue(positioningDevice.Name, out DeviceInformation deviceInfo))
-            {
-
-
-                deviceInfo.MaxSpeed = positioningDevice.MaxSpeed;
-
-
-                positioningDevice.Speed = positioningDevice.DefaultSpeed;
-                positioningDevice.Acceleration = positioningDevice.MaxAcceleration;
-                positioningDevice.Deceleration = positioningDevice.MaxDeceleration;
-
-                deviceInfo.Speed = Math.Min(positioningDevice.Speed, positioningDevice.MaxSpeed);
-                deviceInfo.Acceleration = Math.Min(positioningDevice.Acceleration, positioningDevice.MaxAcceleration);
-                deviceInfo.Deceleration = Math.Min(positioningDevice.Deceleration, positioningDevice.MaxDeceleration);
-            }
-
-            return base.ConnectDevice(device, semaphore);
+            await Task.Delay(1);
         }
 
         public override BaseController GetVirtualCopy()
         {
-            var controller = new PositionerController_Sim(Name);
+            var controller = new PositionerController_Sim(Name, _log);
             foreach (var device in Devices)
             {
                 controller.AddDevice(device.Value.GetCopy());
@@ -642,12 +483,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         }
 
 
-        protected override Task WaitUntilStop(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override Task Stop(SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override Task Stop(Command command, SemaphoreSlim semaphore)
         {
             _buffer.Clear();
 
@@ -660,6 +496,21 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             }
 
             return Task.CompletedTask;
+        }
+
+        protected override void ConnectDevice_implementation(BaseDevice device)
+        {
+            if (device is BasePositionerDevice positioningDevice && _deviceInfo.TryGetValue(positioningDevice.Name, out DeviceInformation deviceInfo))
+            {
+                deviceInfo.MaxSpeed = positioningDevice.MaxSpeed;
+                positioningDevice.Speed = positioningDevice.DefaultSpeed;
+                positioningDevice.Acceleration = positioningDevice.MaxAcceleration;
+                positioningDevice.Deceleration = positioningDevice.MaxDeceleration;
+
+                deviceInfo.Speed = Math.Min(positioningDevice.Speed, positioningDevice.MaxSpeed);
+                deviceInfo.Acceleration = Math.Min(positioningDevice.Acceleration, positioningDevice.MaxAcceleration);
+                deviceInfo.Deceleration = Math.Min(positioningDevice.Deceleration, positioningDevice.MaxDeceleration);
+            }
         }
     }
 }

@@ -9,7 +9,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
 {
     public interface IQuableController
     {
-        protected Task GetBufferFreeSpace(Command command, SemaphoreSlim semaphore) 
+        protected Task<int> GetBufferFreeSpace(Command command, SemaphoreSlim semaphore) 
         {
             throw new NotImplementedException();
         }

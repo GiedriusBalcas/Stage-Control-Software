@@ -1,4 +1,5 @@
 ﻿using standa_controller_software.command_manager;
+using standa_controller_software.command_manager.command_parameter_library.Common;
 using standa_controller_software.device_manager.attributes;
 using standa_controller_software.device_manager.devices;
 using System;
@@ -17,26 +18,24 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         protected Dictionary<char, BasePositionerDevice> Devices { get; }
 
 
-        public BasePositionerController(string name) : base(name)
+        public BasePositionerController(string name, ConcurrentQueue<string> log) : base(name, log)
         {
             _methodMap[CommandDefinitions.MoveAbsolute] = new MethodInformation()
             {
                 MethodHandle = MoveAbsolute,
-                Quable = false,
                 State = MethodState.Free,
             };
             _methodMap[CommandDefinitions.UpdateMoveSettings] = new MethodInformation()
             {
                 MethodHandle = UpdateMoveSettings,
-                Quable = false,
                 State = MethodState.Free,
             };
-            _methodMap[CommandDefinitions.WaitUntilStop] = new MethodInformation()
+            _methodMap[CommandDefinitions.AddSyncInAction] = new MethodInformation()
             {
-                MethodHandle = WaitUntilStop,
-                Quable = false,
+                MethodHandle = AddSyncInAction,
                 State = MethodState.Free,
             };
+
             Devices = new Dictionary<char, BasePositionerDevice>();
             //methodMap["UpdateStates"] = UpdateStatesCall;
         }
@@ -50,46 +49,34 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             else
                 throw new Exception($"Unable to add device: {device.Name}. Controller {this.Name} only accepts positioning devices.");
         }
-        public override Task ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
+        protected override Task ConnectDevice(Command command, SemaphoreSlim semaphore)
         {
-            semaphore.Release();
-            if (device is BasePositionerDevice positioningDevice && Devices.ContainsValue(positioningDevice))
+            if (command.Parameters is ConnectDevicesParameters connectDevicesParameters)
             {
-                positioningDevice.IsConnected = true;
+                var deviceNames = connectDevicesParameters.Devices;
+                foreach (var deviceName in deviceNames)
+                {
+
+                    var device = Devices[deviceName];
+                    ConnectDevice_implementation(device);
+                    device.IsConnected = true;
+                }
             }
-            else
-                throw new Exception($"Unable to add device: {device.Name}. Controller {this.Name} only accepts positioning devices.");
-            
+
             return Task.CompletedTask;
         }
-
-
-        private string FormatParameters(object[][] parameters)
-        {
-            var formattedParameters = parameters
-                .Select(paramArray =>
-                {
-                    if (paramArray == null)
-                    {
-                        return "[null]";
-                    }
-                    return $"[{string.Join(", ", paramArray.Select(p => p?.ToString() ?? "null"))}]";
-                });
-
-            return string.Join(" ", formattedParameters); // Join all sub-arrays with a space
-        }
-        
 
         public override List<BaseDevice> GetDevices()
         {
             return Devices.Values.Cast<BaseDevice>().ToList();
         }
 
-        public override abstract Task<object> UpdateStatesAsync(ConcurrentQueue<string> log);
-        protected abstract Task MoveAbsolute(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
-        protected abstract Task<object> UpdateMoveSettings(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
-        protected abstract Task WaitUntilStop(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
-        protected abstract Task WaitUntilStopPolar(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
+        protected override abstract Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore);
+        protected abstract Task MoveAbsolute(Command command, SemaphoreSlim semaphore);
+        protected abstract Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore);
+        protected abstract Task AddSyncInAction(Command command, SemaphoreSlim semaphore);
+        protected abstract void ConnectDevice_implementation(BaseDevice device);
+
 
         public override abstract BaseController GetVirtualCopy();
     }

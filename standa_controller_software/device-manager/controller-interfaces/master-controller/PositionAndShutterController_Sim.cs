@@ -70,7 +70,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     char deviceName = device.Name;
                     if(_syncController is not null)
                     {
-                        _syncController._positionerSyncInMap[deviceName] = () => positionerController.InvokeSynIn(deviceName);
+                        _syncController._positionerSyncInMap[deviceName] = () => positionerController.InvokeSyncIn(deviceName);
                         positionerController.OnSyncOut += _syncController.GotSyncOut;
                     }
                 }
@@ -92,7 +92,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                             char deviceName = device.Name;
                             if (_syncController is not null)
                             {
-                                _syncController._positionerSyncInMap[deviceName] = () => slavePositionerController.InvokeSynIn(deviceName);
+                                _syncController._positionerSyncInMap[deviceName] = () => slavePositionerController.InvokeSyncIn(deviceName);
                                 slavePositionerController.OnSyncOut += _syncController.GotSyncOut;
                             }
                         }
