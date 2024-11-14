@@ -42,22 +42,11 @@ namespace standa_controller_software.device_manager.controller_interfaces
             {
                 MethodHandle = ConnectDevice,
             };
-            _methodMap[CommandDefinitions.ConnectDevice] = new MethodInformation<int>()
+            _methodMap[CommandDefinitions.Stop] = new MethodInformation()
             {
-                MethodHandle = GetIntValue,
+                MethodHandle = Stop,
             };
 
-        }
-
-        protected Task<int> GetIntValue(Command command, SemaphoreSlim semaphore)
-        {
-            int value = 1;
-            var kaka = Task.Run(() =>
-            {
-                return value;
-            });
-
-            return kaka;
         }
 
         public virtual async Task<T> ExecuteCommandAsync<T>(Command command, SemaphoreSlim semaphore)
@@ -100,10 +89,11 @@ namespace standa_controller_software.device_manager.controller_interfaces
                 throw new InvalidOperationException("Invalid action");
             }
         }
-
         public abstract List<BaseDevice> GetDevices();
-        public abstract BaseController GetCopy();
+        //TODO: GetCopy() method is not used as supposed to. It's only used to create a virtual one, so a more efficient way should exist.
+        public abstract BaseController GetVirtualCopy();
         public abstract void AddDevice(BaseDevice device);
+
         protected abstract Task ConnectDevice(Command command, SemaphoreSlim semaphore);
         protected virtual Task InitializeController(Command command, SemaphoreSlim semaphore)
         {

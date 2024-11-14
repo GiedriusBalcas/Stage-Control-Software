@@ -317,7 +317,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             throw new NotImplementedException();
         }
 
-        public override BaseController GetCopy()
+        public override BaseController GetVirtualCopy()
         {
             var controller = new PositionerController_XIMC(Name);
             foreach (var device in Devices)

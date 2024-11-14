@@ -95,7 +95,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         protected abstract Task ChangeStateOnIntervalImplementation(BaseShutterDevice device, float duration);
 
 
-        public override abstract BaseController GetCopy();
+        public override abstract BaseController GetVirtualCopy();
 
         public override List<BaseDevice> GetDevices()
         {

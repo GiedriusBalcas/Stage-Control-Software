@@ -225,12 +225,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             }
         }
 
-        public override BaseController GetCopy()
+        public override BaseController GetVirtualCopy()
         {
             var controllerCopy = new PositionAndShutterController_Virtual(this.Name);
             foreach (var slaveController in SlaveControllers)
             {
-                controllerCopy.AddSlaveController(slaveController.Value.GetCopy(), SlaveControllersLocks[slaveController.Key]);
+                controllerCopy.AddSlaveController(slaveController.Value.GetVirtualCopy(), SlaveControllersLocks[slaveController.Key]);
             }
 
             return controllerCopy;

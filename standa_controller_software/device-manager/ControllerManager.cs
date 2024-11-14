@@ -116,7 +116,7 @@ namespace standa_controller_software.device_manager
                 else
                 {
                     // If no replacement, clone the original controller
-                    newController = originalController.GetCopy(); // Assuming IController has a Clone method
+                    newController = originalController.GetVirtualCopy(); // Assuming IController has a Clone method
                 }
 
                 if (newController is not null)

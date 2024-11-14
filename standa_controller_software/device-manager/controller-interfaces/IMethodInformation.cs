@@ -22,6 +22,6 @@ namespace standa_controller_software.device_manager.controller_interfaces
     {
         MethodState State { get; set; }
         Type ReturnType { get; }
-        Task<Dictionary<string,object?>> InvokeAsync(Command[] command, SemaphoreSlim semaphore);
+        Task InvokeAsync(Command[] command, SemaphoreSlim semaphore);
     }
 }

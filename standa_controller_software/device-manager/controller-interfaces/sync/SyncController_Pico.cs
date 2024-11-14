@@ -681,7 +681,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             throw new NotImplementedException();
         }
 
-        public override BaseController GetCopy()
+        public override BaseController GetVirtualCopy()
         {
             var controller = new SyncController_Pico(Name)
             {

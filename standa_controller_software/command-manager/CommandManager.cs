@@ -115,7 +115,7 @@ namespace standa_controller_software.command_manager
 
             // check if theres a queued controller
             // lets try to handle the quable first, then the non quable as they go in the command line
-            var quableControllers = commandsByMasterController.Keys.Where(name => _controllerManager.Controllers[name].IsQuable).ToList();
+            var quableControllers = commandsByMasterController.Keys.Where(name => _controllerManager.Controllers[name] is IQuableController).ToList();
 
             if (_currentQueueController != null)
             {

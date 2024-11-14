@@ -38,7 +38,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
                 });
             }
         }
-        public override BaseController GetCopy()
+        public override BaseController GetVirtualCopy()
         {
             var controller = new ShutterController_Sim(Name);
             foreach (var device in Devices)

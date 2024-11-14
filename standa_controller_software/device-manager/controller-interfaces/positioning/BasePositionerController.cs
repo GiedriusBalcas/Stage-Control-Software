@@ -91,6 +91,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         protected abstract Task WaitUntilStop(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
         protected abstract Task WaitUntilStopPolar(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
 
-        public override abstract BaseController GetCopy();
+        public override abstract BaseController GetVirtualCopy();
     }
 }

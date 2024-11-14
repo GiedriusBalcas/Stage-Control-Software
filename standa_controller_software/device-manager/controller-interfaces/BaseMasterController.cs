@@ -40,10 +40,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 if (_multiControllerMethodMap.TryGetValue(action, out var method))
                 {
                     if (groupsCommands.Any(groupsCommand => groupsCommand.Await))
-                    {
-                        var result = await method.InvokeAsync(commands, semaphore);
-
-                    }
+                        await method.InvokeAsync(commands, semaphore);
                     else
                         _ = method.MethodHandle(commands, semaphore);
                 }
@@ -51,21 +48,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 {
                     foreach (Command command in commands)
                     {
-                        if (SlaveControllers.TryGetValue(command.TargetController, out var slaveController))
-                        {
-                            var gatheredSemaphore = await GatherSemaphoresForController([slaveController.Name]); 
-                            try
-                            {
-                                await slaveController.ExecuteCommandAsync(command, gatheredSemaphore[slaveController.Name], log);
-                            }
-                            finally
-                            {
-                                ReleaseSemeaphores(gatheredSemaphore);
-                            }
-                        }
-                        else
-                            throw new Exception($"Slave controller {command.TargetController} was not found.");
-
+                        await ExecuteSlaveCommand(command);
                     }
                 }
             }
@@ -77,10 +60,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             throw new NotImplementedException();
         }
         protected override Task ConnectDevice(Command command, SemaphoreSlim semaphore)
-        {
-            throw new NotImplementedException();
-        }
-        public override Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore)
         {
             throw new NotImplementedException();
         }
@@ -117,6 +96,26 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             {
                 semaphore.Release();
             }
+        }
+
+        protected async Task ExecuteSlaveCommand(Command command)
+        {
+            var controllerName = command.TargetController;
+            if (controllerName != string.Empty && SlaveControllers.TryGetValue(controllerName, out var controller))
+            {
+                var controllerLock = await GatherSemaphoresForController([controllerName]);
+                try
+                {
+                    await controller.ExecuteCommandAsync(command, controllerLock[controllerName]);
+                }
+                finally
+                {
+                    ReleaseSemeaphores(controllerLock);
+                }
+            }
+            else
+                throw new Exception("Unable to retrive controller in master controller.");
+            
         }
     }
 }

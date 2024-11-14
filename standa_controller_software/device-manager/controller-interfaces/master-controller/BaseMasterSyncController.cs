@@ -1,12 +1,14 @@
 ﻿using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.command_manager.command_parameter_library.Positioners;
+using standa_controller_software.command_manager.command_parameter_library.Synchronization;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.controller_interfaces.sync;
 using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -14,9 +16,9 @@ using System.Threading.Tasks;
 
 namespace standa_controller_software.device_manager.controller_interfaces.master_controller
 {
-    public abstract class BaseMasterSyncController : BaseMasterController
+    public abstract class BaseMasterSyncController : BaseMasterController, IQuableController
     {
-        private struct PositionerInfo
+        public struct PositionerInfo
         {
             public char[] Devices;
             public float[] TargetPositions;
@@ -33,40 +35,128 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             public float Shutter_delay_off;
         }
 
-        private struct MovementInformation
+        protected struct MovementInformation
         {
             public Dictionary<string, PositionerInfo> PositionerInfoGroups;
             public ExecutionInformation ExecutionInformation;
         }
 
-
-        private Queue<MovementInformation> _buffer;
-        private bool _launchPending = true;
-        private bool _updateLaunchPending;
-        private TaskCompletionSource<bool> _processingCompletionSource;
-        private TaskCompletionSource<bool> _processingLastItemTakenSource;
+        protected Queue<MovementInformation> _buffer;
+        protected Command[]? _updateMoveSettingsCommands = null;
+        protected bool _launchPending = true;
+        protected bool _updateLaunchPending;
+        protected TaskCompletionSource<bool> _processingCompletionSource;
+        protected TaskCompletionSource<bool> _processingLastItemTakenSource;
         public BaseMasterSyncController(string name, ConcurrentQueue<string> log) : base(name, log)
         {
             _multiControllerMethodMap[CommandDefinitions.ChangeShutterState] = new MultiControllerMethodInformation()
             {
                 MethodHandle = ChangeState,
-                State = MethodState.Free,
             };
             _multiControllerMethodMap[CommandDefinitions.MoveAbsolute] = new MultiControllerMethodInformation()
             {
                 MethodHandle = MoveAbsolute,
-                State = MethodState.Free,
             };
             _multiControllerMethodMap[CommandDefinitions.UpdateMoveSettings] = new MultiControllerMethodInformation()
             {
                 MethodHandle = UpdateMoveSettings,
-                State = MethodState.Free,
+            };
+            _methodMap[CommandDefinitions.AwaitQueuedItems] = new MethodInformation()
+            {
+                MethodHandle = AwaitQueuedItems,
             };
 
             _buffer = new Queue<MovementInformation>();
         }
 
-        private async Task SendCommandIfAvailable()
+        protected virtual async Task AwaitQueuedItems(Command command, SemaphoreSlim semaphore)
+        {
+            await ProcessQueue(semaphore);
+            
+            await AwaitExecutionEnd();
+        }
+
+        protected virtual Task MoveAbsolute(Command[] commands, SemaphoreSlim semaphore)
+        {
+            Dictionary<string, PositionerInfo> posInfoGroups = new Dictionary<string, PositionerInfo>();
+            List<MoveAbsoluteParameters> moveAbsoluteParameterList = new List<MoveAbsoluteParameters>();
+            for (int i = 0; i < commands.Length; i++)
+            {
+                var command = commands[i];
+                var commandParameters = command.Parameters as MoveAbsoluteParameters ?? throw new Exception("Unable to retrive MoveAbsolute parameters.");
+
+                moveAbsoluteParameterList.Add(commandParameters);
+
+                posInfoGroups[command.TargetController] = new PositionerInfo
+                {
+                    Devices = command.TargetDevices,
+                    TargetPositions = command.TargetDevices.Select(deviceName => commandParameters.PositionerInfo[deviceName].TargetPosition).ToArray(),
+                    AllocatedTimes = command.TargetDevices.Select(deviceName => commandParameters.AllocatedTime).ToArray(),
+                };
+            }
+
+            var rethrow_ms = moveAbsoluteParameterList.Select(moveParam => moveParam.WaitUntilTime * 1000f).Max();
+            var maxAllocatedTime_ms = posInfoGroups.Select(info => info.Value.AllocatedTimes.Max()).Max() * 1000;
+            bool isShutterUsed = moveAbsoluteParameterList.Any(moveParam => moveParam.IsShutterUsed);
+
+            var shutter_on_delays = moveAbsoluteParameterList.Select(moveParam => moveParam.ShutterInfo.DelayOn).Where(n => !float.IsNaN(n));
+            float shutter_on_delay_ms = shutter_on_delays.Any() ? shutter_on_delays.Max() : float.NaN;
+
+            var shutter_off_delays = moveAbsoluteParameterList.Select(moveParam => moveParam.ShutterInfo.DelayOff).Where(n => !float.IsNaN(n));
+            float shutter_off_delay_ms = shutter_off_delays.Any() ? Math.Max(maxAllocatedTime_ms - shutter_off_delays.Min(), float.IsNaN(shutter_on_delay_ms) ? 0f : shutter_on_delay_ms) : float.NaN;
+
+            var executionParameters = new ExecutionInformation()
+            {
+                Devices = commands.SelectMany(comm => comm.TargetDevices).ToArray(),
+                Launch = _launchPending,
+                Rethrow = rethrow_ms ?? 0f,
+                Shutter = isShutterUsed,
+                Shutter_delay_on = shutter_on_delay_ms,
+                Shutter_delay_off = shutter_off_delay_ms,
+            };
+
+            var moveInfo = new MovementInformation()
+            {
+                PositionerInfoGroups = posInfoGroups,
+                ExecutionInformation = executionParameters
+            };
+            _buffer.Enqueue(moveInfo);
+
+            _launchPending = false;
+
+            return Task.CompletedTask;
+        }
+        protected virtual async Task UpdateMoveSettings(Command[] commands, SemaphoreSlim semaphore)
+        {
+            //TODO: store the update commands until the second one or awaitQueuedItems is hit.
+
+            var isUpdateNeeded = commands.Any(command =>
+            {
+                if (command.Parameters is UpdateMovementSettingsParameters parameters)
+                {
+                    return parameters.AccelChangePending || !parameters.Blending;
+                }
+                else
+                    return false;
+            });
+
+            if (isUpdateNeeded = true)
+            {
+                await ProcessQueue(semaphore);
+
+                if (_updateMoveSettingsCommands != null)
+                    throw new Exception("Last move settings update missed.");
+                
+                _updateMoveSettingsCommands = commands;
+                _launchPending = true;
+            }
+        }
+        protected Task ChangeState(Command[] commands, SemaphoreSlim semaphore)
+        {
+            return Task.CompletedTask;
+        }
+
+        protected async Task SendCommandIfAvailable()
         {
             if (_buffer.Count > 0)
             {
@@ -78,8 +168,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             }
 
         }
-
-        private async Task SendBufferItemToControllers(Dictionary<string, PositionerInfo>? PosInfoControllerGroups, ExecutionInformation execInfo)
+        protected async Task SendBufferItemToControllers(Dictionary<string, PositionerInfo>? PosInfoControllerGroups, ExecutionInformation execInfo)
         {
             foreach (var (controllerName, posInfoList) in PosInfoControllerGroups)
             {
@@ -110,41 +199,41 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 };
 
 
-                var slavePositionerSemaphore = await GatherSemaphoresForController([controllerName]);
-                try
-                {
-                    await SlaveControllers[controllerName].ExecuteCommandAsync(command, slavePositionerSemaphore[controllerName]);
-                }
-                finally
-                {
-                    ReleaseSemeaphores(slavePositionerSemaphore);
-                }
+                await ExecuteSlaveCommand(command);
             }
 
-            // Sending the sync_execution_info
-            var slaveSyncSemaphore = await GatherSemaphoresForController([_syncController.Name]);
-            try
+            var syncController = SlaveControllers.Values.FirstOrDefault(controller =>
             {
-                _syncController.AddBufferItem(
-                    execInfo.Devices,
-                    execInfo.Launch,
-                    execInfo.Rethrow,
-                    execInfo.Shutter,
-                    execInfo.Shutter_delay_on,
-                    execInfo.Shutter_delay_off);
-            }
-            finally
+                return controller is BaseSyncController syncController;
+            });
+            if (syncController == null)
+                throw new Exception("Unable to retrieve sync controller in master controller.");
+
+            var commandSync = new Command
             {
-                ReleaseSemeaphores(slaveSyncSemaphore);
-            }
+                Action = CommandDefinitions.AddSyncControllerBufferItem,
+                Await = true,
+                Parameters = new AddSyncControllerBufferItemParameters
+                {
+                    Devices = execInfo.Devices,
+                    Launch = execInfo.Launch,
+                    Rethrow = execInfo.Rethrow,
+                    Shutter = execInfo.Shutter,
+                    ShutterDelayOff = execInfo.Shutter_delay_off,
+                    ShutterDelayOn = execInfo.Shutter_delay_on,
+                },
+                TargetController = syncController.Name,
+            };
+
+            await ExecuteSlaveCommand(commandSync);
         }
-
-        private async Task<int> GetMinFreeBufferItemCount()
+        protected async Task<int> GetMinFreeBufferItemCount()
         {
+            // TODO: only check the devices in question
             int minFreeItemCount = int.MaxValue;
             foreach (var (controllerName, controller) in SlaveControllers)
             {
-                if (controller is BasePositionerController positionerController && positionerController is IQuableController quableController)
+                if (controller is IQuableController quableController)
                 {
                     var command = new Command
                     {
@@ -152,30 +241,31 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                         Await = true,
                         Parameters = new GetBufferCountParameters
                         {
-                            Devices = positionerController.GetDevices().Select(device => device.Name).ToArray(),
+                            Devices = controller.GetDevices().Select(device => device.Name).ToArray(),
                         },
-                        TargetController = positionerController.Name,
-                        TargetDevices = positionerController.GetDevices().Select(device => device.Name).ToArray(),
+                        TargetController = controller.Name,
+                        TargetDevices = controller.GetDevices().Select(device => device.Name).ToArray(),
                     };
 
                     var semaphore = await GatherSemaphoresForController([controllerName]);
                     try
                     {
-                        var bufferSpace = await positionerController.ExecuteCommandAsync<uint>(command, semaphore[controllerName]);
+                        var bufferSpace = await controller.ExecuteCommandAsync<int>(command, semaphore[controllerName]);
+                        minFreeItemCount = Math.Min(minFreeItemCount, bufferSpace);
                     }
                     finally
                     {
                         ReleaseSemeaphores(semaphore);
                     }
-
-                    minFreeItemCount = Math.Min(minFreeItemCount, );
                 }
             }
-            _syncController.CheckFreeItemSpace();
-            minFreeItemCount = Math.Min(minFreeItemCount, _syncController.CheckFreeItemSpace());
-            return minFreeItemCount;
+
+            if(minFreeItemCount == int.MaxValue)
+                return 0;
+            else
+                return minFreeItemCount;
         }
-        private async Task FillControllerBuffers(SemaphoreSlim semaphore)
+        protected async Task FillControllerBuffers(SemaphoreSlim semaphore)
         {
             _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: trying to fill slave buffers");
 
@@ -191,110 +281,48 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 await SendBufferItemToControllers(PosInfoControllerGroups, execInfo);
             }
         }
-        private Task ChangeState(Command[] commands, SemaphoreSlim semaphore)
+        protected async Task ProcessQueue(SemaphoreSlim semaphore)
         {
-            return Task.CompletedTask;
-        }
-
-        private async Task UpdateMoveSettings(Command[] commands, SemaphoreSlim semaphore)
-        {
-
-            var isUpdateNeeded = commands.Any(command =>
+            await AwaitExecutionEnd();
+            if (_buffer.Count > 0)
             {
-                if (command.Parameters is UpdateMovementSettingsParameters parameters)
+                if (_updateMoveSettingsCommands != null)
                 {
-                    return parameters.AccelChangePending || !parameters.Blending;
+                    foreach (Command command in _updateMoveSettingsCommands)
+                    {
+                        await ExecuteSlaveCommand(command);
+                    }
+
+                    _updateMoveSettingsCommands = null;
+                }
+
+                await FillControllerBuffers(semaphore);
+                _log.Enqueue("master: filled slaves to the brim");
+
+                await StartExecutionOnSyncController(semaphore);
+                _log.Enqueue("master: sent Sync Controller to execute its buffer");
+
+                _launchPending = true;
+            }
+
+        }
+        protected async Task AwaitExecutionEnd()
+        {
+            if (_processingCompletionSource is not null)
+            {
+                if (!_processingCompletionSource.Task.IsCompleted)
+                {
+                    await _processingCompletionSource.Task;
+                    _log.Enqueue("master: awaited the exec_end");
                 }
                 else
-                    return false;
-            });
-
-            isUpdateNeeded = true;
-            if (isUpdateNeeded)
-            {
-                _launchPending = true;
-
-
-
-                // await exec_end
-                if (_processingCompletionSource is not null)
-                    if (!_processingCompletionSource.Task.IsCompleted)
-                    {
-                        await _processingCompletionSource.Task;
-                        _log.Enqueue("master: awaited the exec_end");
-                    }
-                    else
-                    {
-                        _log.Enqueue("master: exec_end was allready complete.");
-
-                    }
-
-                // fill slaves from master buffer.
-                if (_buffer.Count > 0)
                 {
-                    //await Task.Delay(100);
-                    await FillControllerBuffers(semaphore);
-                    _log.Enqueue("master: filled slaves to the brim");
-
-                    _processingCompletionSource = new TaskCompletionSource<bool>();
-                    _processingLastItemTakenSource = new TaskCompletionSource<bool>();
-
-                    await StartExecutionOnSyncController();
-
-                    _log.Enqueue("master: sent Sync Controller to execute its buffer");
-
-                }
-
-
-                // await exec_end, we can't actually update the move settings during movement of last item.
-                if (_processingCompletionSource is not null)
-                    if (!_processingCompletionSource.Task.IsCompleted)
-                    {
-                        await _processingCompletionSource.Task;
-                        _log.Enqueue("master: awaited the exec_end");
-                    }
-                    else
-                    {
-                        _log.Enqueue("master: exec_end was allready complete.");
-
-                    }
-
-                // update params
-                foreach (Command command in commands)
-                {
-
-                    if (SlaveControllers.TryGetValue(command.TargetController, out var slaveController))
-                    {
-
-
-                        await SlaveControllersLocks[slaveController.Name].WaitAsync();
-
-
-                        await slaveController.ExecuteCommandAsync(command, slaveSemaphors[command.TargetController], log);
-
-                        if (SlaveControllersLocks[slaveController.Name].CurrentCount == 0)
-                            SlaveControllersLocks[slaveController.Name].Release();
-                    }
-                    else
-                        throw new Exception($"Slave controller {command.TargetController} was not found.");
-                    _log.Enqueue("master: updated movement settings");
+                    _log.Enqueue("master: exec_end was allready complete.");
 
                 }
             }
-            else
-            {
-                _log.Enqueue("master: did not updated movement settings");
-
-                foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
-                {
-                    if (slaveSemaphore.CurrentCount == 0)
-                        slaveSemaphore.Release();
-                }
-            }
-
         }
-
-        private async Task StartExecutionOnSyncController()
+        protected async Task StartExecutionOnSyncController(SemaphoreSlim semaphore)
         {
             var syncController = SlaveControllers.Values.FirstOrDefault(controller =>
                 {
@@ -303,7 +331,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             if (syncController == null)
                 throw new Exception("Unable to retrieve sync controller in master controller.");
 
-            var syncControllerLock = await GatherSemaphoresForController([syncController.Name]);
             var command = new Command
             {
                 Action = CommandDefinitions.StartQueueExecution,
@@ -311,14 +338,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 TargetController = syncController.Name,
             };
 
-            try
-            {
-                await syncController.ExecuteCommandAsync(command, syncControllerLock[syncController.Name]);
-            }
-            finally
-            {
-                ReleaseSemeaphores(syncControllerLock);
-            }
+
+            _processingCompletionSource = new TaskCompletionSource<bool>();
+            _processingLastItemTakenSource = new TaskCompletionSource<bool>();
+
+            await ExecuteSlaveCommand(command);
         }
+
     }
 }

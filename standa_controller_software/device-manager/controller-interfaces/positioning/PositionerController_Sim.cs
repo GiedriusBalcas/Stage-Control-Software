@@ -630,7 +630,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return base.ConnectDevice(device, semaphore);
         }
 
-        public override BaseController GetCopy()
+        public override BaseController GetVirtualCopy()
         {
             var controller = new PositionerController_Sim(Name);
             foreach (var device in Devices)

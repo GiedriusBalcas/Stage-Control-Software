@@ -11,67 +11,31 @@ using System.Threading.Tasks;
 
 namespace standa_controller_software.device_manager.controller_interfaces.master_controller
 {
-    public class PositionAndShutterController_Virtual : BaseMasterController
+    public class PositionAndShutterController_Virtual : BaseMasterSyncController
     {
         
-        public PositionAndShutterController_Virtual(string name) : base(name)
+        public PositionAndShutterController_Virtual(string name, ConcurrentQueue<string> log) : base(name, log)
         {
-            _multiControllerMethodMap[CommandDefinitions.MoveAbsolute] = new MultiControllerMethodInformation()
-            {
-                MethodHandle = MoveAbsolute,
-                Quable = true,
-                State = MethodState.Free,
-            };
-            _multiControllerMethodMap[CommandDefinitions.UpdateMoveSettings] = new MultiControllerMethodInformation()
-            {
-                MethodHandle = UpdateMoveSettings,
-                Quable = true,
-                State = MethodState.Free,
-            };
-            _multiControllerMethodMap[CommandDefinitions.ChangeShutterState] = new MultiControllerMethodInformation()
-            {
-                MethodHandle = ChangeState,
-                Quable = true,
-                State = MethodState.Free,
-            };
-
-            //_methodMap["UpdateMoveSettings"] = UpdateMoveSettings;
-
-            //_methodMap["WaitUntilStop"] = WaitUntilStop;
+            
         }
 
-        private async Task UpdateMoveSettings(Command[] commands, SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphors, ConcurrentQueue<string> log)
+        protected override async Task UpdateMoveSettings(Command[] commands, SemaphoreSlim semaphore)
         {
             foreach (Command command in commands)
             {
-                if (SlaveControllers.TryGetValue(command.TargetController, out var slaveController))
-                {
-                    await slaveController.ExecuteCommandAsync(command, slaveSemaphors[command.TargetController], log);
-                }
-                else
-                    throw new Exception($"Slave controller {command.TargetController} was not found.");
-
+                await ExecuteSlaveCommand(command);
             }
         }
 
-
-        private async Task MoveAbsolute(Command[] commands, SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphors, ConcurrentQueue<string> log)
+        protected override async Task MoveAbsolute(Command[] commands, SemaphoreSlim semaphore)
         {
             foreach(Command command in commands)
             {
-                var targetController = command.TargetController;
-                if (SlaveControllers.TryGetValue(targetController, out BaseController positionerController))
-                {
-                    await positionerController.ExecuteCommandAsync(command, slaveSemaphors[targetController], log);
-                }
+                await ExecuteSlaveCommand(command);
             }
 
         }
 
-        public override void AddDevice(BaseDevice device)
-        {
-            throw new NotImplementedException();
-        }
         public override void AddSlaveController(BaseController controller, SemaphoreSlim controllerLock)
         {
             if(controller is ShutterController_Virtual shutterController)
@@ -81,109 +45,27 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             else if (controller is BasePositionerController positionerController)
             {
                 SlaveControllers.Add(positionerController.Name, positionerController);
-                //positionerController.OnSyncOut += OnSyncOutReveived;
             }
         }
 
-        private void OnSyncOutReveived(string deviceName)
+        public override BaseController GetVirtualCopy()
         {
-            
-        }
-
-        public override Task ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
-        {
-            throw new NotImplementedException();
-        }
-        private async Task ChangeState(Command[] commands, SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphors, ConcurrentQueue<string> log)
-        {
-
-        }
-        public override async Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
-        {
-
-            List<BaseDevice> devices = new List<BaseDevice>();
-
-            foreach (var deviceName in command.TargetDevices)
-            {
-                Dictionary<char, BaseDevice> slaveDevices = new Dictionary<char, BaseDevice>();
-                foreach(var slaveController in SlaveControllers)
-                {
-                    slaveController.Value.GetDevices().ForEach(slaveDevice => slaveDevices.Add(slaveDevice.Name, slaveDevice));
-                }
-
-                if (slaveDevices.TryGetValue(deviceName, out BaseDevice device))
-                {
-                    devices.Add(device);
-                }
-                else
-                {
-                    // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Device {deviceName} not found in controller {command.TargetController}");
-                }
-            }
-
-            if (_methodMap.TryGetValue(command.Action, out var method))
-            {
-                if (command.Await)
-                    await method.MethodHandle(command, semaphore, log);
-                else
-                    _ = method.MethodHandle(command, semaphore, log);
-            }
-            else
-            {
-                throw new InvalidOperationException("Invalid action");
-            }
-        }
-
-        public override BaseController GetCopy()
-        {
-            var controllerCopy = new PositionAndShutterController_Virtual(this.Name);
+            var controllerCopy = new PositionAndShutterController_Virtual(this.Name, _log);
             foreach (var slaveController in SlaveControllers)
             {
-                controllerCopy.AddSlaveController(slaveController.Value.GetCopy(), SlaveControllersLocks[slaveController.Key]);
+                controllerCopy.AddSlaveController(slaveController.Value.GetVirtualCopy(), SlaveControllersLocks[slaveController.Key]);
             }
 
             return controllerCopy;
         }
 
-        public override List<BaseDevice> GetDevices()
-        {
-            return new List<BaseDevice>();
-        }
-
-        public override Task UpdateStatesAsync(ConcurrentQueue<string> log)
-        {
-            return Task.CompletedTask;
-        }
-
-        public override async Task ExecuteSlaveCommandsAsync(Command[] commands, SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphors, ConcurrentQueue<string> log)
-        {
-            log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {string.Join(' ', commands.Select(command => command.Action).ToArray())} command on device {string.Join(' ', commands.SelectMany(command => command.TargetDevices).ToArray())}");
-
-            var command = commands.First();
-            if (_multiControllerMethodMap.TryGetValue(commands.First().Action, out var method))
-            {
-                if (command.Await)
-                    await method.MethodHandle(commands, semaphore ,slaveSemaphors, log);
-                else
-                    _ = method.MethodHandle(commands, semaphore, slaveSemaphors, log);
-            }
-            else
-            {
-                throw new InvalidOperationException("Invalid action");
-            }
-        }
-
-        public override Task AwaitQueuedItems(SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphors, ConcurrentQueue<string> log)
+        protected override Task AwaitQueuedItems(Command command, SemaphoreSlim semaphore)
         {
             throw new NotImplementedException();
         }
 
-        public override Task Stop(SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override Task Stop(Command command, SemaphoreSlim semaphore)
         {
-            // clear all buffer.
-            
-
-
             return Task.CompletedTask;
         }
     }

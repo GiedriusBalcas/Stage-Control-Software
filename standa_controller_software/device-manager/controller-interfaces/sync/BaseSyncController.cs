@@ -23,7 +23,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
         public override abstract void AddDevice(BaseDevice device);
         public override abstract Task ConnectDevice(BaseDevice device, SemaphoreSlim semaphore);
-        public override abstract BaseController GetCopy();
+        public override abstract BaseController GetVirtualCopy();
         public override List<BaseDevice> GetDevices()
         {
             return new List<BaseDevice>();

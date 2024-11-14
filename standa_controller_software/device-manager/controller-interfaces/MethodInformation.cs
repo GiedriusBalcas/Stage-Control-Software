@@ -39,22 +39,9 @@ namespace standa_controller_software.device_manager.controller_interfaces
         public MethodState State { get; set; } = MethodState.Free;
         public Type ReturnType => typeof(void);
 
-        public async Task<object?> InvokeAsync(Command[] command, SemaphoreSlim semaphore)
+        public async Task InvokeAsync(Command[] command, SemaphoreSlim semaphore)
         {
             await MethodHandle(command, semaphore);
-            return null; // No return value
-        }
-    }
-    public class MultiControllerMethodInformation<T> : IMultiControllerMethodInformation
-    {
-        public Func<Command[], SemaphoreSlim, Task<Dictionary<string, T>>> MethodHandle { get; set; }
-        public MethodState State { get; set; } = MethodState.Free;
-        public Type ReturnType => typeof(T);
-
-        public async Task<Dictionary<string, object?>> InvokeAsync(Command[] command, SemaphoreSlim semaphore)
-        {
-            var result = await MethodHandle(command, semaphore);
-            return result; 
         }
     }
 }
