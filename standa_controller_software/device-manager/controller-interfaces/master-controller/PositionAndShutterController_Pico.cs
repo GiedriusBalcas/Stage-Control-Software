@@ -69,19 +69,19 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
         public PositionAndShutterController_Pico(string name) : base(name)
         {
-            _methodMap_multiControntroller[CommandDefinitions.ChangeShutterState] = new MultiControllerMethodInformation()
+            _multiControllerMethodMap[CommandDefinitions.ChangeShutterState] = new MultiControllerMethodInformation()
             {
                 MethodHandle = ChangeState,
                 Quable = true,
                 State = MethodState.Free,
             };
-            _methodMap_multiControntroller[CommandDefinitions.MoveAbsolute] = new MultiControllerMethodInformation()
+            _multiControllerMethodMap[CommandDefinitions.MoveAbsolute] = new MultiControllerMethodInformation()
             {
                 MethodHandle = MoveAbsolute,
                 Quable = true,
                 State = MethodState.Free,
             };
-            _methodMap_multiControntroller[CommandDefinitions.UpdateMoveSettings] = new MultiControllerMethodInformation()
+            _multiControllerMethodMap[CommandDefinitions.UpdateMoveSettings] = new MultiControllerMethodInformation()
             {
                 MethodHandle = UpdateMoveSettings,
                 Quable = true,
@@ -288,7 +288,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     return false;
             });
 
-            //isUpdateNeeded = true;
+            isUpdateNeeded = true;
             if (isUpdateNeeded)
             {
                 _launchPending = true;
@@ -312,6 +312,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 // fill slaves from master buffer.
                 if (_buffer.Count > 0)
                 {
+                    //await Task.Delay(100);
                     await FillControllerBuffers(slaveSemaphors, log);
                     _needToLaunch = true;
                     _log.Enqueue("master: filled slaves to the brim");

@@ -16,19 +16,19 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         
         public PositionAndShutterController_Virtual(string name) : base(name)
         {
-            _methodMap_multiControntroller[CommandDefinitions.MoveAbsolute] = new MultiControllerMethodInformation()
+            _multiControllerMethodMap[CommandDefinitions.MoveAbsolute] = new MultiControllerMethodInformation()
             {
                 MethodHandle = MoveAbsolute,
                 Quable = true,
                 State = MethodState.Free,
             };
-            _methodMap_multiControntroller[CommandDefinitions.UpdateMoveSettings] = new MultiControllerMethodInformation()
+            _multiControllerMethodMap[CommandDefinitions.UpdateMoveSettings] = new MultiControllerMethodInformation()
             {
                 MethodHandle = UpdateMoveSettings,
                 Quable = true,
                 State = MethodState.Free,
             };
-            _methodMap_multiControntroller[CommandDefinitions.ChangeShutterState] = new MultiControllerMethodInformation()
+            _multiControllerMethodMap[CommandDefinitions.ChangeShutterState] = new MultiControllerMethodInformation()
             {
                 MethodHandle = ChangeState,
                 Quable = true,
@@ -160,7 +160,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {string.Join(' ', commands.Select(command => command.Action).ToArray())} command on device {string.Join(' ', commands.SelectMany(command => command.TargetDevices).ToArray())}");
 
             var command = commands.First();
-            if (_methodMap_multiControntroller.TryGetValue(commands.First().Action, out var method))
+            if (_multiControllerMethodMap.TryGetValue(commands.First().Action, out var method))
             {
                 if (command.Await)
                     await method.MethodHandle(commands, semaphore ,slaveSemaphors, log);

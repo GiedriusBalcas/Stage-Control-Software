@@ -9,6 +9,7 @@ using System.IO;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
 using text_parser_library;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
 
 namespace standa_control_software_WPF.view_models.system_control
 {
@@ -158,52 +159,57 @@ namespace standa_control_software_WPF.view_models.system_control
 
         private async void ExecuteCommandsQueueAsync()
         {
-            ClearLog();
-            //ForceStop();
 
-            //OutputMessage += $"\nStop.";
-            //_commandManager.Stop();
-            //OutputMessage += $"\ndone Stop.";
-
-            foreach (var (controllerName, controller) in _controllerManager.Controllers)
+            if(_commandManager.CurrentState != CommandManagerState.Processing)
             {
-                if (_controllerManager.ControllerLocks[controllerName].CurrentCount == 0)
-                    _controllerManager.ControllerLocks[controllerName].Release();
-            }
+                //ClearLog();
+                //ForceStop();
 
-            _commandManager.ClearQueue();
-            foreach (var commandLine in _functionDefinitionLibrary.ExtractCommands())
-            {
-                _commandManager.EnqueueCommandLine(commandLine);
-            }
+                //OutputMessage += $"\nStop.";
+                //_commandManager.Stop();
+                //OutputMessage += $"\ndone Stop.";
 
-            //var inputThread = new Thread(async() => await _commandManager.ProcessQueue());
-            //inputThread.Start();
-            SaveCommandLog();
+                //foreach (var (controllerName, controller) in _controllerManager.Controllers)
+                //{
+                //    if (_controllerManager.ControllerLocks[controllerName].CurrentCount == 0)
+                //        _controllerManager.ControllerLocks[controllerName].Release();
+                //}
 
-            //try
-            //{
-                
+                _commandManager.ClearQueue();
+                foreach (var commandLine in _functionDefinitionLibrary.ExtractCommands())
+                {
+                    _commandManager.EnqueueCommandLine(commandLine);
+                }
+
+                //var inputThread = new Thread(async() => await _commandManager.ProcessQueue());
+                //inputThread.Start();
+                SaveCommandLog();
+
+                //try
+                //{
+
                 await Task.Run(() => _commandManager.ProcessQueue());
                 OutputMessage += $"\nDone Executing.";
-            //}
-            //catch(Exception ex)
-            //{
-            //    OutputMessage += $"\n{ex.Message}";
-            //}
-            //var highPriorityThread = new Thread(() => _commandManager.ProcessQueue());
-            //highPriorityThread.Priority = ThreadPriority.Highest; // Set the priority to Highest
-            //highPriorityThread.Start();
+                //}
+                //catch(Exception ex)
+                //{
+                //    OutputMessage += $"\n{ex.Message}";
+                //}
+                //var highPriorityThread = new Thread(() => _commandManager.ProcessQueue());
+                //highPriorityThread.Priority = ThreadPriority.Highest; // Set the priority to Highest
+                //highPriorityThread.Start();
 
-            //await Task.Run(() => highPriorityThread.Join()); // Wait for the high-priority thread to finish
+                //await Task.Run(() => highPriorityThread.Join()); // Wait for the high-priority thread to finish
 
-            SaveLog();
+                //SaveLog();
 
-            //while(_commandManager.CurrentState == CommandManagerState.Processing)
-            //{
-            //    await Task.Delay(1000);
-            //    SaveLog();
-            //}
+                //while(_commandManager.CurrentState == CommandManagerState.Processing)
+                //{
+                //    await Task.Delay(1000);
+                //    SaveLog();
+                //}
+            }
+
         }
 
         private void ClearLog()
@@ -230,9 +236,12 @@ namespace standa_control_software_WPF.view_models.system_control
                 
                 _textInterpreter.DefinitionLibrary = _functionDefinitionLibrary.Definitions;
                 _textInterpreter.ReadInput(inputText);
-                _painterManager.PaintCommandQueue(_functionDefinitionLibrary.ExtractCommands());
+                var commandList = _functionDefinitionLibrary.ExtractCommands();
+                var allocatedTime_s = commandList.Sum(cmdLine => cmdLine.Max(cmd => cmd.EstimatedTime));
+                TimeSpan allocatedTime_timeSpan = TimeSpan.FromSeconds(allocatedTime_s);
+                _painterManager.PaintCommandQueue(commandList);
 
-                OutputMessage += $"\nParsed.";
+                OutputMessage += $"\nParsed. Estimated time: {allocatedTime_timeSpan.ToString("hh':'mm':'ss")}\n";
 
             }
             catch (Exception ex)

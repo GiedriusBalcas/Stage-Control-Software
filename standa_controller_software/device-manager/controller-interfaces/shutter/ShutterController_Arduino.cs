@@ -1,10 +1,9 @@
-﻿using Antlr4.Runtime;
-using standa_controller_software.command_manager;
-using standa_controller_software.device_manager.devices;
+﻿using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO.Ports;
-using System.Text;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,195 +11,269 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
 {
     public class ShutterController_Arduino : BaseShutterController
     {
-        private class DeviceInformation
-        {
-            public bool IsOn = false;
-            public int DelayOn = 1000;
-            public int DelayOff = 100;
-            public SerialPort SerialPort;
-        }
+        // Constants matching the Arduino code
+        private const byte START_BYTE = 0xFF;
+        private const byte RESPONSE_START_BYTE = 0xAB;
 
-        private readonly ConcurrentDictionary<char, DeviceInformation> _deviceInfo = new();
+        // Command IDs
+        private const byte CMD_CHANGE_SHUTTER_STATE = 0x01; // CMD_ID_1
+        private const byte CMD_CHANGE_STATE_FOR_INTERVAL = 0x02; // CMD_ID_2
+        private const byte CMD_GET_SHUTTER_STATE = 0x03; // CMD_GET_SHUTTER_STATE
 
+        // Response Codes
+        private const byte RESP_SHUTTER_STATE = 0x01;
+        private const byte RESP_CMD_SUCCESS = 0x02;
+        private const byte RESP_CMD_ERROR = 0x03;
+
+        private SerialPort serialPort;
+
+        
         public ShutterController_Arduino(string name) : base(name)
         {
-            
         }
+
+        public override async Task InitializeController(SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        {
+            await base.InitializeController(semaphore, log);
+
+            serialPort = new SerialPort(this.ID, 9600, Parity.None, 8, StopBits.One)
+            {
+                DtrEnable = true,
+                RtsEnable = true,
+                ReadTimeout = 2000, // Adjust as necessary
+                WriteTimeout = 500
+            };
+            serialPort.Open();
+
+            // Flush any existing data
+            serialPort.DiscardInBuffer();
+            serialPort.DiscardOutBuffer();
+        }
+
         public override void AddDevice(BaseDevice device)
         {
             base.AddDevice(device);
-            if (device is BaseShutterDevice shutterDevice)
+            // No additional device-specific setup required
+        }
+
+        protected override async Task ChangeStateImplementation(BaseShutterDevice device, bool wantedState)
+        {
+            EnsurePortIsOpen();
+
+            // Construct the command packet
+            byte[] payload = new byte[] { (byte)(wantedState ? 1 : 0) };
+            byte[] packet = ConstructPacket(CMD_CHANGE_SHUTTER_STATE, payload);
+
+            // Send the packet
+            serialPort.Write(packet, 0, packet.Length);
+
+            // Read and process the response
+            ResponsePacket response = ReadResponse();
+
+            var processedResponse = ProcessResponse(response);
+            if (processedResponse == false)
+                _log.Enqueue("Arduino_shutter: error response received.");
+        }
+
+
+        //public bool ChangeStateForInterval(float duration)
+        //{
+        //   
+        //}
+
+        public override async Task UpdateStatesAsync(ConcurrentQueue<string> log)
+        {
+            var currentState = GetState(out bool state);
+            Devices.First().Value.IsOn = state;
+        }
+
+        private bool GetState(out bool shutterState)
+        {
+            shutterState = false;
+            EnsurePortIsOpen();
+
+            // Construct the command packet
+            byte[] packet = ConstructPacket(CMD_GET_SHUTTER_STATE, null);
+
+            // Send the packet
+            serialPort.Write(packet, 0, packet.Length);
+
+            // Read and process the response
+            ResponsePacket response = ReadResponse();
+
+            if (response.ResponseCode == RESP_SHUTTER_STATE && response.PayloadLength == 1)
             {
-                _deviceInfo.TryAdd(shutterDevice.Name, new DeviceInformation());
+                shutterState = response.Payload[0] != 0;
+                return true;
+            }
+            else if (response.ResponseCode == RESP_CMD_ERROR)
+            {
+                return false;
+            }
+            else
+            {
+                throw new Exception($"Unexpected response code: {response.ResponseCode}");
             }
         }
 
-        public override Task ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
+        private void EnsurePortIsOpen()
         {
-            if (device is BaseShutterDevice shutterDevice && _deviceInfo.TryGetValue(shutterDevice.Name, out var deviceInformation))
+            if (serialPort == null || !serialPort.IsOpen)
+                throw new InvalidOperationException("Serial port is not open.");
+        }
+
+        private byte[] ConstructPacket(byte commandId, byte[] payload)
+        {
+            payload ??= new byte[0];
+            byte payloadLength = (byte)payload.Length;
+            byte checksum = CalculateChecksum(commandId, payloadLength, payload);
+
+            byte[] packet = new byte[1 + 1 + 1 + payloadLength + 1];
+            int index = 0;
+            packet[index++] = START_BYTE;
+            packet[index++] = commandId;
+            packet[index++] = payloadLength;
+            Array.Copy(payload, 0, packet, index, payloadLength);
+            index += payloadLength;
+            packet[index] = checksum;
+
+            return packet;
+        }
+        private ResponsePacket ReadResponse()
+        {
+            int timeout = serialPort.ReadTimeout;
+            DateTime startTime = DateTime.Now;
+
+            while ((DateTime.Now - startTime).TotalMilliseconds < timeout)
             {
-                var port = new SerialPort
+                if (serialPort.BytesToRead > 0)
                 {
-                    PortName = device.ID,  // Replace with your Arduino's COM port
-                    BaudRate = 115200,    // Ensure this matches the baud rate set in Arduino
-                    Parity = Parity.None,
-                    DataBits = 8,
-                    StopBits = StopBits.One,
-                    Handshake = Handshake.None,
-                    RtsEnable = true
-                };
+                    int firstByte = serialPort.ReadByte();
+                    if (firstByte == RESPONSE_START_BYTE)
+                    {
+                        // Read response code and payload length
+                        byte responseCode = (byte)serialPort.ReadByte();
+                        byte payloadLength = (byte)serialPort.ReadByte();
 
-                deviceInformation.SerialPort = port;
-                deviceInformation.DelayOn = shutterDevice.DelayOn;
-                deviceInformation.DelayOff = shutterDevice.DelayOff;
-                deviceInformation.SerialPort.Open();
+                        // Read payload
+                        byte[] payload = new byte[payloadLength];
+                        if (payloadLength > 0)
+                        {
+                            serialPort.Read(payload, 0, payloadLength);
+                        }
 
+                        // Read checksum
+                        byte checksum = (byte)serialPort.ReadByte();
+
+                        // Validate checksum
+                        byte calculatedChecksum = CalculateChecksum(responseCode, payloadLength, payload);
+                        if (checksum != calculatedChecksum)
+                        {
+                            throw new Exception("Checksum mismatch in response.");
+                        }
+
+                        return new ResponsePacket(responseCode, payloadLength, payload);
+                    }
+                    else
+                    {
+                        // Not the start byte, continue reading
+                        continue;
+                    }
+                }
+                else
+                {
+                    Thread.Sleep(1); // Wait for data
+                }
             }
 
-            return base.ConnectDevice(device, semaphore);
+            throw new TimeoutException("Timeout waiting for response.");
+        }
+
+        private bool ProcessResponse(ResponsePacket response)
+        {
+            if (response.ResponseCode == RESP_CMD_SUCCESS)
+            {
+                return true;
+            }
+            else if (response.ResponseCode == RESP_CMD_ERROR)
+            {
+                return false;
+            }
+            else
+            {
+                throw new Exception($"Unexpected response code: {response.ResponseCode}");
+            }
+        }
+
+        private byte CalculateChecksum(byte code, byte payloadLength, byte[] payload)
+        {
+            int sum = code + payloadLength;
+            if (payload != null)
+            {
+                foreach (byte b in payload)
+                {
+                    sum += b;
+                }
+            }
+            return (byte)(sum % 256);
+        }
+
+        private class ResponsePacket
+        {
+            public byte ResponseCode { get; }
+            public byte PayloadLength { get; }
+            public byte[] Payload { get; }
+
+            public ResponsePacket(byte responseCode, byte payloadLength, byte[] payload)
+            {
+                ResponseCode = responseCode;
+                PayloadLength = payloadLength;
+                Payload = payload;
+            }
         }
 
         public override BaseController GetCopy()
         {
-            var controller = new ShutterController_Virtual(Name);
-            foreach (var device in Devices)
+            var controller = new ShutterController_Arduino(Name)
             {
-                controller.AddDevice(device.Value.GetCopy());
+                MasterController = this.MasterController,
+                ID = this.ID,
+            };
+
+            // Copy devices
+            foreach (var device in Devices.Values)
+            {
+                controller.AddDevice(device.GetCopy());
             }
 
             return controller;
         }
 
-        protected override async Task SetDelayAsync(Command command, List<BaseShutterDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
+        public override async Task Stop(SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
-            for (int i = 0; i < devices.Count; i++)
-            {
-                var device = devices[i];
-                var delayOn = (uint)command.Parameters[i][0];
-                var delayOff = (uint)command.Parameters[i][1];
-
-                byte[] callCommand = { 0x01 }; // SET_DELAY command
-                byte[] delayOnBytes = BitConverter.GetBytes(delayOn);
-                byte[] delayOffBytes = BitConverter.GetBytes(delayOff);
-
-                var serialPort = _deviceInfo[device.Name].SerialPort;
-                await serialPort.BaseStream.WriteAsync(callCommand, 0, callCommand.Length);
-                await serialPort.BaseStream.WriteAsync(delayOnBytes, 0, delayOnBytes.Length);
-                await serialPort.BaseStream.WriteAsync(delayOffBytes, 0, delayOffBytes.Length);
-            }
+            return;
         }
 
-        public override async Task UpdateStatesAsync(ConcurrentQueue<string> log)
+        protected override async Task ChangeStateOnIntervalImplementation(BaseShutterDevice device, float duration)
         {
-            foreach (var device in Devices)
-            {
-                //byte[] command = { 0x04 }; // SHUTTER_ON command
-                //var serialPort = _deviceInfo[device.Key].SerialPort;
+            EnsurePortIsOpen();
 
-                //await serialPort.BaseStream.WriteAsync(command, 0, command.Length);
-                //await serialPort.BaseStream.FlushAsync(); // Ensure all data is sent
+            // Construct the command packet
+            byte[] payload = BitConverter.GetBytes(duration);
+            byte[] packet = ConstructPacket(CMD_CHANGE_STATE_FOR_INTERVAL, payload);
 
-                //// Read acknowledgment from Arduino
-                //string ack = await ReadFromSerialAsync(serialPort, new CancellationToken());
+            // Send the packet
+            serialPort.Write(packet, 0, packet.Length);
 
-                //var state = ack == "1" ? true : false;
+            // Read and process the response
+            ResponsePacket response = ReadResponse();
 
-                //device.Value.IsOn = state;
-                //// log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Updated state for device {device.Value.Name}, State: {device.Value.IsOn}");
-            }
+            var processedResponse = ProcessResponse(response);
+            if (processedResponse == false)
+                _log.Enqueue("Arduino_shutter: error response received.");
+
+            await Task.Delay((int)(duration * 1000));
+
         }
-
-        protected override async Task ChangeState(Command command, List<BaseShutterDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
-        {
-            for (int i = 0; i < devices.Count; i++)
-            {
-                var device = devices[i];
-                var state = (bool)command.Parameters[i][0];
-
-                if (state)
-                {
-                    await ShutterOnAsync(device, cancellationTokens[device.Name]);
-                }
-                else
-                {
-                    await ShutterOffAsync(device, cancellationTokens[device.Name]);
-                }
-            }
-        }
-
-        private async Task ShutterOnAsync(BaseShutterDevice device, CancellationToken token)
-        {
-            byte[] command = { 0x02 }; // SHUTTER_ON command
-            var serialPort = _deviceInfo[device.Name].SerialPort;
-
-            await serialPort.BaseStream.WriteAsync(command, 0, command.Length);
-            await serialPort.BaseStream.FlushAsync(); // Ensure all data is sent
-
-            // Read acknowledgment from Arduino
-            //string ackOn = await ReadFromSerialAsync(serialPort, token);
-            //Console.WriteLine($"ShutterOn Ack: {ackOn}");
-
-            //if (ack != "O") // Expecting 'O' for SHUTTER_ON acknowledgment
-            //{
-            //    throw new InvalidOperationException($"Unexpected acknowledgment: {ack}");
-            //}
-        }
-
-        private async Task ShutterOffAsync(BaseShutterDevice device, CancellationToken token)
-        {
-            byte[] command = { 0x03 }; // SHUTTER_OFF command
-            var serialPort = _deviceInfo[device.Name].SerialPort;
-
-            await serialPort.BaseStream.WriteAsync(command, 0, command.Length);
-            await serialPort.BaseStream.FlushAsync(); // Ensure all data is sent
-
-            // Read acknowledgment from Arduino
-            //string ackFF = await ReadFromSerialAsync(serialPort, token);
-            //Console.WriteLine($"ShutterOff Ack: {ackFF}");
-        }
-
-        protected override async Task ChangeStateOnInterval(Command command, List<BaseShutterDevice> devices, Dictionary<char, CancellationToken> cancellationTokens, SemaphoreSlim semaphore)
-        {
-            //uint duration = (uint)((float)command.Parameters[0] * 1000000);
-
-            //// Create a byte array containing the command and the encoded duration
-            //byte[] commandBytes = new byte[5]; // 1 byte for command + 4 bytes for duration
-            //commandBytes[0] = 0x05; // SHUTTER_DURATION command
-            //Array.Copy(BitConverter.GetBytes(duration), 0, commandBytes, 1, 4);
-
-            //var serialPort = _deviceInfo[device.Name].SerialPort;
-            //await serialPort.BaseStream.WriteAsync(commandBytes, 0, commandBytes.Length);
-
-            //// Optionally, handle Arduino responses if necessary
-        }
-
-        private async Task<string> ReadFromSerialAsync(SerialPort serialPort, CancellationToken token)
-        {
-            var buffer = new byte[1];
-            var builder = new StringBuilder();
-
-            while (!token.IsCancellationRequested)
-            {
-                if (serialPort.BytesToRead > 0)
-                {
-                    int bytesRead = await serialPort.BaseStream.ReadAsync(buffer, 0, 1, token);
-                    if (bytesRead > 0)
-                    {
-                        builder.Append((char)buffer[0]);
-
-                        // Assuming acknowledgment is a single character
-                        if (builder.Length > 0)
-                        {
-                            break;
-                        }
-                    }
-                }
-                //await Task.Delay(10); // Small delay to avoid busy waiting
-            }
-
-            return builder.ToString().Trim();
-        }
-
-       
     }
 }

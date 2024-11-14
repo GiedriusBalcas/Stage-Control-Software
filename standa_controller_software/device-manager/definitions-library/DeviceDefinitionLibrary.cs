@@ -61,6 +61,12 @@ namespace standa_controller_software.device_manager
                     Name = "Virtual Shutter Controller",
                     Type = typeof(ShutterController_Sim),
                     AllowedDevices = shutterDeviceDefinitions
+                },
+                new ControllerInfo
+                {
+                    Name = "Arduino Shutter Controller",
+                    Type = typeof(ShutterController_Arduino),
+                    AllowedDevices = shutterDeviceDefinitions
                 }
             };
 

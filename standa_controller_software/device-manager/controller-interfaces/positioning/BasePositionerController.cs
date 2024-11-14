@@ -85,9 +85,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return Devices.Values.Cast<BaseDevice>().ToList();
         }
 
-        public override abstract Task UpdateStatesAsync(ConcurrentQueue<string> log);
+        public override abstract Task<object> UpdateStatesAsync(ConcurrentQueue<string> log);
         protected abstract Task MoveAbsolute(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
-        protected abstract Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
+        protected abstract Task<object> UpdateMoveSettings(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
         protected abstract Task WaitUntilStop(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
         protected abstract Task WaitUntilStopPolar(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
 

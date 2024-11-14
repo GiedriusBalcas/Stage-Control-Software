@@ -9,5 +9,13 @@ namespace standa_controller_software.command_manager.command_parameter_library
     public class ChangeShutterStateParameters
     {
         public bool State { get; set; }
+
+        public override string ToString()
+        {
+            string constructedString = string.Empty;
+            constructedString += $"state: {State}";
+
+            return constructedString;
+        }
     }
 }

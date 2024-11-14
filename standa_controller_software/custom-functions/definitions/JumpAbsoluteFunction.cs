@@ -22,11 +22,13 @@ namespace standa_controller_software.custom_functions.definitions
         public string Message { get; set; } = "";
         private readonly CommandManager _commandManager;
         private readonly ControllerManager _controllerManager;
+        private readonly ChangeShutterStateFunction changeShutterStateFunction;
 
-        public JumpAbsoluteFunction(CommandManager commandManager, ControllerManager controllerManager)
+        public JumpAbsoluteFunction(CommandManager commandManager, ControllerManager controllerManager, ChangeShutterStateFunction changeShutterStateFunction)
         {
             _commandManager = commandManager;
             _controllerManager = controllerManager;
+            this.changeShutterStateFunction = changeShutterStateFunction;
             SetProperty("Shutter", false);
             SetProperty("Accuracy", 0.05f);
             SetProperty("LeadOut", false);
@@ -54,7 +56,7 @@ namespace standa_controller_software.custom_functions.definitions
 
             if (!TryGetProperty("WaitUntilTime", out var waitUntilTimeObj))
                 throw new Exception("Failed to get 'WaitUntilTime' property.");
-            float? waitUntilTime = waitUntilTimeObj is null? null : (float)waitUntilTimeObj;
+            float? waitUntilTime = waitUntilTimeObj is null ? null : (float)waitUntilTimeObj;
 
 
             ExecutionCore(parsedDeviceNames, parsedPositions, isShutterUsed, accuracy, waitUntilTime, parsedWaitUntil, blending);
@@ -87,7 +89,7 @@ namespace standa_controller_software.custom_functions.definitions
                     {
                         deviceNameList.Add(parsedDeviceNames[i]);
                         positionsList.Add(parsedPositions[i]);
-                        if(parsedWaitUntilPos is not null && parsedWaitUntilPos.Length == parsedPositions.Length)
+                        if (parsedWaitUntilPos is not null && parsedWaitUntilPos.Length == parsedPositions.Length)
                             waitUntilPosList.Add(parsedWaitUntilPos[i]);
                     }
                 }
@@ -145,29 +147,39 @@ namespace standa_controller_software.custom_functions.definitions
 
                     var movementInfo = new PositionerMovementInformation
                     {
-                        StartingPosition = positioner.CurrentPosition,
-                        StartingSpeed = positioner.CurrentSpeed,
-                        CurrentTargetSpeed = positioner.Speed,
-                        StartingAcceleration = positioner.Acceleration,
-                        StartingDeceleration = positioner.Deceleration,
-                        MaxAcceleration = positioner.MaxAcceleration,
-                        MaxDeceleration = positioner.MaxDeceleration,
-                        MaxSpeed = positioner.MaxSpeed,
-                        TargetAcceleration = positioner.MaxAcceleration,
-                        TargetDeceleration = positioner.MaxDeceleration,
-                        TargetSpeed = positioner.Speed,
-                        TargetPosition = targetPosition,
-                        TargetDistance = targetDistance,
-                        TargetDirection = targetDirection,
+                        StartingMovementParameters = new StartingMovementParameters
+                        {
+                            Position = positioner.CurrentPosition,
+                            TargetSpeed = positioner.Speed,
+                            Speed = positioner.CurrentSpeed,
+                            Acceleration = positioner.Acceleration,
+                            Deceleration = positioner.Deceleration,
+                            Direction = positioner.CurrentSpeed >= 0
+                        },
+
+                        TargetMovementParameters = new TargetMovementParameters
+                        {
+                            Position = targetPosition,
+                            TargetSpeed = positioner.DefaultSpeed,
+                            Speed = 0f,
+                            Acceleration = positioner.MaxAcceleration,
+                            Deceleration = positioner.MaxDeceleration,
+                            Direction = targetDirection,
+                            Distance = targetDistance,
+                            Rethrow = 0f
+                        },
                     };
 
                     positionerMovementInfos[name] = movementInfo;
 
                     // Try to calculate total time for the movement.
                     // Trivial, no Jerk.
-                    var calculatedTime = CalculateTotalTimeForMovementInfo(movementInfo, out float timeToAccel, out float timeToDecel, out float totalTime);
-                    allocatedTime = (float)Math.Max(allocatedTime, calculatedTime);
-                    allocatedTimeWithoutDecel = (float)Math.Max(allocatedTimeWithoutDecel, totalTime - timeToDecel/2);
+                    CustomFunctionHelper.CalculateKinParametersForMovementInfo(ref movementInfo);
+
+                    //positionerMovementInfos[name].
+
+                    allocatedTime = (float)Math.Max(allocatedTime, movementInfo.KinematicParameters.TotalTime);
+                    allocatedTimeWithoutDecel = (float)Math.Max(allocatedTimeWithoutDecel, movementInfo.KinematicParameters.TotalTime - movementInfo.KinematicParameters.ConstantSpeedEndTime/ 2);
                 }
                 else
                 {
@@ -176,12 +188,13 @@ namespace standa_controller_software.custom_functions.definitions
             }
 
             // Check if kinematic parameters need to be updated
-            bool kinematicParametersNeedUpdate = 
+
+            bool kinematicParametersNeedUpdate =
                 positionerMovementInfos.Values.Any(info =>
-                    info.TargetAcceleration != info.StartingAcceleration ||
-                    info.TargetDeceleration != info.StartingDeceleration ||
-                    info.TargetSpeed != info.CurrentTargetSpeed)
-                || deviceNames.Any(name => devices[name].UpdatePending 
+                    info.TargetMovementParameters.Acceleration != info.StartingMovementParameters.Acceleration ||
+                    info.TargetMovementParameters.Deceleration != info.TargetMovementParameters.Deceleration ||
+                    info.TargetMovementParameters.TargetSpeed != info.StartingMovementParameters.TargetSpeed)
+                || deviceNames.Any(name => devices[name].UpdatePending
                 || !blending);
 
             if (kinematicParametersNeedUpdate)
@@ -190,7 +203,7 @@ namespace standa_controller_software.custom_functions.definitions
 
                 _commandManager.EnqueueCommandLine(updateParametersCommandLine.ToArray());
                 _commandManager.ExecuteCommandLine(updateParametersCommandLine.ToArray()).GetAwaiter().GetResult();
-                foreach(var (name, device) in devices)
+                foreach (var (name, device) in devices)
                 {
                     device.UpdatePending = false;
                 }
@@ -205,10 +218,10 @@ namespace standa_controller_software.custom_functions.definitions
                 /// After the time is reached another command will commence.
                 /// 
                 // we should calculate the end position here.
-                var waitPositions_calc = CalculateWaitUntilPosition(positionerMovementInfos, waitUntilTimeFloat);    
+                var waitPositions_calc = CalculateWaitUntilPosition(positionerMovementInfos, waitUntilTimeFloat);
                 waitUntilPosDict = waitPositions_calc;
             }
-            if(waitUntilPosList.Count == positionsList.Count)
+            if (waitUntilPosList.Count == positionsList.Count)
             {
                 /// movements will continue until 
                 /// the first device reaches its corresponding 
@@ -226,7 +239,7 @@ namespace standa_controller_software.custom_functions.definitions
                     // Calculate time to reach waitUntilPosition
                     float timeToPosition = CalculateTimeToReachPosition(info, waitUntilPosition);
 
-                    if(float.IsNormal(timeToPosition))
+                    if (float.IsNormal(timeToPosition))
                         timeToWaitUntilPosition[name] = timeToPosition;
                 }
 
@@ -244,107 +257,107 @@ namespace standa_controller_software.custom_functions.definitions
         }
 
 
-        private float CalculateTotalTimeForMovementInfo(PositionerMovementInformation info, out float timeToAccel, out float timeToDecel, out float totalTime)
-        {
-            timeToAccel = 0f;
-            timeToDecel = 0f;
-            totalTime = 0f;
+        //private float CalculateTotalTimeForMovementInfo(PositionerMovementInformation info, out float timeToAccel, out float timeToDecel, out float totalTime)
+        //{
+        //    timeToAccel = 0f;
+        //    timeToDecel = 0f;
+        //    totalTime = 0f;
 
-            float x0 = info.StartingPosition;
-            float v0 = info.StartingSpeed;
-            float vt = info.TargetSpeed;
-            float a = info.TargetAcceleration;
-            float d = info.TargetDeceleration;
-            float x_target = info.TargetPosition;
+        //    float x0 = info.StartingPosition;
+        //    float v0 = info.StartingSpeed;
+        //    float vt = info.TargetSpeed;
+        //    float a = info.TargetAcceleration;
+        //    float d = info.TargetDeceleration;
+        //    float x_target = info.TargetPosition;
 
-            // Calculate total movement direction
-            float deltaX_total = x_target - x0;
-            float direction = Math.Sign(deltaX_total); // +1 for positive, -1 for negative
+        //    // Calculate total movement direction
+        //    float deltaX_total = x_target - x0;
+        //    float direction = Math.Sign(deltaX_total); // +1 for positive, -1 for negative
 
-            // Adjust initial speed to movement direction
-            float v0_dir = v0 * direction;
+        //    // Adjust initial speed to movement direction
+        //    float v0_dir = v0 * direction;
 
-            // Keep accelerations and speeds positive
-            a = Math.Abs(a);
-            d = Math.Abs(d);
-            vt = Math.Abs(vt);
+        //    // Keep accelerations and speeds positive
+        //    a = Math.Abs(a);
+        //    d = Math.Abs(d);
+        //    vt = Math.Abs(vt);
 
 
-            // If initial speed is in the opposite direction, decelerate to zero first
-            if (v0_dir < 0)
-            {
-                // Time to decelerate to zero speed
-                float t_stop = -v0_dir / d;
-                // Distance covered during deceleration
-                float s_stop = v0_dir * t_stop + 0.5f * (-d) * t_stop * t_stop;
-                s_stop = Math.Abs(s_stop);
+        //    // If initial speed is in the opposite direction, decelerate to zero first
+        //    if (v0_dir < 0)
+        //    {
+        //        // Time to decelerate to zero speed
+        //        float t_stop = -v0_dir / d;
+        //        // Distance covered during deceleration
+        //        float s_stop = v0_dir * t_stop + 0.5f * (-d) * t_stop * t_stop;
+        //        s_stop = Math.Abs(s_stop);
 
-                totalTime += t_stop;
-                deltaX_total -= s_stop * direction; // Remaining distance after stopping
+        //        totalTime += t_stop;
+        //        deltaX_total -= s_stop * direction; // Remaining distance after stopping
 
-                v0_dir = 0; // Reset initial speed after stopping
-            }
+        //        v0_dir = 0; // Reset initial speed after stopping
+        //    }
 
-            float deltaX_remaining = Math.Abs(deltaX_total);
+        //    float deltaX_remaining = Math.Abs(deltaX_total);
 
-            // Compute candidate maximum speed
-            float numerator = 2 * a * d * deltaX_remaining + d * v0_dir * v0_dir;
-            float denominator = a + d;
-            float vMaxSquaredCandidate = numerator / denominator;
-            float vMaxCandidate = (float)Math.Sqrt(vMaxSquaredCandidate);
+        //    // Compute candidate maximum speed
+        //    float numerator = 2 * a * d * deltaX_remaining + d * v0_dir * v0_dir;
+        //    float denominator = a + d;
+        //    float vMaxSquaredCandidate = numerator / denominator;
+        //    float vMaxCandidate = (float)Math.Sqrt(vMaxSquaredCandidate);
 
-            // Limit maximum speed to the target speed
-            float vMax = Math.Min(vMaxCandidate, vt);
+        //    // Limit maximum speed to the target speed
+        //    float vMax = Math.Min(vMaxCandidate, vt);
 
-            // Calculate distances for acceleration and deceleration phases
-            float s1 = (vMax * vMax - v0_dir * v0_dir) / (2 * a);
-            float s3 = (vMax * vMax) / (2 * d);
-            float s_total_required = s1 + s3;
+        //    // Calculate distances for acceleration and deceleration phases
+        //    float s1 = (vMax * vMax - v0_dir * v0_dir) / (2 * a);
+        //    float s3 = (vMax * vMax) / (2 * d);
+        //    float s_total_required = s1 + s3;
 
-            if (s_total_required > deltaX_remaining)
-            {
-                // Triangular profile
-                vMaxSquaredCandidate = (2 * a * d * deltaX_remaining + d * v0_dir * v0_dir) / (a + d);
-                vMax = (float)Math.Sqrt(vMaxSquaredCandidate);
+        //    if (s_total_required > deltaX_remaining)
+        //    {
+        //        // Triangular profile
+        //        vMaxSquaredCandidate = (2 * a * d * deltaX_remaining + d * v0_dir * v0_dir) / (a + d);
+        //        vMax = (float)Math.Sqrt(vMaxSquaredCandidate);
 
-                // Recalculate times
-                float t1 = (vMax - v0_dir) / a;
-                float t3 = vMax / d;
-                totalTime += t1 + t3;
+        //        // Recalculate times
+        //        float t1 = (vMax - v0_dir) / a;
+        //        float t3 = vMax / d;
+        //        totalTime += t1 + t3;
 
-                timeToAccel = t1;
-                timeToDecel = t3;
-            }
-            else
-            {
-                // Trapezoidal profile
-                float s2 = deltaX_remaining - s1 - s3;
+        //        timeToAccel = t1;
+        //        timeToDecel = t3;
+        //    }
+        //    else
+        //    {
+        //        // Trapezoidal profile
+        //        float s2 = deltaX_remaining - s1 - s3;
 
-                // Calculate times for each phase
-                float t1 = (vMax - v0_dir) / a;
-                float t2 = s2 / vMax;
-                float t3 = vMax / d;
+        //        // Calculate times for each phase
+        //        float t1 = (vMax - v0_dir) / a;
+        //        float t2 = s2 / vMax;
+        //        float t3 = vMax / d;
 
-                totalTime += t1 + t2 + t3;
-                timeToAccel = t1;
-                timeToDecel = t3;
-            }
+        //        totalTime += t1 + t2 + t3;
+        //        timeToAccel = t1;
+        //        timeToDecel = t3;
+        //    }
 
-            return totalTime;
-        }
+        //    return totalTime;
+        //}
 
         private float CalculateTimeToReachPosition(PositionerMovementInformation info, float waitUntilPosition)
         {
             // Extract movement parameters
-            float x0 = info.StartingPosition;
-            float v0 = info.StartingSpeed;
-            float vt = info.TargetSpeed;
-            float a = info.TargetAcceleration;
-            float d = info.TargetDeceleration;
+            float x0 = info.StartingMovementParameters.Position;
+            float v0 = info.StartingMovementParameters.Speed;
+            float vt = info.TargetMovementParameters.TargetSpeed;
+            float a = info.TargetMovementParameters.Acceleration;
+            float d = info.TargetMovementParameters.Deceleration;
             float x_target = waitUntilPosition;
 
             // Calculate total movement direction
-            float deltaX_total = info.TargetPosition - x0;
+            float deltaX_total = info.TargetMovementParameters.Position - x0;
             float direction = Math.Sign(deltaX_total); // +1 for positive, -1 for negative
 
             // Adjust initial speed to movement direction
@@ -372,7 +385,7 @@ namespace standa_controller_software.custom_functions.definitions
             }
 
             // Adjust target position after initial deceleration
-            deltaX_total = info.TargetPosition - x0;
+            deltaX_total = info.TargetMovementParameters.Position - x0;
             float deltaX = x_target - x0;
             float deltaX_dir = direction * deltaX;
 
@@ -519,107 +532,25 @@ namespace standa_controller_software.custom_functions.definitions
             {
                 var name = kvp.Key;
                 var info = kvp.Value;
+                float t = waitUntilTime;
 
                 // Extract movement parameters
-                float x0 = info.StartingPosition;
-                float v0 = info.StartingSpeed;
-                float vt = info.TargetSpeed;
-                float a = info.TargetAcceleration;
-                float d = info.TargetDeceleration;
-                float x_target = info.TargetPosition;
+                float x0 = info.StartingMovementParameters.Position;
+                float v0 = info.StartingMovementParameters.Speed;
+                float vt = info.TargetMovementParameters.TargetSpeed;
+                float a = info.TargetMovementParameters.Acceleration;
+                float d = info.TargetMovementParameters.Deceleration;
+                float x_target = info.TargetMovementParameters.Position;
 
                 // Calculate total movement direction
                 float deltaX_total = x_target - x0;
-                float direction = Math.Sign(deltaX_total); // +1 for positive, -1 for negative
-
-                // Adjust initial speed to movement direction
+                int direction = Math.Sign(deltaX_total); // +1 for positive, -1 for negative
                 float v0_dir = v0 * direction;
 
-                // Keep accelerations and speeds positive
-                a = Math.Abs(a);
-                d = Math.Abs(d);
-                vt = Math.Abs(vt);
-
-                float totalTime = 0f;
-                float t = waitUntilTime;
                 float position = x0;
 
-                // If initial speed is in the opposite direction, decelerate to zero first
-                if (v0_dir < 0)
-                {
-                    // Time to decelerate to zero speed
-                    float t_stop = -v0_dir / d;
-                    // Distance covered during deceleration
-                    float s_stop = v0_dir * t_stop + 0.5f * (-d) * t_stop * t_stop;
-                    s_stop = Math.Abs(s_stop);
+                (float t1, float t2, float t3, float s1, float s2, float s3, float vMax) = CustomFunctionHelper.CalculateMainParameters(x0, v0, vt, a, d, x_target);
 
-                    if (t <= t_stop)
-                    {
-                        // Still decelerating to stop
-                        position = x0 + v0 * t + 0.5f * (-d) * t * t;
-                        positionsAtWaitTime[name] = position;
-                        continue;
-                    }
-                    else
-                    {
-                        // Deceleration to stop completed before wait time
-                        position = x0 + direction * s_stop;
-                        t -= t_stop;
-                        x0 = position;
-                        v0_dir = 0;
-                        totalTime += t_stop;
-                    }
-                }
-
-                // Remaining distance after initial deceleration
-                float deltaX_remaining = Math.Abs(x_target - x0);
-
-                // Compute candidate maximum speed
-                float numerator = 2 * a * d * deltaX_remaining + d * v0_dir * v0_dir;
-                float denominator = a + d;
-                float vMaxSquaredCandidate = numerator / denominator;
-                float vMaxCandidate = (float)Math.Sqrt(vMaxSquaredCandidate);
-
-                // Limit maximum speed to the target speed
-                float vMax = Math.Min(vMaxCandidate, vt);
-
-                // Initialize s2 and t2
-                float s2 = 0f;
-                float t2 = 0f;
-
-                // Calculate distances and times for each phase
-                float s1 = (vMax * vMax - v0_dir * v0_dir) / (2 * a);
-                float t1 = (vMax - v0_dir) / a;
-
-                float s3 = (vMax * vMax) / (2 * d);
-                float t3 = vMax / d;
-
-                float s_total_required = s1 + s3;
-
-                if (s_total_required > deltaX_remaining)
-                {
-                    // Triangular profile
-                    vMaxSquaredCandidate = (2 * a * d * deltaX_remaining + d * v0_dir * v0_dir) / (a + d);
-                    vMax = (float)Math.Sqrt(vMaxSquaredCandidate);
-
-                    // Recalculate distances and times
-                    s1 = (vMax * vMax - v0_dir * v0_dir) / (2 * a);
-                    t1 = (vMax - v0_dir) / a;
-
-                    s3 = (vMax * vMax) / (2 * d);
-                    t3 = vMax / d;
-
-                    totalTime += t1 + t3;
-                    s2 = 0f; // No constant speed phase
-                    t2 = 0f;
-                }
-                else
-                {
-                    // Trapezoidal profile
-                    s2 = deltaX_remaining - s1 - s3;
-                    t2 = s2 / vMax;
-                    totalTime += t1 + t2 + t3;
-                }
 
                 // Now calculate position at time t
                 if (t <= t1)
@@ -652,7 +583,7 @@ namespace standa_controller_software.custom_functions.definitions
         }
 
 
-        private List<Command> CreateMovementCommands(bool isShutterUsed, Dictionary<BasePositionerController, List<BasePositionerDevice>> groupedDevicesByController, Dictionary<char, PositionerMovementInformation> positionerMovementInfos, float allocatedTime, float? waitUntilTime, Dictionary<char,float>? waitUntilPosDict)
+        private List<Command> CreateMovementCommands(bool isShutterUsed, Dictionary<BasePositionerController, List<BasePositionerDevice>> groupedDevicesByController, Dictionary<char, PositionerMovementInformation> positionerMovementInfos, float allocatedTime, float? waitUntilTime, Dictionary<char, float>? waitUntilPosDict)
         {
             var commandsMovement = new List<Command>();
 
@@ -665,10 +596,20 @@ namespace standa_controller_software.custom_functions.definitions
                     deviceName => deviceName,
                     deviceName => new PositionerInfo
                     {
-                        WaitUntilPosition = waitUntilPosDict is not null? waitUntilPosDict[deviceName] : null, // TODO: Implement waitUntil logic if necessary
-                        TargetSpeed = positionerMovementInfos[deviceName].TargetSpeed,
-                        Direction = positionerMovementInfos[deviceName].TargetDirection,
-                        TargetPosition = positionerMovementInfos[deviceName].TargetPosition,
+                        WaitUntilPosition = waitUntilPosDict is not null ? waitUntilPosDict[deviceName] : null,
+                        TargetSpeed = positionerMovementInfos[deviceName].TargetMovementParameters.TargetSpeed,
+                        Direction = positionerMovementInfos[deviceName].TargetMovementParameters.Direction,
+                        TargetPosition = positionerMovementInfos[deviceName].TargetMovementParameters.Position,
+                        MovementInformation = new MovementInformation()
+                        {
+                            StartPosition = positionerMovementInfos[deviceName].StartingMovementParameters.Position,
+                            EndPosition = positionerMovementInfos[deviceName].TargetMovementParameters.Position,
+                            TotalTime = positionerMovementInfos[deviceName].KinematicParameters.TotalTime,
+                            ConstantSpeedStartTime = positionerMovementInfos[deviceName].KinematicParameters.ConstantSpeedStartTime,
+                            ConstantSpeedEndTime = positionerMovementInfos[deviceName].KinematicParameters.ConstantSpeedEndTime,
+                            ConstantSpeedEndPosition = positionerMovementInfos[deviceName].KinematicParameters.ConstantSpeedEndPosition,
+                            ConstantSpeedStartPosition = positionerMovementInfos[deviceName].KinematicParameters.ConstantSpeedStartPosition,
+                        }
                     });
 
                 var shutterDevice = _controllerManager.GetDevices<ShutterDevice>().First();
@@ -683,7 +624,7 @@ namespace standa_controller_software.custom_functions.definitions
                     PositionerInfo = positionerInfos,
                     ShutterInfo = isShutterUsed ? new ShutterInfo
                     {
-                        DelayOn = shutterDevice is not null? Math.Max(shutterDevice.DelayOn,0) : float.NaN,
+                        DelayOn = shutterDevice is not null ? Math.Max(shutterDevice.DelayOn, 0) : float.NaN,
                         DelayOff = shutterDevice is not null ? Math.Max(shutterDevice.DelayOff, 0) : float.NaN,
                     } : new ShutterInfo()
                 };
@@ -694,7 +635,8 @@ namespace standa_controller_software.custom_functions.definitions
                     Await = true,
                     Parameters = moveAParameters,
                     TargetController = controllerName,
-                    TargetDevices = groupedDeviceNames
+                    TargetDevices = groupedDeviceNames,
+                    EstimatedTime = waitUntilTime ?? positionerInfos.Select(info => info.Value.MovementInformation.TotalTime).Max()
                 });
             }
 
@@ -713,7 +655,8 @@ namespace standa_controller_software.custom_functions.definitions
                 {
                     if (_controllerManager.TryGetDevice<BasePositionerDevice>(deviceName, out BasePositionerDevice positionerDevice))
                     {
-                        if (positionerDevice.Acceleration != positionerMovementInfos[deviceName].TargetAcceleration || positionerDevice.Deceleration != positionerMovementInfos[deviceName].TargetDeceleration)
+                        if (positionerMovementInfos[deviceName].StartingMovementParameters.Acceleration!= positionerMovementInfos[deviceName].TargetMovementParameters.Acceleration 
+                        || positionerMovementInfos[deviceName].StartingMovementParameters.Deceleration != positionerMovementInfos[deviceName].TargetMovementParameters.Deceleration)
                             return true;
                         else
                             return false;
@@ -726,9 +669,9 @@ namespace standa_controller_software.custom_functions.definitions
                     deviceName => deviceName,
                     deviceName => new MovementSettingsInfo
                     {
-                        TargetAcceleration = positionerMovementInfos[deviceName].TargetAcceleration,
-                        TargetDeceleration = positionerMovementInfos[deviceName].TargetDeceleration,
-                        TargetSpeed = positionerMovementInfos[deviceName].TargetSpeed,
+                        TargetAcceleration = positionerMovementInfos[deviceName].TargetMovementParameters.Acceleration,
+                        TargetDeceleration = positionerMovementInfos[deviceName].TargetMovementParameters.Deceleration,
+                        TargetSpeed = positionerMovementInfos[deviceName].TargetMovementParameters.TargetSpeed,
                     });
 
                 var commandParameters = new UpdateMovementSettingsParameters

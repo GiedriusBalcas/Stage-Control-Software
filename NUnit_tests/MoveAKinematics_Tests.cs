@@ -84,7 +84,7 @@ namespace NUnit_tests
             var commandManager_virtual = new CommandManager(controllerManager_virtual, new System.Collections.Concurrent.ConcurrentQueue<string>());
             
             _definitions = new Definitions();
-            _definitions.AddFunction("moveA", new MoveAbsolutePositionFunction(commandManager_virtual, controllerManager_virtual));
+            //_definitions.AddFunction("moveA", new MoveAbsolutePositionFunction(commandManager_virtual, controllerManager_virtual));
             _definitions.AddVariable("PI", (float)Math.PI);
 
             // Set-up text interpreter
@@ -120,8 +120,8 @@ namespace NUnit_tests
             {
                 _commandManager.EnqueueCommandLine(commandLine);
             }
-            Task.Run(() => _commandManager.UpdateStatesAsync());
-            _commandManager.Start();
+            //Task.Run(() => _commandManager.UpdateStatesAsync());
+            //_commandManager.Start();
 
 
             var currentQueue = _commandManager.GetCommandQueueAsString();

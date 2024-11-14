@@ -15,6 +15,7 @@ namespace standa_controller_software.custom_functions
         private readonly CommandManager _commandManager;
         private ControllerManager _controllerManager_virtual;
         private CommandManager _commandManager_virtual;
+        private float _allocatedTime;
         public Definitions Definitions {  get; private set; }
         public FunctionManager(ControllerManager controllerManager, CommandManager commandManager)
         {
@@ -38,19 +39,21 @@ namespace standa_controller_software.custom_functions
             _commandManager_virtual.ClearQueue();
             
             Definitions = new Definitions();
-            var moveFunction = new MoveAbsolutePositionFunction(_commandManager_virtual, _controllerManager_virtual);
-            var jumpFuntion = new JumpAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual);
-            var lineFunction = new LineAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual, jumpFuntion);
-            var arcFunction = new ArcAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual, jumpFuntion);
-            var setPowerFunction = new SetPowerFunction(_commandManager, _controllerManager_virtual, jumpFuntion);
-            Definitions.AddFunction("moveA", moveFunction);
+            var changeShutterStateFunction = new ChangeShutterStateFunction(_commandManager_virtual, _controllerManager_virtual);
+            var changeShutterStateForIntervalFunction = new ChangeShutterStateForIntervalFunction(_commandManager_virtual, _controllerManager_virtual);
+            var jumpFuntion = new JumpAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual, changeShutterStateFunction);
+            var lineFunction = new LineAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual, jumpFuntion, changeShutterStateFunction);
+            var arcFunction = new ArcAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual, jumpFuntion, changeShutterStateFunction);
+            var setPowerFunction = new SetPowerFunction(_commandManager_virtual, _controllerManager_virtual, jumpFuntion);
+
             Definitions.AddFunction("jumpA", jumpFuntion);
             Definitions.AddFunction("lineA", lineFunction);
             Definitions.AddFunction("arcA", arcFunction);
             Definitions.AddFunction("setPower", setPowerFunction);
+            Definitions.AddFunction("shutter", changeShutterStateFunction);
+            Definitions.AddFunction("shutterInterval", changeShutterStateForIntervalFunction);
             Definitions.AddFunction("set", new SetDeviceProperty(_controllerManager_virtual));
-            //Definitions.AddFunction("arcA", new MoveArcAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual));
-            //Definitions.AddFunction("shutter", new ChangeShutterStateFunction(_commandManager_virtual, _controllerManager_virtual));
+            
             Definitions.AddVariable("PI", (float)Math.PI);
             Definitions.AddVariable("null", null);
         }

@@ -2,11 +2,13 @@
 using OpenTK.Compute.OpenCL;
 using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
+using standa_controller_software.command_manager.command_parameter_library.Positioners;
 using standa_controller_software.device_manager.attributes;
 using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -78,11 +80,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             API.set_logging_callback(callback, IntPtr.Zero);
 
         }
-        private Task AddSyncInAction(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        private Task AddSyncInAction(Command command, SemaphoreSlim semaphore)
         {
             if (isSyncUsed)
             {
-                _log = log;
                 var deviceNames = command.TargetDevices;
                 var parameters = command.Parameters as AddSyncInActionParameters;
                 for (int i = 0; i < deviceNames.Length; i++)
@@ -279,7 +280,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return base.ConnectDevice(device, semaphore);
         }
 
-        protected override Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override Task<object> UpdateMoveSettings(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
             var movementParams = command.Parameters as UpdateMovementSettingsParameters;
@@ -306,7 +307,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
                 }
             }
-            return Task.CompletedTask;
+            return null;
 
         }
 
@@ -446,7 +447,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
 
 
-        public override Task Stop(SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override Task Stop(Command command, SemaphoreSlim semaphore)
         {
             //_buffer.Clear();
             // might need to restart the controller to clea the buffer.
@@ -491,7 +492,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return Task.CompletedTask;
         }
 
-        public override Task UpdateStatesAsync(ConcurrentQueue<string> log)
+        protected override Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore)
         {
             foreach (var positioner in Devices)
             {
@@ -512,30 +513,39 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     positioner.Value.CurrentPosition = deviceInfo.statusCalibrated_t.CurPosition;
                     positioner.Value.CurrentSpeed = deviceInfo.statusCalibrated_t.CurSpeed;
 
-                    log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
+                    _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
                 }
             }
             return Task.CompletedTask;
         }
 
-        protected override Task WaitUntilStopPolar(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected Task<object> CheckBufferFreeSpace(Command command, SemaphoreSlim semaphore)
         {
-            throw new NotImplementedException();
-        }
-        public int CheckBufferFreeSpace(char targetDevice)
-        {
-            if (Devices[targetDevice].IsConnected)
+            return Task.Run(() =>
             {
-                var deviceInfo = _deviceInfo[targetDevice];
-                CallResponse = API.get_status_calb(deviceInfo.id, out deviceInfo.statusCalibrated_t, ref deviceInfo.calibration_t);
+                if (command.Parameters is GetBufferCountParameters getBufferSpaceCountParameters)
+                {
+                    var deviceNames = getBufferSpaceCountParameters.Devices;
+                    if (deviceNames.Length > 0)
+                    {
+                        uint[] counts = new uint[deviceNames.Length];
+                        int idx = 0;
+                        foreach (char deviceName in deviceNames)
+                        {
+                            var deviceInfo = _deviceInfo[deviceName];
+                            CallResponse = API.get_status_calb(deviceInfo.id, out deviceInfo.statusCalibrated_t, ref deviceInfo.calibration_t);
+                            var count = deviceInfo.statusCalibrated_t.CmdBufFreeSpace;
+                            counts[idx++] = count;
+                            Devices[deviceName].CurrentPosition = deviceInfo.statusCalibrated_t.CurPosition;
+                            Devices[deviceName].CurrentSpeed = deviceInfo.statusCalibrated_t.CurSpeed;
+                        }
+                        return (object)counts;
+                    }
+                }
 
-                Devices[targetDevice].CurrentPosition = deviceInfo.statusCalibrated_t.CurPosition;
-                Devices[targetDevice].CurrentSpeed = deviceInfo.statusCalibrated_t.CurSpeed;
-
-                return (int)deviceInfo.statusCalibrated_t.CmdBufFreeSpace;
-            }
-
-            return 0;
+                return (object)new uint[0];
+            });
         }
+
     }
 }

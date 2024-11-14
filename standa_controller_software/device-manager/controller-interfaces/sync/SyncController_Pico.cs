@@ -245,7 +245,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                 serialPort.Write(packet, 0, packet.Length);
 
                 // Wait for the response with timeout
-                bool success = await WaitForResponseAsync(tcs.Task, timeoutMilliseconds: 10000);
+                bool success = await WaitForResponseAsync(tcs.Task, timeoutMilliseconds: 1000);
 
                 if (!success)
                 {
@@ -295,7 +295,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                 serialPort.Write(packet, 0, packet.Length);
 
                 // Wait for the response with timeout
-                int count = await WaitForResponseAsync(tcs.Task, timeoutMilliseconds: 10000);
+                int count = await WaitForResponseAsync(tcs.Task, timeoutMilliseconds: 1000);
 
                 return 254 - count;
             }
@@ -399,7 +399,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         }
 
         // Helper method to wait for a response with timeout
-        private async Task<T> WaitForResponseAsync<T>(Task<T> task, int timeoutMilliseconds = 10000)
+        private async Task<T> WaitForResponseAsync<T>(Task<T> task, int timeoutMilliseconds = 1000)
         {
             if (await Task.WhenAny(task, Task.Delay(timeoutMilliseconds)) == task)
             {

@@ -68,6 +68,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 State = MethodState.Free,
             };
 
+
+
             OnSyncIn += (char name) => OnSyncInAction(name).GetAwaiter().GetResult();
         }
 

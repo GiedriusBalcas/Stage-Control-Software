@@ -355,7 +355,7 @@ namespace text_parser_library
             {
                 State.AddMessage($"Exception thrown in {name} command: {ex.Message}");
                 State.SetState(ParserState.States.Error);
-                throw new Exception();
+                throw;
             }
 
             return result;

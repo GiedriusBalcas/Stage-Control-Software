@@ -1,4 +1,5 @@
 ﻿using standa_controller_software.command_manager;
+using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.device_manager.controller_interfaces;
 using standa_controller_software.device_manager.devices;
 using System;
@@ -25,6 +26,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
                 Quable = false,
                 State = MethodState.Waiting,
             };
+            _methodMap[CommandDefinitions.ChangeShutterStateOnInterval] = new MethodInformation
+            {
+                MethodHandle = ChangeStateOnInterval,
+                Quable = false,
+                State = MethodState.Waiting,
+            };
 
             Devices = new Dictionary<char, BaseShutterDevice>();
             //methodMap["UpdateStates"] = UpdateStatesCall;
@@ -40,65 +47,53 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         }
         public override Task ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
         {
-            semaphore.Release();
-            if (device is BaseShutterDevice shutterDevice && Devices.ContainsValue(shutterDevice))
+            try
             {
-                shutterDevice.IsConnected = true;
+                if (device is BaseShutterDevice shutterDevice && Devices.ContainsValue(shutterDevice))
+                {
+                    shutterDevice.IsConnected = true;
+                }
+                else
+                    throw new Exception($"Unable to add device: {device.Name}. Controller {this.Name} only accepts positioning devices.");
+
             }
-            else
-                throw new Exception($"Unable to add device: {device.Name}. Controller {this.Name} only accepts positioning devices.");
+            catch { }
 
             return Task.CompletedTask;
         }
 
-        protected abstract Task ChangeStateOnInterval(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
-        protected abstract Task SetDelayAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
-
-        protected abstract Task ChangeState(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log);
-        
-        public override async Task ExecuteCommandAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected virtual async Task ChangeStateOnInterval(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
         {
-            // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {command.Action} command on device {string.Join(' ', command.TargetDevices)}, parameters: {FormatParameters(command.Parameters)}");
-
-            Dictionary<char, CancellationToken> cancelationTokens = new Dictionary<char, CancellationToken>();
-            List<BaseShutterDevice> devices = new List<BaseShutterDevice>();
-            foreach (var deviceName in command.TargetDevices)
+            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
+            if (command.Parameters is ChangeShutterStateForIntervalParameters parameters)
             {
-                if (Devices.TryGetValue(deviceName, out BaseShutterDevice device))
+                for (int i = 0; i < devices.Length; i++)
                 {
-                    devices.Add(device);
-                }
-                else
-                {
-                    // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Device {command.TargetDevices} not found in controller {command.TargetController}");
-                }
-                var tokenSource = new CancellationTokenSource();
-                if (_deviceCancellationTokens.ContainsKey(deviceName))
-                {
-                    _deviceCancellationTokens[deviceName].Cancel();
-                    _deviceCancellationTokens[deviceName] = tokenSource;
-                }
-                else
-                {
-                    _deviceCancellationTokens.TryAdd(deviceName, tokenSource);
-                }
-                cancelationTokens.Add(deviceName, tokenSource.Token);
-            }
+                    var device = devices[i];
+                    var duration = parameters.Duration;
 
-            if (_methodMap.TryGetValue(command.Action, out var method))
-            {
-                if (command.Await)
-                    await method.MethodHandle(command, semaphore, log);
-                else
-                    _ = method.MethodHandle(command, semaphore, log);// Start method without awaiting
+                    await ChangeStateOnIntervalImplementation(device, duration);
+                }
             }
-            else
-            {
-                throw new InvalidOperationException("Invalid action");
-            }
-
-            // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Completed {command.Action} command on device {command.TargetDevices}");
         }
+
+        protected virtual async Task ChangeState(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        {
+            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
+            if (command.Parameters is ChangeShutterStateParameters parameters)
+            {
+                for (int i = 0; i < devices.Length; i++)
+                {
+                    var device = devices[i];
+                    var state = parameters.State;
+
+                    await ChangeStateImplementation(device, state);
+                }
+            }
+        }
+        protected abstract Task ChangeStateImplementation(BaseShutterDevice device, bool wantedState);
+        protected abstract Task ChangeStateOnIntervalImplementation(BaseShutterDevice device, float duration);
+
 
         public override abstract BaseController GetCopy();
 

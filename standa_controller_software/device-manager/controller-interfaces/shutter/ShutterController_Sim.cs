@@ -24,7 +24,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
 
         public ShutterController_Sim(string name) : base(name)
         {
-            
+
         }
         public override void AddDevice(BaseDevice device)
         {
@@ -40,7 +40,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         }
         public override BaseController GetCopy()
         {
-            var controller = new ShutterController_Virtual(Name);
+            var controller = new ShutterController_Sim(Name);
             foreach (var device in Devices)
             {
                 controller.AddDevice(device.Value.GetCopy());
@@ -49,110 +49,24 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             return controller;
         }
 
-        public override async Task UpdateStatesAsync(ConcurrentQueue<string> log)
+        public override Task UpdateStatesAsync(ConcurrentQueue<string> log)
         {
-            foreach (var device in Devices)
-            {
-                device.Value.IsOn = _deviceInfo[device.Key]._isOn;
-                device.Value.DelayOn = _deviceInfo[device.Key]._delayOn;
-                device.Value.DelayOff = _deviceInfo[device.Key]._delayOff;
-                // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {device.Value.Name}, State: {device.Value.IsOn}");
-            }
-            await Task.Delay(10);
-        }
-
-        protected override async Task ChangeState(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
-        {
-            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
-            var parameters = command.Parameters as ChangeShutterStateParameters;
-
-            for (int i = 0; i < devices.Length; i++)
-            {
-                var device = devices[i];
-                var state = parameters.State;
-                _deviceInfo[device.Name]._isOn = state;
-                device.IsOn = state;
-            }
-        }
-
-        public async Task ChangeStatePublic(bool wantedstate)
-        {
-            var device = Devices.First().Value;
-            _deviceInfo[device.Name]._isOn = wantedstate;
-            device.IsOn = wantedstate;
-
-
-            //for (int i = 0; i < devices.Length; i++)
-            //{
-            //    var device = devices[i];
-            //    var state = (bool)command.Parameters[i][0];
-            //    await Task.Delay(2);
-            //    _deviceInfo[device.Name]._isOn = state;
-            //    device.IsOn = state;
-            //}
-        }
-
-        protected override async Task ChangeStateOnInterval(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
-        {
-            // TODO: implement cancelation tokens.
-            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
-
-            float duration = 0;
-            ////var token = cancellationTokens.Values.Where(val => val != null).First();
-            
-            //for (int i = 0; i < devices.Length; i++)
-            //{
-            //    var device = devices[i];
-            //    duration = (float)command.Parameters[i][0] * 1000000 - device.DelayOff * 1000 - device.DelayOn * 1000;
-            //    var state = true;
-            //    await Task.Run(() => DelayMicroseconds((int)device.DelayOn * 1000));
-            //    _deviceInfo[device.Name]._isOn = state;
-            //}
-
-            //await Task.Run(() => DelayMicroseconds((int)duration));
-            
-            //for (int i = 0; i < devices.Length; i++)
-            //{
-            //    var device = devices[i];
-            //    var state = false;
-            //    _deviceInfo[device.Name]._isOn = state;
-            //}
-
-        }
-
-        private static async Task DelayMicroseconds(int microseconds)
-        {
-            if (microseconds <= 0) return;
-
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
-
-            // Spin until the requested number of microseconds has passed
-            while (stopwatch.ElapsedTicks < microseconds * (Stopwatch.Frequency / 1_000_000))
-            {
-                // Using Thread.Yield() to give up the remainder of the time slice to another thread
-                // This helps avoid too much CPU consumption
-                Thread.Yield();
-            }
-
-            stopwatch.Stop();
-        }
-
-        protected override Task SetDelayAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
-        {
-            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
-
-            //for (int i = 0; i < devices.Length; i++)
-            //{
-            //    var device = devices[i];
-            //    var delayOn = (uint)command.Parameters[i][0];
-            //    var delayOff = (uint)command.Parameters[i][1];
-
-            //    _deviceInfo[device.Name]._delayOn = (int)delayOn;
-            //    _deviceInfo[device.Name]._delayOff = (int)delayOff;
-            //}
             return Task.CompletedTask;
         }
 
+        protected override Task ChangeStateImplementation(BaseShutterDevice device, bool wantedState)
+        {
+            _deviceInfo[device.Name]._isOn = wantedState;
+            device.IsOn = wantedState;
+
+            return Task.CompletedTask;
+        }
+
+        protected override async Task ChangeStateOnIntervalImplementation(BaseShutterDevice device, float duration)
+        {
+            await ChangeStateImplementation(device, true);
+            await Task.Delay((int)Math.Round(duration * 1000));
+            await ChangeStateImplementation(device, false);
+        }
     }
 }

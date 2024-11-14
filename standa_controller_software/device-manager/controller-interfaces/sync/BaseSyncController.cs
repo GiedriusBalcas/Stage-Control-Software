@@ -1,4 +1,5 @@
-﻿using standa_controller_software.device_manager.devices;
+﻿using standa_controller_software.command_manager;
+using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -12,6 +13,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
     {
         public BaseSyncController(string name) : base(name)
         {
+            _methodMap[CommandDefinitions.AddSyncInAction] = new MethodInformation()
+            {
+                MethodHandle = AddSyncInAction,
+                Quable = false,
+                State = MethodState.Free,
+            };
         }
 
         public override abstract void AddDevice(BaseDevice device);
@@ -21,8 +28,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         {
             return new List<BaseDevice>();
         }
-        public override abstract Task Stop(SemaphoreSlim semaphore, ConcurrentQueue<string> log);
-        public override abstract Task UpdateStatesAsync(ConcurrentQueue<string> log);
+        protected override abstract Task Stop(SemaphoreSlim semaphore);
+        protected override abstract Task UpdateStatesAsync();
+        protected override abstract Task AddSyncInAction();
 
     }
 }

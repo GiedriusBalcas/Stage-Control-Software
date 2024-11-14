@@ -35,7 +35,6 @@ class Program
         _controllerManager = SetupSystemControllersWithMaster();
         _commandManager = new CommandManager(_controllerManager, new System.Collections.Concurrent.ConcurrentQueue<string>());
 
-        Task.Run(() => _commandManager.UpdateStatesAsync());
 
         _functionDefinitionLibrary = new FunctionManager(_controllerManager, _commandManager);
         _textInterpreter = new TextInterpreterWrapper() { DefinitionLibrary = _functionDefinitionLibrary.Definitions };
@@ -83,7 +82,7 @@ class Program
         {
             _functionDefinitionLibrary.InitializeDefinitions();
             _textInterpreter.ReadInput(inputText);
-            var commands = _functionDefinitionLibrary.ExtractCommands();
+            var commands = _functionDefinitionLibrary.ExtractCommands(out var allocatedTime);
             _painterManager.PaintCommandQueue(commands);
         }
         catch (Exception ex)
@@ -125,7 +124,7 @@ class Program
     {
 
         var _definitions = new Definitions();
-        _definitions.AddFunction("moveA", new MoveAbsolutePositionFunction(commandManager, controllerManager));
+        //_definitions.AddFunction("moveA", new MoveAbsolutePositionFunction(commandManager, controllerManager));
         //_definitions.AddFunction("shutter", new ChangeShutterStateFunction(commandManager, controllerManager));
         _definitions.AddVariable("PI", (float)Math.PI);
 

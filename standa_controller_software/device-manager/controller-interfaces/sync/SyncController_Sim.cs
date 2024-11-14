@@ -58,7 +58,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             {
                 Devices = Devices,
                 Launch = Launch,
-                Rethrow = Rethrow,
+                Rethrow = Rethrow ,
                 Shutter = Shutter,
                 Shutter_delay_off = Shutter_delay_off,
                 Shutter_delay_on = Shutter_delay_on
@@ -108,6 +108,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
         public override Task UpdateStatesAsync(ConcurrentQueue<string> log)
         {
+            //await Task.Delay(1100);
             return Task.CompletedTask;
         }
 
@@ -123,18 +124,17 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
 
 
-        public async Task ExecuteQueue(ConcurrentQueue<string> log)
+        public async Task ExecuteQueue(SemaphoreSlim semaphore)
         {
-            _log = log;
             _allowedToRun = true;
-            log.Enqueue("Starting executing on sync executer controller");
+            _log.Enqueue("Starting executing on sync executer controller");
             if (_queueState == QueueState.Running)
                 return;
 
             _queueState = QueueState.Running;
 
             millis.Restart();
-            log.Enqueue($"execution running with buffer element count: {_buffer.Count}");
+            _log.Enqueue($"execution running with buffer element count: {_buffer.Count}");
 
             while (_buffer.Count > 0)
             {
@@ -171,12 +171,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                 }
 
 
-                log.Enqueue($"dequed from buffer. On execition sendSyncInTo: {string.Join(' ', _sendSyncInTo.ToArray())}");
+                _log.Enqueue($"dequed from buffer. On execition sendSyncInTo: {string.Join(' ', _sendSyncInTo.ToArray())}");
 
                 // send sync_in to all targetted devices if launch is pending.
                 if (executionInformation.Launch)
                 {
-                    log.Enqueue($"launching: {string.Join(' ', executionInformation.Devices)}");
+                    _log.Enqueue($"launching: {string.Join(' ', executionInformation.Devices)}");
                     SendSyncIn(executionInformation.Devices);
                 }
 
@@ -216,10 +216,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
                 SendMessage.Invoke("0x01");
 
-                log.Enqueue($" finish.");
+                _log.Enqueue($" finish.");
             }
             _queueState = QueueState.Waiting;
-            log.Enqueue($" Queue is finished.");
+            _log.Enqueue($" Queue is finished.");
             SendMessage.Invoke("0x02");
 
         }
@@ -242,14 +242,20 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             // Add tasks for the shutter state changes
             tasks.Add(Task.Run(async () =>
             {
-                await Task.Delay((int)(delayOn * 1000)); // Convert delayOn to milliseconds
-                _shutterChangeState?.Invoke(true);
+                if (!float.IsNaN(delayOn))
+                {
+                    await Task.Delay((int)(delayOn * 1000)); // Convert delayOn to milliseconds
+                    _shutterChangeState?.Invoke(true);
+                }
             }));
 
             tasks.Add(Task.Run(async () =>
             {
-                await Task.Delay((int)(delayOff * 1000)); // Convert delayOff to milliseconds
-                _shutterChangeState?.Invoke(false);
+                if (!float.IsNaN(delayOff))
+                {
+                    await Task.Delay((int)(delayOff * 1000)); // Convert delayOff to milliseconds
+                    _shutterChangeState?.Invoke(false);
+                }
             }));
 
             // Await all tasks to complete

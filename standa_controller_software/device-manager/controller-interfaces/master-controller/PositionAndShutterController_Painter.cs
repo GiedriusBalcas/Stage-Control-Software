@@ -27,14 +27,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             _lineObjectCollection = lineObjectCollection;
             _toolInformation = toolInformation;
 
-            _methodMap_multiControntroller[CommandDefinitions.MoveAbsolute] = new MultiControllerMethodInformation()
+            _multiControllerMethodMap[CommandDefinitions.MoveAbsolute] = new MultiControllerMethodInformation()
             {
                 MethodHandle = MoveAbsolute,
                 Quable = true,
                 State = MethodState.Free,
             };
             
-            _methodMap_multiControntroller[CommandDefinitions.ChangeShutterState] = new MultiControllerMethodInformation()
+            _multiControllerMethodMap[CommandDefinitions.ChangeShutterState] = new MultiControllerMethodInformation()
             {
                 MethodHandle = ChangeState,
                 Quable = true,

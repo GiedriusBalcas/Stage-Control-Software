@@ -7,6 +7,9 @@ using System.Threading;
 using ximcWrapper;
 using standa_controller_software.device_manager.controller_interfaces.master_controller;
 using System.Runtime.ExceptionServices;
+using System.Xml.Linq;
+using OpenTK.Platform.Windows;
+using OpenTK.Graphics.OpenGL;
 
 namespace standa_controller_software.command_manager
 {
@@ -15,40 +18,7 @@ namespace standa_controller_software.command_manager
         Processing,
         Waiting
     }
-    public class AsyncQueue<T>
-    {
-        private readonly Queue<T> _queue = new Queue<T>();
-        private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(0);
-
-        public void Enqueue(T item)
-        {
-            lock (_queue)
-            {
-                _queue.Enqueue(item);
-            }
-            _semaphore.Release();
-        }
-
-        public async Task<T> DequeueAsync()
-        {
-            await _semaphore.WaitAsync();
-            lock (_queue)
-            {
-                return _queue.Dequeue();
-            }
-        }
-
-        public async Task<bool> WaitForNextItemAsync()
-        {
-            if (_semaphore.CurrentCount > 0)
-            {
-                return true;
-            }
-
-            await _semaphore.WaitAsync();
-            return true;
-        }
-    }
+    
     public class CommandManager
     {
         private readonly ControllerManager _controllerManager;
@@ -65,8 +35,14 @@ namespace standa_controller_software.command_manager
             foreach (var (controllerName, controller) in _controllerManager.Controllers)
             {
                 _controllerManager.ControllerLocks[controllerName].Wait();
-                controller.InitializeController(_controllerManager.ControllerLocks[controllerName], _log);
+                try
+                {
+                    controller.InitializeController(_controllerManager.ControllerLocks[controllerName], _log);
+                }
+                finally
+                {
                 _controllerManager.ControllerLocks[controllerName].Release();
+                }
             }
         }
 
@@ -92,15 +68,12 @@ namespace standa_controller_software.command_manager
         {
             return _log;
         }
-        public void Start()
-        {
-            CurrentState = CommandManagerState.Processing;
-            Task.Run(() => ProcessQueue());
-        }
+        
         public async Task ProcessQueue()
         {
             _allowedToRun = true;
             _log.Enqueue("ProcessingQueue.");
+            CurrentState = CommandManagerState.Processing;
             while (_commandQueue.Count > 0 && _allowedToRun)
             {
                 if (_commandQueue.TryDequeue(out Command[] commandLine))
@@ -130,87 +103,152 @@ namespace standa_controller_software.command_manager
             // Get all unique controller names in this command line
             var controllerNames = commandsByController.Keys.ToList();
 
-            // Wait for and acquire all necessary semaphores for the controllers
-            Dictionary<string, SemaphoreSlim> controllerSemaphores = new Dictionary<string, SemaphoreSlim>();
-            
-            foreach (var controllerName in controllerNames)
-            {
-                await _controllerManager.ControllerLocks[controllerName].WaitAsync();
-                controllerSemaphores[controllerName] = _controllerManager.ControllerLocks[controllerName];
-            }
-            // Execute all commands for each controller group
-
-
             var commandsByMasterController = commandLine
                         .GroupBy
-                        ( 
-                        kvp => 
-                            _controllerManager.Controllers[ kvp.TargetController ].MasterController == null 
-                                ? kvp.TargetController 
+                        (
+                        kvp =>
+                            _controllerManager.Controllers[kvp.TargetController].MasterController == null
+                                ? kvp.TargetController
                                 : _controllerManager.Controllers[kvp.TargetController].MasterController.Name
                         )
                         .ToDictionary(g => g.Key, g => g.ToArray());
 
-            var masterControllerNames = commandsByMasterController.Keys.ToList();
+            // check if theres a queued controller
+            // lets try to handle the quable first, then the non quable as they go in the command line
+            var quableControllers = commandsByMasterController.Keys.Where(name => _controllerManager.Controllers[name].IsQuable).ToList();
 
-            var executeTasks = masterControllerNames.Select(async controllerName =>
+            if (_currentQueueController != null)
             {
+                if (quableControllers.Contains(_currentQueueController))
+                {
+                    quableControllers.Remove(_currentQueueController);
+                    var controllerName = _currentQueueController;
+                    var commands = commandsByMasterController[controllerName];
+
+                    await ExecuteCommandLineGroup(new Dictionary<string, Command[]>
+                        {
+                            { controllerName, commands }
+                        });
+
+                    commandsByMasterController.Remove(controllerName);
+                }
+            }
+            for (var index = 0; index < quableControllers.Count; index++)
+            {
+                var controllerName = quableControllers[index];
                 var commands = commandsByMasterController[controllerName];
-                var semaphore = _controllerManager.ControllerLocks[controllerName];
 
                 await CheckAndUpdateControllerQueue(controllerName);
+                
+                // execute its commands.
+                await ExecuteCommandLineGroup(new Dictionary<string, Command[]>
+                        {
+                            { controllerName, commands }
+                        });
 
-                if (_controllerManager.Controllers[controllerName] is BaseMasterController masterController)
+                commandsByMasterController.Remove(controllerName);
+            }
+
+            // and now just move to the other controllers.
+            if (commandsByMasterController.Count < 1)
+                return;
+
+            await CheckAndUpdateControllerQueue(string.Empty);
+            await ExecuteCommandLineGroup(commandsByMasterController);
+
+        }
+
+        private async Task ExecuteCommandLineGroup(Dictionary<string, Command[]> commandsByMasterController)
+        {
+            // gathering all the semaphores needed for the command execution before starting execution.
+            // in the case of master controller, we will need to gather all of its slave semaphores.
+
+            var controllerNames = commandsByMasterController.Keys.ToList();
+            
+            var ackquiredSemaphores = await GatherSemaphoresForController(controllerNames);
+            
+
+            
+                var executeTasks = commandsByMasterController.Keys.Select(async controllerName =>
                 {
-                    var slaveSemaphores = new Dictionary<string, SemaphoreSlim>();
-                    foreach (var (slaveControllerName, slaveController) in masterController.SlaveControllers)
+                    var commands = commandsByMasterController[controllerName];
+                    var semaphore = ackquiredSemaphores[controllerName];
+                    try
                     {
-                        slaveSemaphores[slaveControllerName] = _controllerManager.ControllerLocks[slaveControllerName];
+    
+                    await ExecuteCommandsForControllerAsync(commands, controllerName, semaphore);
+
                     }
-
-                    await ExecuteCommandsForMasterControllerAsync(commands, controllerName, semaphore, slaveSemaphores);
-
-                    foreach (var (slaveControllerName, slaveSemaphore) in slaveSemaphores)
+                    finally
                     {
-                        if (slaveSemaphore.CurrentCount == 0)
-                            slaveSemaphore.Release();
+                        ReleaseSemeaphores(new Dictionary<string, SemaphoreSlim>
+                        {
+                            { controllerName, semaphore }
+                        });
                     }
-                    if (semaphore.CurrentCount == 0)
-                        semaphore.Release();
+                });
+
+                await Task.WhenAll(executeTasks);
+            
+        }
+
+        private static void ReleaseSemeaphores(Dictionary<string, SemaphoreSlim> ackquiredSemaphores)
+        {
+            foreach (var (controllerName, semaphore) in ackquiredSemaphores)
+            {
+                semaphore.Release();
+            }
+        }
+
+        private async Task<Dictionary<string, SemaphoreSlim>> GatherSemaphoresForController(List<string> controllerNames)
+        {
+            var ackquiredSemaphores = new Dictionary<string, SemaphoreSlim>();
+            foreach (var controllerName in controllerNames)
+            {
+                var controller = _controllerManager.Controllers[controllerName];
+                if (_controllerManager.ControllerLocks.TryGetValue(controllerName, out SemaphoreSlim semaphore))
+                {
+                    await semaphore.WaitAsync();
+                    ackquiredSemaphores[controllerName] = semaphore;
                 }
                 else
                 {
-                    await ExecuteCommandsForControllerAsync(commands, controllerName, semaphore);
-                    if (semaphore.CurrentCount == 0)
-                        semaphore.Release();
+                    throw new KeyNotFoundException($"Semaphore for controller '{controllerNames}' not found.");
                 }
-
-
-            });
-
-            await Task.WhenAll(executeTasks);
-
-        }
-        private async Task ExecuteCommandsForMasterControllerAsync(Command[] commands, string controllerName, SemaphoreSlim semaphore, Dictionary<string, SemaphoreSlim> slaveSemaphores)
-        {
-            if (_controllerManager.Controllers[controllerName] is BaseMasterController masterController)
-            {
-                await masterController.ExecuteSlaveCommandsAsync(commands, semaphore, slaveSemaphores, _log);
             }
+
+            return ackquiredSemaphores;
         }
+
         private async Task ExecuteCommandsForControllerAsync(Command[] commands, string controllerName, SemaphoreSlim semaphore)
         {
+            var controller = _controllerManager.Controllers[controllerName];
 
-            for (int i = 0; i < commands.Length; i++)
+            if(controller is BaseMasterController masterController)
             {
                 try
                 {
-                    await _controllerManager.Controllers[controllerName].ExecuteCommandAsync(commands[i], semaphore, _log);
+                    await masterController.ExecuteSlaveCommandsAsync(commands, semaphore, _log);
                 }
                 catch (Exception ex)
                 {
-                    //Console.WriteLine($"{DateTime.Now}: Error executing command on controller {controllerName}: {ex.Message}");
+                    _log.Enqueue($"{DateTime.Now}: Error executing command on controller {controllerName}: {ex.Message}");
                     throw;
+                }
+            }
+            else
+            {
+                for (int i = 0; i < commands.Length; i++)
+                {
+                    try
+                    {
+                        await controller.ExecuteCommandAsync(commands[i], semaphore, _log);
+                    }
+                    catch (Exception ex)
+                    {
+                        _log.Enqueue($"{DateTime.Now}: Error executing command on controller {controllerName}: {ex.Message}");
+                        throw;
+                    }
                 }
             }
         }
@@ -236,74 +274,6 @@ namespace standa_controller_software.command_manager
             }
         }
 
-        //public async Task UpdateStatesAsync()
-        //{
-        //    while (true)
-        //    {
-        //        var tasks = new List<Task>();
-
-        //        foreach (var controllerPair in _controllerManager.Controllers)
-        //        {
-
-        //            var controller = controllerPair.Value;
-        //            var semaphore = _controllerManager.ControllerLocks[controller.Name];
-        //            if (semaphore.CurrentCount > 0)
-        //            {
-        //                //await semaphore.WaitAsync();
-
-        //                var task = Task.Run(async () =>
-        //                {
-        //                    await controller.UpdateStatesAsync(_log);
-        //                    //if (semaphore.CurrentCount == 0)
-        //                    //    semaphore.Release();
-        //                });
-        //                tasks.Add(task);
-        //            }
-
-        //        }
-        //        await Task.WhenAll(tasks);
-        //        await Task.Delay(50);
-        //    }
-        //}
-
-
-        public async Task UpdateStatesAsync()
-        {
-            while (true)
-            {
-                var tasks = new List<Task>();
-
-                foreach (var controllerPair in _controllerManager.Controllers)
-                {
-                    var controller = controllerPair.Value;
-                    var semaphore = _controllerManager.ControllerLocks[controller.Name];
-
-                    // Attempt to acquire the semaphore without waiting
-                    if (await semaphore.WaitAsync(0))
-                    {
-                        // Define an asynchronous method to update and release
-                        async Task UpdateAndReleaseAsync()
-                        {
-                            try
-                            {
-                                await controller.UpdateStatesAsync(_log);
-                            }
-                            finally
-                            {
-                                semaphore.Release();
-                            }
-                        }
-
-                        tasks.Add(UpdateAndReleaseAsync());
-                    }
-                    // If semaphore wasn't acquired, skip this controller
-                }
-
-                await Task.WhenAll(tasks);
-                await Task.Delay(50);
-            }
-        }
-
         public void PrintLog()
         {
             while (_log.TryDequeue(out string logEntry))
@@ -326,20 +296,24 @@ namespace standa_controller_software.command_manager
                     await _controllerManager.ControllerLocks[controllerName].WaitAsync();
                     await controller.Stop(_controllerManager.ControllerLocks[controllerName], _log);
 
-                    if (_controllerManager.ControllerLocks[controllerName].CurrentCount == 0)
-                        _controllerManager.ControllerLocks[controllerName].Release();
+                    //if (_controllerManager.ControllerLocks[controllerName].CurrentCount == 0)
+                    _controllerManager.ControllerLocks[controllerName].Release();
                 }
             }
 
             foreach (var (controllerName, controller) in _controllerManager.Controllers)
             {
-                if (controller.MasterController is null)
+                if (controller.MasterController is BaseMasterController baseMasterController)
                 {
-                    //await _controllerManager.ControllerLocks[controllerName].WaitAsync();
-                    await controller.Stop(_controllerManager.ControllerLocks[controllerName], _log);
-
-                    if (_controllerManager.ControllerLocks[controllerName].CurrentCount == 0)
-                        _controllerManager.ControllerLocks[controllerName].Release();
+                    var ackquiredSemaphores = await GatherSemaphoresForController([baseMasterController.Name]);
+                    try
+                    {
+                        await controller.Stop(ackquiredSemaphores[baseMasterController.Name], _log);
+                    }
+                    finally
+                    {
+                        ReleaseSemeaphores(ackquiredSemaphores);
+                    }
                 }
             }
 
@@ -379,20 +353,6 @@ namespace standa_controller_software.command_manager
             return csvStringBuilder.ToString();
         }
 
-        private string FormatParameters(object[][] parameters)
-        {
-            var formattedParameters = parameters
-                .Select(paramArray =>
-                {
-                    if (paramArray == null)
-                    {
-                        return "[null]";
-                    }
-                    return $"[{string.Join(", ", paramArray.Select(p => p?.ToString() ?? "null"))}]";
-                });
-
-            return string.Join(" ", formattedParameters); // Join all sub-arrays with a space
-        }
 
         public IEnumerable<Command[]> GetCommandQueueList()
         {

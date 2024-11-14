@@ -47,69 +47,29 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
 
         public override Task UpdateStatesAsync(ConcurrentQueue<string> log)
         {
-            foreach (var device in Devices)
-            {
-                device.Value.IsOn = _deviceInfo[device.Key]._isOn;
-                device.Value.DelayOn = _deviceInfo[device.Key]._delayOn;
-                device.Value.DelayOff = _deviceInfo[device.Key]._delayOff;
-                // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {device.Value.Name}, State: {device.Value.IsOn}");
-            }
+            //foreach (var device in Devices)
+            //{
+            //    device.Value.IsOn = _deviceInfo[device.Key]._isOn;
+            //    device.Value.DelayOn = _deviceInfo[device.Key]._delayOn;
+            //    device.Value.DelayOff = _deviceInfo[device.Key]._delayOff;
+            //    // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {device.Value.Name}, State: {device.Value.IsOn}");
+            //}
 
             return Task.CompletedTask;
             //await Task.Delay(10);
         }
 
-        protected override Task ChangeState(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
-        {
-            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
 
-            //for (int i = 0; i < devices.Length; i++)
-            //{
-            //    var device = devices[i];
-            //    var state = (bool)command.Parameters[i][0];
-            //    _deviceInfo[device.Name]._isOn = state;
-            //    device.IsOn = state;
-            //}
+        protected override Task ChangeStateImplementation(BaseShutterDevice device, bool wantedState)
+        {
+            device.IsOn = wantedState;
+            _deviceInfo[device.Name]._isOn = wantedState;
             return Task.CompletedTask;
         }
 
-        protected override Task ChangeStateOnInterval(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override Task ChangeStateOnIntervalImplementation(BaseShutterDevice device, float duration)
         {
-            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
-
-            //var duration = (float)command.Parameters[0] * 1000000;
-            for (int i = 0; i < devices.Length; i++)
-            {
-                var device = devices[i];
-                _deviceInfo[device.Name]._isOn = true;
-                device.IsOn = true;
-            }
-            ////await Task.Run(() => DelayMicroseconds((int)duration), token);
-            for (int i = 0; i < devices.Length; i++)
-            {
-                var device = devices[i];
-                _deviceInfo[device.Name]._isOn = false;
-                device.IsOn = false;
-            }
-            return Task.CompletedTask;
-
-        }
-
-        protected override Task SetDelayAsync(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
-        {
-            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
-
-            //for (int i = 0; i < devices.Length; i++)
-            //{
-            //    var device = devices[i];
-            //    var delayOn = (uint)command.Parameters[i][0];
-            //    var delayOff = (uint)command.Parameters[i][1];
-
-            //    _deviceInfo[device.Name]._delayOn = (int)delayOn;
-            //    _deviceInfo[device.Name]._delayOff = (int)delayOff;
-            //}
             return Task.CompletedTask;
         }
-
     }
 }
