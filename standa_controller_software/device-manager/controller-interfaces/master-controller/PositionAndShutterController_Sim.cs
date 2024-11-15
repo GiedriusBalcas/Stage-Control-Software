@@ -9,7 +9,7 @@ using System.Threading;
 
 namespace standa_controller_software.device_manager.controller_interfaces.master_controller
 {
-    public partial class PositionAndShutterController_Sim : BaseMasterSyncController
+    public partial class PositionAndShutterController_Sim : BaseMasterPositionerAndShutterController
     {
         
         private SyncController_Sim _syncController;
@@ -53,6 +53,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     {
                         //_ = shutterController.ChangeStatePublic(wantedState);
                         var device = shutterController.GetDevices().FirstOrDefault();
+                        
                         if(device is BaseShutterDevice shutterDevice)
                         {
                             shutterDevice.IsOn = wantedState;

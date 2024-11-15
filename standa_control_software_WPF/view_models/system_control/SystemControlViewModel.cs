@@ -164,7 +164,7 @@ namespace standa_control_software_WPF.view_models.system_control
 
             if(_commandManager.CurrentState != CommandManagerState.Processing)
             {
-                //ClearLog();
+                ClearLog();
                 //ForceStop();
 
                 //OutputMessage += $"\nStop.";

@@ -10,7 +10,7 @@ using System.Threading;
 
 namespace standa_controller_software.device_manager.controller_interfaces.master_controller
 {
-    public partial class PositionAndShutterController_Pico : BaseMasterSyncController
+    public partial class PositionAndShutterController_Pico : BaseMasterPositionerAndShutterController
     {
         
         private SyncController_Pico _syncController;

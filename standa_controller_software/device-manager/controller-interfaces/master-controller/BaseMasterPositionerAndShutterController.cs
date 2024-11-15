@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace standa_controller_software.device_manager.controller_interfaces.master_controller
 {
-    public abstract class BaseMasterSyncController : BaseMasterController, IQuableController
+    public abstract class BaseMasterPositionerAndShutterController : BaseMasterController, IQuableController
     {
         public struct PositionerSyncItemInfo
         {
@@ -48,7 +48,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         protected TaskCompletionSource<bool> _processingCompletionSource;
         protected TaskCompletionSource<bool> _processingLastItemTakenSource;
 
-        public BaseMasterSyncController(string name, ConcurrentQueue<string> log) : base(name, log)
+        public BaseMasterPositionerAndShutterController(string name, ConcurrentQueue<string> log) : base(name, log)
         {
             _multiControllerMethodMap[CommandDefinitions.ChangeShutterState] = new MultiControllerMethodInformation()
             {
@@ -140,8 +140,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             {
                 await ProcessQueue(semaphore);
 
-                //if (_updateMoveSettingsCommands != null)
-                //    throw new Exception("Last move settings update missed.");
+                if (_updateMoveSettingsCommands != null)
+                    _log.Enqueue("Last move settings update missed.");
 
                 _updateMoveSettingsCommands = commands;
                 _launchPending = true;
@@ -283,26 +283,25 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         protected async Task ProcessQueue(SemaphoreSlim semaphore)
         {
             await AwaitExecutionEnd();
-            if (_buffer.Count > 0)
+            
+            if (_updateMoveSettingsCommands != null)
             {
-                if (_updateMoveSettingsCommands != null)
+                foreach (Command command in _updateMoveSettingsCommands)
                 {
-                    foreach (Command command in _updateMoveSettingsCommands)
-                    {
-                        await ExecuteSlaveCommand(command);
-                    }
-
-                    _updateMoveSettingsCommands = null;
+                    await ExecuteSlaveCommand(command);
                 }
 
-                await FillControllerBuffers(semaphore);
-                _log.Enqueue("master: filled slaves to the brim");
-
-                await StartExecutionOnSyncController(semaphore);
-                _log.Enqueue("master: sent Sync Controller to execute its buffer");
-
-                _launchPending = true;
+                _updateMoveSettingsCommands = null;
             }
+
+            await FillControllerBuffers(semaphore);
+            _log.Enqueue("master: filled slaves to the brim");
+
+            await StartExecutionOnSyncController(semaphore);
+            _log.Enqueue("master: sent Sync Controller to execute its buffer");
+
+            _launchPending = true;
+            
 
         }
         protected async Task AwaitExecutionEnd()

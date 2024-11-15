@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace standa_controller_software.device_manager.controller_interfaces.master_controller
 {
-    public class PositionAndShutterController_Virtual : BaseMasterSyncController
+    public class PositionAndShutterController_Virtual : BaseMasterPositionerAndShutterController
     {
         
         public PositionAndShutterController_Virtual(string name, ConcurrentQueue<string> log) : base(name, log)
@@ -19,6 +19,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             
         }
 
+        protected override async Task ChangeState(Command[] commands, SemaphoreSlim semaphore)
+        {
+            foreach (Command command in commands)
+            {
+                await ExecuteSlaveCommand(command);
+            }
+        }
         protected override async Task UpdateMoveSettings(Command[] commands, SemaphoreSlim semaphore)
         {
             foreach (Command command in commands)
@@ -60,10 +67,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
             return controllerCopy;
         }
-
-        public virtual async Task AwaitQueuedItems(SemaphoreSlim semaphore)
+        
+        public virtual Task AwaitQueuedItems(SemaphoreSlim semaphore)
         {
-            throw new NotImplementedException();
+            return Task.CompletedTask;
         }
 
         protected override Task Stop(Command command, SemaphoreSlim semaphore)

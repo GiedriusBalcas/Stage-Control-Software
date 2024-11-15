@@ -94,14 +94,14 @@ namespace standa_controller_software.custom_functions.definitions
         }
 
         public void ExecutionCore(
-        char[] deviceNames,
-        float[] startPositions,
-        float[] endPositions,
-        float trajectorySpeed,
-        bool isShutterUsed,
-        float accuracy,
-        bool leadIn,
-        bool leadOut,
+            char[] deviceNames,
+            float[] startPositions,
+            float[] endPositions,
+            float trajectorySpeed,
+            bool isShutterUsed,
+            float accuracy,
+            bool leadIn,
+            bool leadOut,
         WaitUntilCondition? waitUntilCondition)
         {
             // STEP 1: Filter out devices that need to move

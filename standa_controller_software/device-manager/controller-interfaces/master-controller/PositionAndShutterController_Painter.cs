@@ -9,7 +9,7 @@ using System.Numerics;
 
 namespace standa_controller_software.device_manager.controller_interfaces.master_controller
 {
-    public class PositionAndShutterController_Painter : BaseMasterSyncController
+    public class PositionAndShutterController_Painter : BaseMasterPositionerAndShutterController
     {
         private LineObjectCollection _lineObjectCollection;
         private ToolInformation _toolInformation;
