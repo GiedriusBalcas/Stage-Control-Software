@@ -46,7 +46,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
         //---------------------------------------------------
 
-        public PositionerController_Virtual(string name, ConcurrentQueue<string> log) : base(name, log) { }
+        public PositionerController_Virtual(string name, ConcurrentQueue<string> log) : base(name, log) 
+        {
+        }
         
         public override void AddDevice(BaseDevice device)
         {

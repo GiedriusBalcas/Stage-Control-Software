@@ -24,7 +24,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         Stopwatch millis = new Stopwatch();
         private QueueState _queueState = QueueState.Waiting;
         private bool _movementFlag;
-        private ConcurrentQueue<string>? _log;
         private bool _relaunchFlag = true;
         private int _maxBufferSize = 6;
         private bool _allowedToRun = true;

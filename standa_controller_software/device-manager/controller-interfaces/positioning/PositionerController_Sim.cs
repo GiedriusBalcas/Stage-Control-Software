@@ -138,9 +138,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             OnSyncIn?.Invoke(deviceName);
         }
 
-
-
-
         protected override async Task MoveAbsolute(Command command, SemaphoreSlim semaphore)
         {
             // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: move start");
@@ -172,8 +169,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 var task = UpdateCommandMoveA(device.Name, targetPosition, deviceCancellationTokens[device.Name].Token);
                 tasks.Add(task);
             }
-            //semaphore.Release();
-            // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: move waiting");
 
             var waitUntilPositions = new Dictionary<char, float?>();
             var directions = new Dictionary<char, bool>();
@@ -185,13 +180,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
             _ = Task.WhenAll(tasks);
             await WaitUntilStopAsync(waitUntilPositions, directions, semaphore);
-            // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: move end");
 
 
         }
         protected override async Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore)
         {
-            // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: upd start");
+            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: updadte in XIMS-----------------------------------start");
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
             var movementParams = command.Parameters as UpdateMovementSettingsParameters;
 

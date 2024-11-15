@@ -77,13 +77,7 @@ namespace standa_control_software_WPF.view_models.system_control
             if (_controllerManager.TryGetDeviceController<BaseController>(device.Name, out var controller)
                                 && _controllerManager.ControllerLocks.TryGetValue(controller.Name, out var semaphore))
             {
-                await semaphore.WaitAsync();
-
-                device.ConnectAsync(semaphore);
-
-                if (semaphore.CurrentCount == 0)
-                    semaphore.Release();
-
+                device.ConnectAsync();
             }
             else
                 throw new Exception($"Unable to connect device: {SelectedDevice.Name}.");

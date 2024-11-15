@@ -36,11 +36,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             if (controller is ShutterController_Virtual shutterController)
             {
                 SlaveControllers.Add(shutterController.Name, shutterController);
+                SlaveControllersLocks.Add(shutterController.Name, controllerLock);
             }
             else if (controller is BasePositionerController positionerController)
             {
                 SlaveControllers.Add(positionerController.Name, positionerController);
-                //positionerController.OnSyncOut += OnSyncOutReveived;
+                SlaveControllersLocks.Add(positionerController.Name, controllerLock);
             }
         }
         public override BaseController GetVirtualCopy()
@@ -161,6 +162,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 var endPositions = _toolInformation.CalculateToolPositionUpdate();
                 _lineObjectCollection.AddLine(startPositions, endPositions, isEngaged ? _engagedColor : _disengagedColor);
             }
+        }
+        protected override Task UpdateMoveSettings(Command[] commands, SemaphoreSlim semaphore)
+        {
+            return Task.CompletedTask;
         }
         protected override Task ChangeState(Command[] commands, SemaphoreSlim semaphore)
         {

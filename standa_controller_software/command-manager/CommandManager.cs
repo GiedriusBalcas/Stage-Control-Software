@@ -34,31 +34,16 @@ namespace standa_controller_software.command_manager
 
             foreach (var (controllerName, controller) in _controllerManager.Controllers)
             {
-                var semaphore = _controllerManager.ControllerLocks[controllerName];
-                semaphore.Wait();
-                try
+                var initializeCommand = new Command
                 {
-                    var initializeCommand = new Command
-                    {
-                        TargetController = controller.Name,
-                        Action = CommandDefinitions.Initialize,
-                    };
-
-                    controller.ExecuteCommandAsync(initializeCommand, semaphore).GetAwaiter().GetResult();
-                }
-                finally
-                {
-                    semaphore.Release();
-                }
+                    TargetController = controller.Name,
+                    Action = CommandDefinitions.Initialize,
+                };
+                ExecuteControllerCommandWrapper(initializeCommand).GetAwaiter().GetResult();
             }
         }
 
         // interface for outside objects to execute commands.
-        public async Task TryExecuteCommand(Command command)
-        {
-            await ExecuteControllerCommandWrapper(command);
-        }
-
         public CommandManagerState CurrentState
         {
             get { return _currentState; }
@@ -72,16 +57,88 @@ namespace standa_controller_software.command_manager
         {
             _log.Clear();
         }
-        public void EnqueueCommandLine(Command[] commands)
+        public void PrintLog()
         {
-            _commandQueue.Enqueue(commands);
+            while (_log.TryDequeue(out string logEntry))
+            {
+                Console.WriteLine(logEntry);
+            }
         }
-
         public IEnumerable<string> GetLog()
         {
             return _log;
         }
-        
+        public void ClearQueue()
+        {
+            _commandQueue.Clear();
+            CurrentState = CommandManagerState.Waiting;
+        }
+        public IEnumerable<Command[]> GetCommandQueueList()
+        {
+            return [.. _commandQueue];
+        }
+        public string GetCommandQueueAsString()
+        {
+            var csvStringBuilder = new StringBuilder();
+            var queueSnapshot = _commandQueue.ToArray();
+
+            foreach (var commandArray in queueSnapshot)
+            {
+                for (int i = 0; i < commandArray.Length; i++)
+                {
+                    var command = commandArray[i];
+                    csvStringBuilder.Append($"{command.TargetController},{string.Join(" ", command.TargetDevices)},{command.Action},{command.Parameters}");
+
+                    if (i < commandArray.Length - 1)
+                    {
+                        csvStringBuilder.Append(" & ");
+                    }
+                    else
+                    {
+                        csvStringBuilder.Append(" ;");
+                    }
+                }
+                csvStringBuilder.AppendLine();
+            }
+
+            return csvStringBuilder.ToString();
+        }
+
+        public async void Stop()
+        {
+            _allowedToRun = false;
+            CurrentState = CommandManagerState.Waiting;
+
+            // First stop the child controllers. Then let the master finish stopping everything.
+
+            foreach (var (controllerName, controller) in _controllerManager.Controllers)
+            {
+                if (controller.MasterController is not null)
+                {
+                    var stopCommand = new Command
+                    {
+                        TargetController = controllerName,
+                        Action = CommandDefinitions.Stop,
+                    };
+                    await ExecuteControllerCommandWrapper(stopCommand);
+                }
+            }
+
+            foreach (var (controllerName, controller) in _controllerManager.Controllers)
+            {
+                if (controller.MasterController is BaseMasterController baseMasterController)
+                {
+                    var stopCommand = new Command
+                    {
+                        TargetController = controllerName,
+                        Action = CommandDefinitions.Stop,
+                    };
+                    await ExecuteControllerCommandWrapper(stopCommand);
+                }
+            }
+
+
+        }
         public async Task ProcessQueue()
         {
             _allowedToRun = true;
@@ -105,8 +162,10 @@ namespace standa_controller_software.command_manager
             _log.Enqueue("QueueEnd in command manager.");
 
         }
-
-
+        public void EnqueueCommandLine(Command[] commands)
+        {
+            _commandQueue.Enqueue(commands);
+        }
         public async Task ExecuteCommandLine(Command[] commandLine)
         {
             var commandsByController = commandLine
@@ -170,7 +229,11 @@ namespace standa_controller_software.command_manager
             await ExecuteCommandLineGroup(commandsByMasterController);
 
         }
-
+        public async Task TryExecuteCommand(Command command)
+        {
+            await ExecuteControllerCommandWrapper(command);
+        }
+        
         private async Task ExecuteCommandLineGroup(Dictionary<string, Command[]> commandsByMasterController)
         {
             // gathering all the semaphores needed for the command execution before starting execution.
@@ -204,7 +267,6 @@ namespace standa_controller_software.command_manager
                 await Task.WhenAll(executeTasks);
             
         }
-
         private static void ReleaseSemeaphores(Dictionary<string, SemaphoreSlim> ackquiredSemaphores)
         {
             foreach (var (controllerName, semaphore) in ackquiredSemaphores)
@@ -212,7 +274,6 @@ namespace standa_controller_software.command_manager
                 semaphore.Release();
             }
         }
-
         private async Task<Dictionary<string, SemaphoreSlim>> GatherSemaphoresForController(List<string> controllerNames)
         {
             var ackquiredSemaphores = new Dictionary<string, SemaphoreSlim>();
@@ -232,7 +293,6 @@ namespace standa_controller_software.command_manager
 
             return ackquiredSemaphores;
         }
-
         private async Task ExecuteCommandsForControllerAsync(Command[] commands, string controllerName, SemaphoreSlim semaphore)
         {
             var controller = _controllerManager.Controllers[controllerName];
@@ -265,32 +325,34 @@ namespace standa_controller_software.command_manager
                 }
             }
         }
-
         private async Task CheckAndUpdateControllerQueue(string controllerName)
         {
-            var controller = _controllerManager.Controllers[_currentQueueController];
             if (_currentQueueController != string.Empty && _currentQueueController != controllerName)
             {
                 var semaphore = _controllerManager.ControllerLocks[_currentQueueController];
+                var controllerQueued = _controllerManager.Controllers[_currentQueueController];
                 await semaphore.WaitAsync();
-                if (controller is IQuableController queuedMasterController)
+                try
                 {
-                    await queuedMasterController.AwaitQueuedItems(semaphore);
+                    if (controllerQueued is IQuableController queuedMasterController)
+                    {
+                        await queuedMasterController.AwaitQueuedItems(semaphore);
+                    }
+                    else
+                        throw new Exception("Unexpected queued controller statement.");
                 }
-                else
-                    throw new Exception("Unexpected queued controller statement.");
+                finally
+                {
+                    semaphore.Release();
+                }
             }
             if (_controllerManager.Controllers.ContainsKey(controllerName) && _controllerManager.Controllers[controllerName] is IQuableController)
             {
                 _currentQueueController = controllerName;
             }
-        }
-
-        public void PrintLog()
-        {
-            while (_log.TryDequeue(out string logEntry))
+            else
             {
-                Console.WriteLine(logEntry);
+                _currentQueueController = string.Empty;
             }
         }
         private async Task ExecuteControllerCommandWrapper(Command command)
@@ -311,81 +373,6 @@ namespace standa_controller_software.command_manager
             else
                 throw new Exception("Unable to retrive controller in master controller.");
 
-        }
-
-        public async void Stop()
-        {
-            _allowedToRun = false;
-            CurrentState = CommandManagerState.Waiting;
-
-            // First stop the child controllers. Then let the master finish stopping everything.
-
-            foreach (var (controllerName, controller) in _controllerManager.Controllers)
-            {
-                if (controller.MasterController is not null)
-                {
-                    var stopCommand = new Command
-                    {
-                        TargetController = controllerName,
-                        Action = CommandDefinitions.Stop,
-                    };
-                    await ExecuteControllerCommandWrapper(stopCommand);
-                }
-            }
-
-            foreach (var (controllerName, controller) in _controllerManager.Controllers)
-            {
-                if (controller.MasterController is BaseMasterController baseMasterController)
-                {
-                    var stopCommand = new Command
-                    {
-                        TargetController = controllerName,
-                        Action = CommandDefinitions.Stop,
-                    };
-                    await ExecuteControllerCommandWrapper(stopCommand);
-                }
-            }
-
-
-        }
-
-        public void ClearQueue()
-        {
-            _commandQueue.Clear();
-            CurrentState = CommandManagerState.Waiting;
-        }
-
-        public string GetCommandQueueAsString()
-        {
-            var csvStringBuilder = new StringBuilder();
-            var queueSnapshot = _commandQueue.ToArray();
-
-            foreach (var commandArray in queueSnapshot)
-            {
-                for (int i = 0; i < commandArray.Length; i++)
-                {
-                    var command = commandArray[i];
-                    csvStringBuilder.Append($"{command.TargetController},{string.Join(" ", command.TargetDevices)},{command.Action},{command.Parameters}");
-
-                    if (i < commandArray.Length - 1)
-                    {
-                        csvStringBuilder.Append(" & ");
-                    }
-                    else
-                    {
-                        csvStringBuilder.Append(" ;");
-                    }
-                }
-                csvStringBuilder.AppendLine();
-            }
-
-            return csvStringBuilder.ToString();
-        }
-
-
-        public IEnumerable<Command[]> GetCommandQueueList()
-        {
-            return [.. _commandQueue];
         }
 
     }

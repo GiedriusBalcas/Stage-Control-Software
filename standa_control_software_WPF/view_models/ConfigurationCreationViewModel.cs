@@ -12,12 +12,19 @@ using standa_control_software_WPF.view_models.config_creation.serialization_help
 using standa_control_software_WPF.view_models.config_creation;
 using standa_controller_software.device_manager.devices.shutter;
 using standa_controller_software.device_manager.controller_interfaces.master_controller;
+using System.Collections.Concurrent;
 
 namespace standa_control_software_WPF.view_models
 {
     public class ConfigurationCreationViewModel : ViewModelBase
     {
         private readonly Action _onInitializationComple;
+        private ConfigurationData _configurationData;
+        private ViewModelBase _currentViewModel;
+        private object _selectedItem;
+        private readonly Action<ControllerManager> _onInitializationComplete;
+        private readonly SerializationHelper _serializationHelper;
+        private readonly ConcurrentQueue<string> _log;
 
         public ObservableCollection<ConfigurationViewModel> Configurations { get; set; }
         public ConfigurationViewModel Configuration
@@ -31,13 +38,6 @@ namespace standa_control_software_WPF.view_models
                 Configurations[0] = value;
             }
         }
-
-        private ConfigurationData _configurationData;
-
-        private ViewModelBase _currentViewModel;
-        private object _selectedItem;
-        private readonly Action<ControllerManager> _onInitializationComplete;
-
         public ViewModelBase CurrentViewModel
         {
             get => _currentViewModel;
@@ -47,7 +47,6 @@ namespace standa_control_software_WPF.view_models
                 OnPropertyChanged(nameof(CurrentViewModel));
             }
         }
-
         public object SelectedItem
         {
             get => _selectedItem;
@@ -61,20 +60,20 @@ namespace standa_control_software_WPF.view_models
             }
         }
 
-
         public ICommand CreateConfigInstanceCommand { get; set; }
         public ICommand SaveConfigurationsCommand { get; set; }
         public ICommand SaveAsConfigurationsCommand { get; set; }
         public ICommand LoadConfigurationsCommand { get; set; }
-
         public ICommand CompleteInitializationCommand { get; }
 
 
-        public ConfigurationCreationViewModel(Action<ControllerManager> onInitializationCompleted)
+        public ConfigurationCreationViewModel(Action<ControllerManager> onInitializationCompleted, ConcurrentQueue<string> log)
         {
+            _log = log;
             _onInitializationComplete = onInitializationCompleted;
 
-            Configurations = new ObservableCollection<ConfigurationViewModel> { new ConfigurationViewModel(this) };
+            _serializationHelper = new SerializationHelper(log);
+            Configurations = new ObservableCollection<ConfigurationViewModel> { new ConfigurationViewModel(this, _log) };
 
             _configurationData = new ConfigurationData();
 
@@ -91,7 +90,7 @@ namespace standa_control_software_WPF.view_models
             {
                 if (Configurations.Count > 0)
                 {
-                    var serConfig = SerializationHelper.CreateSeriazableObject(Configurations.First());
+                    var serConfig = _serializationHelper.CreateSeriazableObject(Configurations.First());
 
                     var filePath = _configurationData.Filepath;
                     var json = System.Text.Json.JsonSerializer.Serialize(serConfig);
@@ -103,7 +102,6 @@ namespace standa_control_software_WPF.view_models
                 SaveAsConfigurationsExecute();
             }
         }
-
         private void SaveAsConfigurationsExecute()
         {
             var saveFileDialog = new Microsoft.Win32.SaveFileDialog
@@ -120,7 +118,7 @@ namespace standa_control_software_WPF.view_models
                 {
                     var filePath = saveFileDialog.FileName;
 
-                    var serConfig = SerializationHelper.CreateSeriazableObject(Configurations.First());
+                    var serConfig = _serializationHelper.CreateSeriazableObject(Configurations.First());
                     var json = System.Text.Json.JsonSerializer.Serialize(serConfig);
                     var fileName = Path.GetFileNameWithoutExtension(saveFileDialog.FileName);
                     File.WriteAllText(filePath, json);
@@ -130,13 +128,12 @@ namespace standa_control_software_WPF.view_models
                 }
             }
         }
-
         private void ExecuteCreateConfigsInstance()
         {
             try
             {
 
-                ControllerManager controllerMangerInstance = new ControllerManager()
+                ControllerManager controllerMangerInstance = new ControllerManager(_log)
                 {
                     Name = Configuration.Name
                 };
@@ -200,7 +197,7 @@ namespace standa_control_software_WPF.view_models
                     );
 
                 controllerMangerInstance.ToolInformation = tool;
-            
+
                 _onInitializationComplete.Invoke(controllerMangerInstance);
             }
             catch (Exception ex)
@@ -208,20 +205,14 @@ namespace standa_control_software_WPF.view_models
                 MessageBox.Show(ex.Message);
             }
         }
-
-
         public void SaveConfigurations()
         {
-            var serConfig = SerializationHelper.CreateSeriazableObject(Configurations.FirstOrDefault());
+            var serConfig = _serializationHelper.CreateSeriazableObject(Configurations.FirstOrDefault());
 
             var filePath = "configuration.json";
             var json = System.Text.Json.JsonSerializer.Serialize(serConfig);
             File.WriteAllText(filePath, json);
         }
-
-
-
-
         public void LoadConfigurations()
         {
 
@@ -241,7 +232,7 @@ namespace standa_control_software_WPF.view_models
                 {
                     var json = File.ReadAllText(pathToConfig);
                     var configurationSer = JsonConvert.DeserializeObject<ConfigurationSer>(json);
-                    var configuration = SerializationHelper.DeserializeObject(configurationSer, this);
+                    var configuration = _serializationHelper.DeserializeObject(configurationSer, this);
 
                     Configuration = configuration;
                     _configurationData.Filepath = pathToConfig;
@@ -251,11 +242,10 @@ namespace standa_control_software_WPF.view_models
             }
 
         }
-
         internal void ClearConfiguration()
         {
             Configurations.Clear();
-            Configurations.Add(new ConfigurationViewModel(this));
+            Configurations.Add(new ConfigurationViewModel(this, _log));
         }
     }
 }

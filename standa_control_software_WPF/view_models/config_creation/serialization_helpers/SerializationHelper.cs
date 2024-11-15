@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,9 +7,16 @@ using System.Threading.Tasks;
 
 namespace standa_control_software_WPF.view_models.config_creation.serialization_helpers
 {
-    public static class SerializationHelper
+    public class SerializationHelper
     {
-        public static ConfigurationSer CreateSeriazableObject(ConfigurationViewModel Configuration)
+        private readonly ConcurrentQueue<string> _log;
+
+        public SerializationHelper(ConcurrentQueue<string> log)
+        {
+            _log = log;
+        }
+
+        public ConfigurationSer CreateSeriazableObject(ConfigurationViewModel Configuration)
         {
             
             var config = Configuration;
@@ -60,9 +68,9 @@ namespace standa_control_software_WPF.view_models.config_creation.serialization_
             return configSer;
         }
 
-        public static ConfigurationViewModel DeserializeObject(ConfigurationSer configSer, ConfigurationCreationViewModel Configuration)
+        public ConfigurationViewModel DeserializeObject(ConfigurationSer configSer, ConfigurationCreationViewModel Configuration)
         {
-            var config = new ConfigurationViewModel(Configuration)
+            var config = new ConfigurationViewModel(Configuration, _log)
             {
                 Name = configSer.Name,
                 XToolDependancy = configSer.XToolPositionDependancy,
@@ -72,7 +80,7 @@ namespace standa_control_software_WPF.view_models.config_creation.serialization_
 
             foreach (var controllerSer in configSer.Controllers)
             {
-                var controller = new ControllerConfigViewModel(config)
+                var controller = new ControllerConfigViewModel(config, _log)
                 {
                     Name = controllerSer.Name,
                     SelectedControllerType = controllerSer.SelectedControllerType,

@@ -140,8 +140,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             {
                 await ProcessQueue(semaphore);
 
-                if (_updateMoveSettingsCommands != null)
-                    throw new Exception("Last move settings update missed.");
+                //if (_updateMoveSettingsCommands != null)
+                //    throw new Exception("Last move settings update missed.");
 
                 _updateMoveSettingsCommands = commands;
                 _launchPending = true;

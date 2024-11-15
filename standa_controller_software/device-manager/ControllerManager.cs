@@ -3,6 +3,7 @@ using standa_controller_software.device_manager.controller_interfaces.master_con
 using standa_controller_software.device_manager.devices;
 using standa_controller_software.device_manager.devices.shutter;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -12,13 +13,15 @@ namespace standa_controller_software.device_manager
 {
     public class ControllerManager
     {
+        private readonly ConcurrentQueue<string> _log;
         public ToolInformation ToolInformation { get; set; }
         public Dictionary<string, BaseController> Controllers { get; private set; } = new Dictionary<string, BaseController>();
         public Dictionary<string, SemaphoreSlim> ControllerLocks { get; private set; } = new Dictionary<string, SemaphoreSlim>();
 
         public string Name { get; set; }
-        public ControllerManager()
+        public ControllerManager(ConcurrentQueue<string> log)
         {
+            _log = log;
         }
 
         public async void AddController(BaseController controller)
@@ -78,7 +81,7 @@ namespace standa_controller_software.device_manager
 
         public ControllerManager CreateACopy(Dictionary<Type, Type> typeConversionDictionary = null)
         {
-            var controllerManager_copy = new ControllerManager();
+            var controllerManager_copy = new ControllerManager(_log);
 
             foreach (var controllerEntry in Controllers)
             {
@@ -104,7 +107,7 @@ namespace standa_controller_software.device_manager
                 if (newType != originalType)
                 {
                     // Assume a constructor that takes the original controller's name as a parameter
-                    newController = Activator.CreateInstance(newType, controllerEntry.Value.Name) as BaseController;
+                    newController = Activator.CreateInstance(newType, [controllerEntry.Value.Name, _log]) as BaseController;
 
                     var devices = controllerEntry.Value.GetDevices();
                     foreach (var device in devices)

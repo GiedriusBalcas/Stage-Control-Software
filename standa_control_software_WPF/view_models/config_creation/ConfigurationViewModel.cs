@@ -1,4 +1,6 @@
-﻿using standa_control_software_WPF.view_models.commands;
+﻿using Microsoft.VisualBasic.Logging;
+using standa_control_software_WPF.view_models.commands;
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 
@@ -7,6 +9,7 @@ namespace standa_control_software_WPF.view_models.config_creation
     public class ConfigurationViewModel : ViewModelBase
     {
         public readonly ConfigurationCreationViewModel ConfigManager;
+        private readonly ConcurrentQueue<string> _log;
 
         private string _name;
         private string _xToolDependancy;
@@ -83,8 +86,9 @@ namespace standa_control_software_WPF.view_models.config_creation
         public ICommand ClearConfigurationCommand { get; set; }
         public ICommand AddControllerCommand { get; set; }
 
-        public ConfigurationViewModel(ConfigurationCreationViewModel systemConfigurations)
+        public ConfigurationViewModel(ConfigurationCreationViewModel systemConfigurations, ConcurrentQueue<string> log)
         {
+            _log = log;
             Name = string.Empty;
 
             ConfigManager = systemConfigurations;
@@ -95,7 +99,7 @@ namespace standa_control_software_WPF.view_models.config_creation
 
         private void ExecuteAddController()
         {
-            Controllers.Add(new ControllerConfigViewModel(this) { Name = "new Controller" });
+            Controllers.Add(new ControllerConfigViewModel(this, _log) { Name = "new Controller" });
         }
 
         private void ExecuteClearConfiguration(ConfigurationViewModel configuration)

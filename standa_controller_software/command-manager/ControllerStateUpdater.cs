@@ -39,7 +39,7 @@ namespace standa_controller_software.command_manager
 
                 while (true)
                 {
-                    _log.Enqueue("Beginning of loop iteration.");
+                    //_log.Enqueue("Beginning of loop iteration.");
 
                     // Loop through all controllers
                     foreach (var controllerPair in _controllerManager.Controllers)
@@ -55,18 +55,18 @@ namespace standa_controller_software.command_manager
                         };
 
                         // Log attempting to acquire semaphore
-                        _log.Enqueue($"Attempting to acquire semaphore for controller: {controller.Name}");
+                        //_log.Enqueue($"Attempting to acquire semaphore for controller: {controller.Name}");
 
                         // Attempt to acquire the semaphore without waiting
                         if (await semaphore.WaitAsync(0))
                         {
-                            _log.Enqueue($"Semaphore acquired for controller: {controller.Name}");
+                            //_log.Enqueue($"Semaphore acquired for controller: {controller.Name}");
 
                             try
                             {
                                 if (!controller.GetDevices().Any(device => !device.IsConnected))
                                 {
-                                    _log.Enqueue($"Starting state update for controller: {controller.Name}");
+                                    //_log.Enqueue($"Starting state update for controller: {controller.Name}");
 
                                     // Use Task.Run to run the update on a separate thread
                                     var updateTask = Task.Run(async () =>
@@ -74,7 +74,7 @@ namespace standa_controller_software.command_manager
                                         try
                                         {
                                             await controller.ExecuteCommandAsync(updateCommand, semaphore);
-                                            _log.Enqueue($"Successfully updated state for controller: {controller.Name}");
+                                            //_log.Enqueue($"Successfully updated state for controller: {controller.Name}");
                                         }
                                         catch (Exception ex)
                                         {
@@ -100,7 +100,7 @@ namespace standa_controller_software.command_manager
                                 }
                                 else
                                 {
-                                    _log.Enqueue($"Skipping state update for controller {controller.Name} because a device is not connected.");
+                                    //_log.Enqueue($"Skipping state update for controller {controller.Name} because a device is not connected.");
                                 }
                             }
                             catch (Exception ex)
@@ -110,16 +110,16 @@ namespace standa_controller_software.command_manager
                             finally
                             {
                                 semaphore.Release();
-                                _log.Enqueue($"Semaphore released for controller: {controller.Name}");
+                                //_log.Enqueue($"Semaphore released for controller: {controller.Name}");
                             }
                         }
                         else
                         {
-                            _log.Enqueue($"Could not acquire semaphore for controller: {controller.Name}");
+                            //_log.Enqueue($"Could not acquire semaphore for controller: {controller.Name}");
                         }
                     }
 
-                    _log.Enqueue("End of loop iteration.");
+                    //_log.Enqueue("End of loop iteration.");
 
                     // Introduce a small delay to avoid overwhelming the system
                     await Task.Delay(20);

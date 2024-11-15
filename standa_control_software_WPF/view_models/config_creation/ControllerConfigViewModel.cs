@@ -1,9 +1,11 @@
 ﻿
+using Microsoft.VisualBasic.Logging;
 using standa_control_software_WPF.view_models.commands;
 using standa_controller_software.device_manager;
 using standa_controller_software.device_manager.attributes;
 using standa_controller_software.device_manager.controller_interfaces;
 using standa_controller_software.device_manager.controller_interfaces.master_controller;
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Reflection;
 using System.Windows.Input;
@@ -14,21 +16,12 @@ namespace standa_control_software_WPF.view_models.config_creation
     {
         private readonly ConfigurationViewModel _config;
         private string _selectedControllerType;
-
+        private string _selectedMasterControllerName = string.Empty;
         private bool _isEnabled = true;
-        public bool IsEnabled
-        {
-            get => _isEnabled;
-            set
-            {
-                _isEnabled = value;
-                OnPropertyChanged(nameof(IsEnabled));
-                foreach (var device in Devices)
-                    device.IsEnabled = _isEnabled;
-            }
-        }
-
         private string _name;
+        private readonly ConcurrentQueue<string> _log;
+
+
         public string Name
         {
             get
@@ -50,6 +43,17 @@ namespace standa_control_software_WPF.view_models.config_creation
                 OnPropertyChanged(nameof(Name));
             }
         }
+        public bool IsEnabled
+        {
+            get => _isEnabled;
+            set
+            {
+                _isEnabled = value;
+                OnPropertyChanged(nameof(IsEnabled));
+                foreach (var device in Devices)
+                    device.IsEnabled = _isEnabled;
+            }
+        }
         public Type ControllerType { get; private set; }
         public ObservableCollection<DeviceConfigViewModel> Devices { get; set; } = new ObservableCollection<DeviceConfigViewModel>();
         public ObservableCollection<PropertyDisplayItem> ControllerProperties { get; } = new ObservableCollection<PropertyDisplayItem>();
@@ -67,8 +71,6 @@ namespace standa_control_software_WPF.view_models.config_creation
             .Where(controllerName => controllerName != this.Name)
             .ToList() ?? new List<string>()
         );
-        private string _selectedMasterControllerName = string.Empty;
-
         public string SelectedMasterControllerName
         {
             get => _selectedMasterControllerName; 
@@ -79,7 +81,6 @@ namespace standa_control_software_WPF.view_models.config_creation
                 OnPropertyChanged(nameof(SelectedMasterControllerName));
             }
         }
-
         public string SelectedControllerType { 
             get => _selectedControllerType; 
             set 
@@ -98,13 +99,12 @@ namespace standa_control_software_WPF.view_models.config_creation
             .Select(controllerInfo => controllerInfo.Name)
             .ToList()
         );
-
         public ICommand AddDeviceCommand { get; private set; }
         public ICommand RemoveControllerCommand { get; private set; }
 
-
-        public ControllerConfigViewModel(ConfigurationViewModel config)
+        public ControllerConfigViewModel(ConfigurationViewModel config, ConcurrentQueue<string> log)
         {
+            _log = log;
             _config = config;
             foreach(string controllerName in _config.Controllers.Select(controller => controller.Name))
                 ConfigurationControllerNames.Add(controllerName);
@@ -116,6 +116,61 @@ namespace standa_control_software_WPF.view_models.config_creation
 
             GetProperties();
         }
+        
+        public BaseController ExtractController()
+        {
+            if (ControllerType == null)
+            {
+                throw new InvalidOperationException("Controller type is not set.");
+            }
+
+            // Assuming Name and ID are always required and available
+            var nameProp = ControllerProperties.FirstOrDefault(p => p.PropertyName == "Name")?.PropertyValue;
+            
+            // Convert property values to expected types
+            string name = nameProp != null ? Convert.ToString(nameProp) : "undefined"; // Default to 'u' if not found
+
+
+            // Create the controller instance using reflection with parameters
+            var constructorInfo = ControllerType.GetConstructor(new Type[] { typeof(string), typeof(ConcurrentQueue<string>) });
+            if (constructorInfo == null)
+            {
+                throw new InvalidOperationException("Suitable constructor not found.");
+            }
+
+            var controllerInstance = constructorInfo.Invoke(new object[] { name, _log }) as BaseController;
+
+            //var controllerInstance = Activator.CreateInstance(ControllerType) as BaseController;
+
+
+            if (controllerInstance == null)
+            {
+                throw new InvalidOperationException($"Could not create an instance of {ControllerType}.");
+            }
+
+            foreach (var propItem in ControllerProperties)
+            {
+                var propInfo = ControllerType.GetProperty(propItem.PropertyName);
+                if (propInfo != null && propInfo.CanWrite)
+                {
+                    try
+                    {
+                        // Convert the PropertyValue to the correct type and set it
+                        var value = Convert.ChangeType(propItem.PropertyValue, propInfo.PropertyType);
+                        propInfo.SetValue(controllerInstance, value);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Handle or log the error
+                        System.Diagnostics.Debug.WriteLine($"Failed to set property {propItem.PropertyName}: {ex.Message}");
+                    }
+                }
+            }
+
+            // Additional property setting can be performed here if necessary
+
+            return controllerInstance;
+        }
 
         private bool CanExecuteAddDevice(ControllerConfigViewModel obj)
         {
@@ -123,7 +178,6 @@ namespace standa_control_software_WPF.view_models.config_creation
                 return false;
             return true;
         }
-
         public void GetProperties()
         {
             if (ControllerType != null)
@@ -163,8 +217,6 @@ namespace standa_control_software_WPF.view_models.config_creation
             }
 
         }
-
-
         public bool UpdatePropertyValue(string propertyName, object newValue)
         {
             var propertyItem = ControllerProperties.FirstOrDefault(p => p.PropertyName == propertyName);
@@ -185,73 +237,13 @@ namespace standa_control_software_WPF.view_models.config_creation
             }
             return false; // Property not found
         }
-
-
         private void ExecuteAddDevice(ControllerConfigViewModel controllerVM)
         {
             Devices.Add(new DeviceConfigViewModel(this));
         }
-
         private void ExecuteRemoveController(ControllerConfigViewModel controllerVM)
         {
             _config.Controllers.Remove(this);
-        }
-
-
-
-        public BaseController ExtractController()
-        {
-            if (ControllerType == null)
-            {
-                throw new InvalidOperationException("Controller type is not set.");
-            }
-
-            // Assuming Name and ID are always required and available
-            var nameProp = ControllerProperties.FirstOrDefault(p => p.PropertyName == "Name")?.PropertyValue;
-            
-            // Convert property values to expected types
-            string name = nameProp != null ? Convert.ToString(nameProp) : "undefined"; // Default to 'u' if not found
-
-
-            // Create the controller instance using reflection with parameters
-            var constructorInfo = ControllerType.GetConstructor(new Type[] { typeof(string) });
-            if (constructorInfo == null)
-            {
-                throw new InvalidOperationException("Suitable constructor not found.");
-            }
-
-            var controllerInstance = constructorInfo.Invoke(new object[] { name }) as BaseController;
-
-            //var controllerInstance = Activator.CreateInstance(ControllerType) as BaseController;
-
-
-            if (controllerInstance == null)
-            {
-                throw new InvalidOperationException($"Could not create an instance of {ControllerType}.");
-            }
-
-            foreach (var propItem in ControllerProperties)
-            {
-                var propInfo = ControllerType.GetProperty(propItem.PropertyName);
-                if (propInfo != null && propInfo.CanWrite)
-                {
-                    try
-                    {
-                        // Convert the PropertyValue to the correct type and set it
-                        var value = Convert.ChangeType(propItem.PropertyValue, propInfo.PropertyType);
-                        propInfo.SetValue(controllerInstance, value);
-                    }
-                    catch (Exception ex)
-                    {
-                        // Handle or log the error
-                        System.Diagnostics.Debug.WriteLine($"Failed to set property {propItem.PropertyName}: {ex.Message}");
-                    }
-                }
-            }
-
-            // Additional property setting can be performed here if necessary
-
-            return controllerInstance;
         }
 
 

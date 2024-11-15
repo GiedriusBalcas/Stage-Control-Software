@@ -33,10 +33,10 @@ namespace standa_control_software_WPF
 
         public App()
         {
+            _log = new ConcurrentQueue<string>();
             _navigationStore = new NavigationStore();
             _lscNavigationStore = new NavigationStore();
-            _configCreationViewModel = new ConfigurationCreationViewModel(OnInitializationComplete);
-            _log = new ConcurrentQueue<string>();
+            _configCreationViewModel = new ConfigurationCreationViewModel(OnInitializationComplete, _log);
         }
 
         protected override void OnStartup(StartupEventArgs e)

@@ -56,7 +56,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         public abstract void AddSlaveController(BaseController controller, SemaphoreSlim controllerLock);
         public override List<BaseDevice> GetDevices()
         {
-            throw new NotImplementedException();
+            return new List<BaseDevice>();
         }
         public override void AddDevice(BaseDevice device)
         {

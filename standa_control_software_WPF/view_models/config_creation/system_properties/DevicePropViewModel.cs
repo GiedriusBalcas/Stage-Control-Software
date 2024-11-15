@@ -1,5 +1,6 @@
 ﻿
 using standa_controller_software.command_manager;
+using standa_controller_software.command_manager.command_parameter_library.Common;
 using standa_controller_software.device_manager;
 using standa_controller_software.device_manager.attributes;
 using standa_controller_software.device_manager.controller_interfaces;
@@ -12,7 +13,7 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
 {
     public class DevicePropViewModel : ViewModelBase
     {
-        private readonly ControllerManager _systemConfig;
+        private readonly ControllerManager _controllerManager;
         private readonly standa_controller_software.command_manager.CommandManager _commandManager;
         public readonly BaseDevice _device;
 
@@ -34,7 +35,7 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
         {
             get
             {
-                var controller = _systemConfig.GetDeviceController<BaseController>(_device.Name);
+                var controller = _controllerManager.GetDeviceController<BaseController>(_device.Name);
 
                 //var deviceType = DeviceDefinitions.AvailableControllers
                 //    .FirstOrDefault(controllerDef => controllerDef.Type == controller.GetType())?.AllowedDevices?
@@ -57,9 +58,9 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
             get
             {
                 string controllerName = "";
-                if (_device != null && _systemConfig != null)
+                if (_device != null && _controllerManager != null)
                 {
-                    controllerName = _systemConfig.GetDeviceController<BaseController>(_device.Name).Name;
+                    controllerName = _controllerManager.GetDeviceController<BaseController>(_device.Name).Name;
                 }
                 return controllerName;
             }
@@ -68,7 +69,7 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
 
         public DevicePropViewModel(ControllerManager controllerManager, standa_controller_software.command_manager.CommandManager commandManager, BaseDevice device)
         {
-            _systemConfig = controllerManager;
+            _controllerManager = controllerManager;
             _commandManager = commandManager;
             _device = device;
             Name = _device.Name;
@@ -100,16 +101,20 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
             OnPropertyChanged(nameof(Name));
         }
 
-        internal async void ConnectAsync(SemaphoreSlim semaphore)
+        internal async void ConnectAsync()
         {
             if (!_device.IsConnected)
             {
-                var controller = _systemConfig.GetDeviceController<BaseController>(_device.Name);
+                var controller = _controllerManager.GetDeviceController<BaseController>(_device.Name);
                 //await controller.ConnectDevice(_device, semaphore);
                 var connectCommand = new Command
                 {
                     Action = CommandDefinitions.ConnectDevice,
                     TargetController = controller.Name,
+                    Parameters = new ConnectDevicesParameters
+                    {
+                        Devices = [_device.Name],
+                    }
                 };
                 await _commandManager.TryExecuteCommand(connectCommand);
 
