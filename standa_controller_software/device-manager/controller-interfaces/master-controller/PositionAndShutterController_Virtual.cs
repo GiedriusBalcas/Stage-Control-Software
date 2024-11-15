@@ -59,7 +59,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             return controllerCopy;
         }
 
-        protected override Task AwaitQueuedItems(Command command, SemaphoreSlim semaphore)
+        public virtual async Task AwaitQueuedItems(SemaphoreSlim semaphore)
         {
             throw new NotImplementedException();
         }

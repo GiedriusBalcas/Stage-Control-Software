@@ -8,16 +8,13 @@ namespace standa_controller_software.command_manager.command_parameter_library.P
 {
     public class GetBufferCountParameters
     {
-        public char[] Devices { get; set; }
+        public char Device { get; set; }
         public override string ToString()
         {
             string constructedString = "GetBufferSize off: [";
-            if(Devices.Length > 0)
+            if(Device != char.MinValue)
             {
-                foreach(char deviceName in Devices)
-                {
-                    constructedString += " " + deviceName;
-                }
+                constructedString += " " + Device;    
             }
             constructedString += " ].";
             return constructedString;

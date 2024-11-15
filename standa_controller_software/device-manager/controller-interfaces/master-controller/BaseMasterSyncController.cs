@@ -18,7 +18,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 {
     public abstract class BaseMasterSyncController : BaseMasterController, IQuableController
     {
-        public struct PositionerInfo
+        public struct PositionerSyncItemInfo
         {
             public char[] Devices;
             public float[] TargetPositions;
@@ -37,7 +37,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
         protected struct MovementInformation
         {
-            public Dictionary<string, PositionerInfo> PositionerInfoGroups;
+            public Dictionary<string, PositionerSyncItemInfo> PositionerInfoGroups;
             public ExecutionInformation ExecutionInformation;
         }
 
@@ -47,6 +47,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         protected bool _updateLaunchPending;
         protected TaskCompletionSource<bool> _processingCompletionSource;
         protected TaskCompletionSource<bool> _processingLastItemTakenSource;
+
         public BaseMasterSyncController(string name, ConcurrentQueue<string> log) : base(name, log)
         {
             _multiControllerMethodMap[CommandDefinitions.ChangeShutterState] = new MultiControllerMethodInformation()
@@ -61,24 +62,19 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             {
                 MethodHandle = UpdateMoveSettings,
             };
-            _methodMap[CommandDefinitions.AwaitQueuedItems] = new MethodInformation()
-            {
-                MethodHandle = AwaitQueuedItems,
-            };
 
             _buffer = new Queue<MovementInformation>();
         }
 
-        protected virtual async Task AwaitQueuedItems(Command command, SemaphoreSlim semaphore)
+        public virtual async Task AwaitQueuedItems(SemaphoreSlim semaphore)
         {
             await ProcessQueue(semaphore);
-            
             await AwaitExecutionEnd();
         }
 
         protected virtual Task MoveAbsolute(Command[] commands, SemaphoreSlim semaphore)
         {
-            Dictionary<string, PositionerInfo> posInfoGroups = new Dictionary<string, PositionerInfo>();
+            Dictionary<string, PositionerSyncItemInfo> posInfoGroups = new Dictionary<string, PositionerSyncItemInfo>();
             List<MoveAbsoluteParameters> moveAbsoluteParameterList = new List<MoveAbsoluteParameters>();
             for (int i = 0; i < commands.Length; i++)
             {
@@ -87,7 +83,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
                 moveAbsoluteParameterList.Add(commandParameters);
 
-                posInfoGroups[command.TargetController] = new PositionerInfo
+                posInfoGroups[command.TargetController] = new PositionerSyncItemInfo
                 {
                     Devices = command.TargetDevices,
                     TargetPositions = command.TargetDevices.Select(deviceName => commandParameters.PositionerInfo[deviceName].TargetPosition).ToArray(),
@@ -146,12 +142,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
                 if (_updateMoveSettingsCommands != null)
                     throw new Exception("Last move settings update missed.");
-                
+
                 _updateMoveSettingsCommands = commands;
                 _launchPending = true;
             }
         }
-        protected Task ChangeState(Command[] commands, SemaphoreSlim semaphore)
+        protected virtual Task ChangeState(Command[] commands, SemaphoreSlim semaphore)
         {
             return Task.CompletedTask;
         }
@@ -168,7 +164,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             }
 
         }
-        protected async Task SendBufferItemToControllers(Dictionary<string, PositionerInfo>? PosInfoControllerGroups, ExecutionInformation execInfo)
+        protected async Task SendBufferItemToControllers(Dictionary<string, PositionerSyncItemInfo>? PosInfoControllerGroups, ExecutionInformation execInfo)
         {
             foreach (var (controllerName, posInfoList) in PosInfoControllerGroups)
             {
@@ -233,34 +229,37 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             int minFreeItemCount = int.MaxValue;
             foreach (var (controllerName, controller) in SlaveControllers)
             {
-                if (controller is IQuableController quableController)
+                if (controller is BasePositionerController || controller is BaseSyncController)
                 {
-                    var command = new Command
+                    foreach (var device in controller.GetDevices())
                     {
-                        Action = CommandDefinitions.GetBufferCount,
-                        Await = true,
-                        Parameters = new GetBufferCountParameters
+                        var command = new Command
                         {
-                            Devices = controller.GetDevices().Select(device => device.Name).ToArray(),
-                        },
-                        TargetController = controller.Name,
-                        TargetDevices = controller.GetDevices().Select(device => device.Name).ToArray(),
-                    };
+                            Action = CommandDefinitions.GetBufferCount,
+                            Await = true,
+                            Parameters = new GetBufferCountParameters
+                            {
+                                Device = device.Name,
+                            },
+                            TargetController = controller.Name,
+                            TargetDevices = controller.GetDevices().Select(device => device.Name).ToArray(),
+                        };
 
-                    var semaphore = await GatherSemaphoresForController([controllerName]);
-                    try
-                    {
-                        var bufferSpace = await controller.ExecuteCommandAsync<int>(command, semaphore[controllerName]);
-                        minFreeItemCount = Math.Min(minFreeItemCount, bufferSpace);
-                    }
-                    finally
-                    {
-                        ReleaseSemeaphores(semaphore);
+                        var semaphore = await GatherSemaphoresForController([controllerName]);
+                        try
+                        {
+                            var bufferSpace = await controller.ExecuteCommandAsync<int>(command, semaphore[controllerName]);
+                            minFreeItemCount = Math.Min(minFreeItemCount, bufferSpace);
+                        }
+                        finally
+                        {
+                            ReleaseSemeaphores(semaphore);
+                        }
                     }
                 }
             }
 
-            if(minFreeItemCount == int.MaxValue)
+            if (minFreeItemCount == int.MaxValue)
                 return 0;
             else
                 return minFreeItemCount;

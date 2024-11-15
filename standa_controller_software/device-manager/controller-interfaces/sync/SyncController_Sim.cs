@@ -1,10 +1,13 @@
-﻿using standa_controller_software.device_manager.controller_interfaces.positioning;
+﻿using standa_controller_software.command_manager;
+using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO.Ports;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -12,17 +15,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 {
     public class SyncController_Sim : BaseSyncController
     {
-
-        public struct ExecutionInformation
-        {
-            public char[] Devices;
-            public bool Launch;
-            public float Rethrow;
-            public bool Shutter;
-            public float Shutter_delay_on;
-            public float Shutter_delay_off;
-        }
-
         private Queue<ExecutionInformation> _buffer = new Queue<ExecutionInformation>();
         public Dictionary<char, Action> _positionerSyncInMap = new Dictionary<char, Action>();
         public Action<bool> _shutterChangeState;
@@ -44,15 +36,35 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             Waiting
         }
 
-        public Task Stop()
+        public SyncController_Sim(string name, ConcurrentQueue<string> log) : base(name, log)
+        {
+        }
+
+        public void GotSyncOut(char deviceName)
+        {
+            _log?.Enqueue($"Got SyncOut from: {deviceName}");
+
+            _gotSyncOutFrom.Add(deviceName);
+        }
+        public override BaseController GetVirtualCopy()
+        {
+            var controller = new SyncController_Sim(Name, _log)
+            {
+                MasterController = this.MasterController,
+                ID = this.ID,
+            };
+            
+            return controller;
+        }
+
+        protected override Task Stop(Command command, SemaphoreSlim semaphore)
         {
             _buffer.Clear();
             _allowedToRun = false;
             _queueState = QueueState.Waiting;
             return Task.CompletedTask;
         }
-
-        public void AddBufferItem(char[] Devices, bool Launch, float Rethrow, bool Shutter, float Shutter_delay_on, float Shutter_delay_off)
+        protected override Task AddSyncBufferItem_implementation(char[] Devices, bool Launch, float Rethrow, bool Shutter, float Shutter_delay_on, float Shutter_delay_off)
         {
             var executionInformation = new ExecutionInformation
             {
@@ -68,63 +80,28 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                 _log?.Enqueue($"===============================dafuk======================================================");
 
             _buffer.Enqueue(executionInformation);
-        }
-        public void GotSyncOut(char deviceName)
-        {
-            _log?.Enqueue($"Got SyncOut from: {deviceName}");
 
-            _gotSyncOutFrom.Add(deviceName);
+            return Task.CompletedTask;
         }
-
-        public SyncController_Sim(string name) : base(name)
+        protected override Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore)
         {
+            return Task.CompletedTask;
         }
-
-        public override void AddDevice(BaseDevice device)
+        protected override async Task StartQueueExecution(Command command, SemaphoreSlim semaphore)
         {
-            throw new NotImplementedException();
+            _ = ExecuteQueue(semaphore);
         }
-
-        public override Task ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
+        protected override async Task<int> GetBufferCount(Command command, SemaphoreSlim semaphore)
         {
-            throw new NotImplementedException();
+            int currentSize = _buffer.Count;
+            return _maxBufferSize - currentSize;
         }
-
-        public override BaseController GetVirtualCopy()
+        protected override Task ConnectDevice_implementation(BaseDevice device)
         {
-            var controller = new SyncController_Sim(Name)
-            {
-                MasterController = this.MasterController,
-                ID = this.ID,
-            };
-            
-            return controller;
-        }
-
-        public override List<BaseDevice> GetDevices()
-        {
-            return new List<BaseDevice>();
-        }
-
-        public override Task UpdateStatesAsync(ConcurrentQueue<string> log)
-        {
-            //await Task.Delay(1100);
             return Task.CompletedTask;
         }
 
-        public override Task Stop(SemaphoreSlim semaphore, ConcurrentQueue<string> log)
-        {
-            _buffer.Clear();
-            _allowedToRun = false;
-            _queueState = QueueState.Waiting;
-            return Task.CompletedTask;
-        }
-
-
-
-
-
-        public async Task ExecuteQueue(SemaphoreSlim semaphore)
+        private async Task ExecuteQueue(SemaphoreSlim semaphore)
         {
             _allowedToRun = true;
             _log.Enqueue("Starting executing on sync executer controller");
@@ -223,8 +200,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             SendMessage.Invoke("0x02");
 
         }
-
-
         private async Task SendSyncIn(char[] devices, float delayOn, float delayOff)
         {
             var tasks = new List<Task>();
@@ -261,7 +236,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             // Await all tasks to complete
             await Task.WhenAll(tasks);
         }
-
         private void SendSyncIn(char[] devices)
         {
             Action[] calls = new Action[devices.Length];
@@ -280,14 +254,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                 call.Invoke();
             }
         }
-
-        public int CheckFreeItemSpace()
-        {
-            int currentSize = _buffer.Count;
-
-            return _maxBufferSize - currentSize;
-        }
-
 
     }
 }

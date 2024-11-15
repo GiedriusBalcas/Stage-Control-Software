@@ -1,5 +1,6 @@
 ﻿using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
+using standa_controller_software.command_manager.command_parameter_library.Common;
 using standa_controller_software.device_manager.controller_interfaces;
 using standa_controller_software.device_manager.devices;
 using System;
@@ -16,25 +17,18 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         private ConcurrentDictionary<char, CancellationTokenSource> _deviceCancellationTokens = new ConcurrentDictionary<char, CancellationTokenSource>();
         protected Dictionary<char, BaseShutterDevice> Devices { get; }
 
-        protected BaseShutterController(string name) : base(name)
+        protected BaseShutterController(string name, ConcurrentQueue<string> log) : base(name, log)
         {
-            //_methodMap[CommandDefinitionsLibrary.ChangeShutterState.ToString()] = ChangeState;
-            //_methodMap[CommandDefinitionsLibrary.ChangeShutterStateOnInterval.ToString()] = ChangeStateOnInterval;
             _methodMap[CommandDefinitions.ChangeShutterState] = new MethodInformation
             {
                 MethodHandle = ChangeState,
-                Quable = false,
-                State = MethodState.Waiting,
             };
             _methodMap[CommandDefinitions.ChangeShutterStateOnInterval] = new MethodInformation
             {
                 MethodHandle = ChangeStateOnInterval,
-                Quable = false,
-                State = MethodState.Waiting,
             };
 
             Devices = new Dictionary<char, BaseShutterDevice>();
-            //methodMap["UpdateStates"] = UpdateStatesCall;
         }
         public override void AddDevice(BaseDevice device)
         {
@@ -45,39 +39,29 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             else
                 throw new Exception($"Unable to add device: {device.Name}. Controller {this.Name} only accepts positioning devices.");
         }
-        public override Task ConnectDevice(BaseDevice device, SemaphoreSlim semaphore)
+        public override abstract BaseController GetVirtualCopy();
+        public override List<BaseDevice> GetDevices()
         {
-            try
-            {
-                if (device is BaseShutterDevice shutterDevice && Devices.ContainsValue(shutterDevice))
-                {
-                    shutterDevice.IsConnected = true;
-                }
-                else
-                    throw new Exception($"Unable to add device: {device.Name}. Controller {this.Name} only accepts positioning devices.");
+            return Devices.Values.Cast<BaseDevice>().ToList();
+        }
 
+        protected override Task ConnectDevice(Command command, SemaphoreSlim semaphore)
+        {
+            if (command.Parameters is ConnectDevicesParameters connectDevicesParameters)
+            {
+                var deviceNames = connectDevicesParameters.Devices;
+                foreach (var deviceName in deviceNames)
+                {
+
+                    var device = Devices[deviceName];
+                    ConnectDevice_implementation(device);
+                    device.IsConnected = true;
+                }
             }
-            catch { }
 
             return Task.CompletedTask;
         }
-
-        protected virtual async Task ChangeStateOnInterval(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
-        {
-            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
-            if (command.Parameters is ChangeShutterStateForIntervalParameters parameters)
-            {
-                for (int i = 0; i < devices.Length; i++)
-                {
-                    var device = devices[i];
-                    var duration = parameters.Duration;
-
-                    await ChangeStateOnIntervalImplementation(device, duration);
-                }
-            }
-        }
-
-        protected virtual async Task ChangeState(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected virtual async Task ChangeState(Command command, SemaphoreSlim semaphore)
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
             if (command.Parameters is ChangeShutterStateParameters parameters)
@@ -87,25 +71,40 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
                     var device = devices[i];
                     var state = parameters.State;
 
-                    await ChangeStateImplementation(device, state);
+                    await ChangeState_implementation(device, state);
                 }
             }
         }
-        protected abstract Task ChangeStateImplementation(BaseShutterDevice device, bool wantedState);
-        protected abstract Task ChangeStateOnIntervalImplementation(BaseShutterDevice device, float duration);
-
-
-        public override abstract BaseController GetVirtualCopy();
-
-        public override List<BaseDevice> GetDevices()
+        protected virtual async Task ChangeStateOnInterval(Command command, SemaphoreSlim semaphore)
         {
-            return Devices.Values.Cast<BaseDevice>().ToList();
-        }
+            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
+            if (command.Parameters is ChangeShutterStateForIntervalParameters parameters)
+            {
+                for (int i = 0; i < devices.Length; i++)
+                {
+                    var device = devices[i];
+                    var duration = parameters.Duration;
 
-        public override Task Stop(SemaphoreSlim semaphore, ConcurrentQueue<string> log)
-        {
-            return Task.CompletedTask;
+                    await ChangeStateOnInterval_implementation(device, duration);
+                }
+            }
         }
-        public override abstract Task UpdateStatesAsync(ConcurrentQueue<string> log);
+        protected override async Task Stop(Command command, SemaphoreSlim semaphore)
+        {
+            foreach(var (deviceName, device) in Devices)
+            {
+                await ChangeState_implementation(device, false);
+            }
+        }
+        protected override abstract Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore);
+
+        protected abstract Task ConnectDevice_implementation(BaseDevice device);
+        protected abstract Task ChangeState_implementation(BaseShutterDevice device, bool wantedState);
+        protected abstract Task ChangeStateOnInterval_implementation(BaseShutterDevice device, float duration);
+
+
+
+
+
     }
 }

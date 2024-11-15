@@ -13,6 +13,7 @@ namespace standa_control_software_WPF.view_models.system_control
     {
 
         private readonly ControllerManager _controllerManager;
+        private readonly standa_controller_software.command_manager.CommandManager _commandManager;
         private DevicePropViewModel _selectedDevice;
 
 
@@ -40,15 +41,16 @@ namespace standa_control_software_WPF.view_models.system_control
         public ICommand ConnectAllCommand { get; set; }
         public ICommand ConnectCommand { get; set; }
 
-        public SystemPropertiesViewModel(ControllerManager controllerManager)
+        public SystemPropertiesViewModel(ControllerManager controllerManager, standa_controller_software.command_manager.CommandManager commandManager)
         {
             _controllerManager = controllerManager;
+            _commandManager = commandManager;
 
             Devices = new List<DevicePropViewModel>();
 
             foreach (var device in _controllerManager.GetDevices<BaseDevice>())
             {
-                Devices.Add(new DevicePropViewModel(_controllerManager, device));
+                Devices.Add(new DevicePropViewModel(_controllerManager, _commandManager, device));
             }
 
             SelectedDevice = Devices.FirstOrDefault();

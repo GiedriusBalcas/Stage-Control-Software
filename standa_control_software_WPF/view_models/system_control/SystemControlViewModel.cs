@@ -3,6 +3,7 @@ using standa_controller_software.command_manager;
 using standa_controller_software.custom_functions;
 using standa_controller_software.device_manager;
 using standa_controller_software.painter;
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Drawing;
 using System.IO;
@@ -23,7 +24,7 @@ namespace standa_control_software_WPF.view_models.system_control
         private readonly PainterManager _painterManager;
         private string _inputText = "";
         private string _outputMessage;
-
+        private readonly ConcurrentQueue<string> _log;
 
         private DocumentViewModel _selectedDocument;
 
@@ -82,8 +83,9 @@ namespace standa_control_software_WPF.view_models.system_control
         }
 
 
-        public SystemControlViewModel(ControllerManager controllerManager, standa_controller_software.command_manager.CommandManager commandManager)
+        public SystemControlViewModel(ControllerManager controllerManager, standa_controller_software.command_manager.CommandManager commandManager, ConcurrentQueue<string> log)
         {
+            _log = log;
             _commandManager = commandManager;
             _controllerManager = controllerManager;
 
@@ -92,7 +94,7 @@ namespace standa_control_software_WPF.view_models.system_control
 
             _functionDefinitionLibrary = new FunctionManager(_controllerManager, _commandManager);
             _textInterpreter = new TextInterpreterWrapper() { DefinitionLibrary = _functionDefinitionLibrary.Definitions };
-            _painterManager = new PainterManager(_commandManager, _controllerManager);
+            _painterManager = new PainterManager(_commandManager, _controllerManager, _log);
 
             AddNewDocumentCommand = new RelayCommand(() => AddNewDocument());
             OpenDocumentCommand = new RelayCommand(() => OpenDocument());

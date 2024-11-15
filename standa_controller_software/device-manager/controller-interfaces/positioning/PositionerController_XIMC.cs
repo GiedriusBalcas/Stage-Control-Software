@@ -19,7 +19,7 @@ using ximcWrapper;
 
 namespace standa_controller_software.device_manager.controller_interfaces.positioning
 {
-    public class PositionerController_XIMC : BasePositionerController, IQuableController
+    public class PositionerController_XIMC : BasePositionerController
     {
         //----------Virtual axes private data---------------
         private const uint MOVE_CMD_RUNNING = 0x80;
@@ -61,7 +61,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         {
             _log?.Enqueue(message);
         }
-
+        
         public PositionerController_XIMC(string name, ConcurrentQueue<string> log) : base(name, log)
         {
             _methodMap[CommandDefinitions.AddSyncInAction] = new MethodInformation()
@@ -75,30 +75,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             API.set_logging_callback(callback, IntPtr.Zero);
 
         }
-        protected override Task AddSyncInAction(Command command, SemaphoreSlim semaphore)
-        {
-            var deviceNames = command.TargetDevices;
-            
-            if(command.Parameters is AddSyncInActionParameters parameters)
-            {
-                for (int i = 0; i < deviceNames.Length; i++)
-                {
-                    var deviceName = deviceNames[i];
-                    var targetPosition = parameters.MovementInformation[deviceName].Position;
-                    var allocatedTime = parameters.MovementInformation[deviceName].Time;    // [s]
-                    var velocity = parameters.MovementInformation[deviceName].Velocity;    // [s]
-                    var syncInAction = new command_add_sync_in_action_calb_t
-                    {
-                        Position = targetPosition,
-                        Time = (uint)Math.Round(allocatedTime * 1000000),
-                    };
-
-                    CallResponse = API.command_add_sync_in_action_calb(_deviceInfo[deviceName].id, ref syncInAction, ref _deviceInfo[deviceName].calibration_t);
-                    _log.Enqueue($"ximc: added ASIA to {deviceName} . Position: {syncInAction.Position};   Speed: {velocity}    Time: {allocatedTime}.");
-                }
-            }
-            return Task.CompletedTask;
-        }
         public override void AddDevice(BaseDevice device)
         {
             base.AddDevice(device);
@@ -108,7 +84,32 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 _deviceInfo.TryAdd(positioningDevice.Name, new DeviceInformation());
             }
         }
+        public override BaseController GetVirtualCopy()
+        {
+            var controller = new PositionerController_XIMC(Name, _log);
+            foreach (var device in Devices)
+            {
+                controller.AddDevice(device.Value.GetCopy());
+                controller._deviceInfo[device.Key] = new DeviceInformation()
+                {
+                    name = this._deviceInfo[device.Key].name,
+                    id = this._deviceInfo[device.Key].id,
+                    maxAcceleration = this._deviceInfo[device.Key].maxAcceleration,
+                    maxDeceleration = this._deviceInfo[device.Key].maxDeceleration,
+                    maxSpeed = this._deviceInfo[device.Key].maxSpeed,
+                    calibration_t = this._deviceInfo[device.Key].calibration_t,
+                    statusCalibrated_t = this._deviceInfo[device.Key].statusCalibrated_t,
+                    engineSettingsCalibrated_t = this._deviceInfo[device.Key].engineSettingsCalibrated_t,
+                    engineSettings_t = this._deviceInfo[device.Key].engineSettings_t,
+                    status_t = this._deviceInfo[device.Key].status_t,
+                    deviceInformation_t = this._deviceInfo[device.Key].deviceInformation_t,
+                    moveSettings_t = this._deviceInfo[device.Key].moveSettings_t,
+                };
+            }
 
+            return controller;
+        }
+        
         protected override void ConnectDevice_implementation(BaseDevice device)
         {
             if (device is BasePositionerDevice positioningDevice && _deviceInfo.TryGetValue(positioningDevice.Name, out DeviceInformation deviceInfo))
@@ -166,7 +167,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 CallResponse = API.set_move_settings_calb(deviceInfo.id, ref deviceInfo.moveSettings_t, ref deviceInfo.calibration_t);
             }
         }
-
         protected override Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore)
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
@@ -196,33 +196,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             }
             return Task.CompletedTask;
         }
-
-        public override BaseController GetVirtualCopy()
-        {
-            var controller = new PositionerController_XIMC(Name, _log);
-            foreach (var device in Devices)
-            {
-                controller.AddDevice(device.Value.GetCopy());
-                controller._deviceInfo[device.Key] = new DeviceInformation()
-                {
-                    name = this._deviceInfo[device.Key].name,
-                    id = this._deviceInfo[device.Key].id,
-                    maxAcceleration = this._deviceInfo[device.Key].maxAcceleration,
-                    maxDeceleration = this._deviceInfo[device.Key].maxDeceleration,
-                    maxSpeed = this._deviceInfo[device.Key].maxSpeed,
-                    calibration_t = this._deviceInfo[device.Key].calibration_t,
-                    statusCalibrated_t = this._deviceInfo[device.Key].statusCalibrated_t,
-                    engineSettingsCalibrated_t = this._deviceInfo[device.Key].engineSettingsCalibrated_t,
-                    engineSettings_t = this._deviceInfo[device.Key].engineSettings_t,
-                    status_t = this._deviceInfo[device.Key].status_t,
-                    deviceInformation_t = this._deviceInfo[device.Key].deviceInformation_t,
-                    moveSettings_t = this._deviceInfo[device.Key].moveSettings_t,
-                };
-            }
-
-            return controller;
-        }
-
         protected override async Task MoveAbsolute(Command command, SemaphoreSlim semaphore)
         {
             // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: move start");
@@ -250,7 +223,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: move end");
 
         }
-
         protected async Task WaitUntilStopAsync(Dictionary<char, float?> waitUntilPositions, Dictionary<char, bool> directions, SemaphoreSlim semaphore)
         {
             //var devices = waitUntilPositions.Keys.Select(deviceName => Devices[deviceName]).ToArray();
@@ -324,9 +296,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
 
         }
-
-
-
         protected override Task Stop(Command command, SemaphoreSlim semaphore)
         {
             foreach (var (deviceName, device) in Devices)
@@ -345,7 +314,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             }
             return Task.CompletedTask;
         }
-
         protected override Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore)
         {
             foreach (var positioner in Devices)
@@ -370,33 +338,56 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return Task.CompletedTask;
         }
 
-        protected Task<object> CheckBufferFreeSpace(Command command, SemaphoreSlim semaphore)
+        protected override Task AddSyncInAction(Command command, SemaphoreSlim semaphore)
+        {
+            var deviceNames = command.TargetDevices;
+            
+            if(command.Parameters is AddSyncInActionParameters parameters)
+            {
+                for (int i = 0; i < deviceNames.Length; i++)
+                {
+                    var deviceName = deviceNames[i];
+                    var targetPosition = parameters.MovementInformation[deviceName].Position;
+                    var allocatedTime = parameters.MovementInformation[deviceName].Time;    // [s]
+                    var velocity = parameters.MovementInformation[deviceName].Velocity;    // [s]
+                    var syncInAction = new command_add_sync_in_action_calb_t
+                    {
+                        Position = targetPosition,
+                        Time = (uint)Math.Round(allocatedTime * 1000000),
+                    };
+
+                    CallResponse = API.command_add_sync_in_action_calb(_deviceInfo[deviceName].id, ref syncInAction, ref _deviceInfo[deviceName].calibration_t);
+                    _log.Enqueue($"ximc: added ASIA to {deviceName} . Position: {syncInAction.Position};   Speed: {velocity}    Time: {allocatedTime}.");
+                }
+            }
+            return Task.CompletedTask;
+        }
+        protected override Task<int> GetBufferFreeSpace(Command command, SemaphoreSlim semaphore)
         {
             return Task.Run(() =>
             {
                 if (command.Parameters is GetBufferCountParameters getBufferSpaceCountParameters)
                 {
-                    var deviceNames = getBufferSpaceCountParameters.Devices;
-                    if (deviceNames.Length > 0)
+                    var deviceName = getBufferSpaceCountParameters.Device;
+                    if (deviceName != char.MinValue)
                     {
-                        uint[] counts = new uint[deviceNames.Length];
-                        int idx = 0;
-                        foreach (char deviceName in deviceNames)
-                        {
-                            var deviceInfo = _deviceInfo[deviceName];
-                            CallResponse = API.get_status_calb(deviceInfo.id, out deviceInfo.statusCalibrated_t, ref deviceInfo.calibration_t);
-                            var count = deviceInfo.statusCalibrated_t.CmdBufFreeSpace;
-                            counts[idx++] = count;
-                            Devices[deviceName].CurrentPosition = deviceInfo.statusCalibrated_t.CurPosition;
-                            Devices[deviceName].CurrentSpeed = deviceInfo.statusCalibrated_t.CurSpeed;
-                        }
-                        return (object)counts;
+                        var deviceInfo = _deviceInfo[deviceName];
+                        CallResponse = API.get_status_calb(deviceInfo.id, out deviceInfo.statusCalibrated_t, ref deviceInfo.calibration_t);
+                        int count = (int)deviceInfo.statusCalibrated_t.CmdBufFreeSpace;
+                        
+                        Devices[deviceName].CurrentPosition = deviceInfo.statusCalibrated_t.CurPosition;
+                        Devices[deviceName].CurrentSpeed = deviceInfo.statusCalibrated_t.CurSpeed;
+                        return count;
                     }
                 }
-
-                return (object)new uint[0];
+                return 0;
             });
         }
+
+
+
+
+
 
     }
 }

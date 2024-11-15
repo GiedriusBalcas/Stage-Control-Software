@@ -54,16 +54,16 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             }
         }
         public abstract void AddSlaveController(BaseController controller, SemaphoreSlim controllerLock);
-
+        public override List<BaseDevice> GetDevices()
+        {
+            throw new NotImplementedException();
+        }
         public override void AddDevice(BaseDevice device)
         {
             throw new NotImplementedException();
         }
+
         protected override Task ConnectDevice(Command command, SemaphoreSlim semaphore)
-        {
-            throw new NotImplementedException();
-        }
-        public override List<BaseDevice> GetDevices()
         {
             throw new NotImplementedException();
         }
@@ -97,7 +97,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 semaphore.Release();
             }
         }
-
         protected async Task ExecuteSlaveCommand(Command command)
         {
             var controllerName = command.TargetController;
@@ -117,5 +116,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 throw new Exception("Unable to retrive controller in master controller.");
             
         }
+
     }
 }

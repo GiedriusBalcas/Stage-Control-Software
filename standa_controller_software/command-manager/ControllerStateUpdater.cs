@@ -48,6 +48,12 @@ namespace standa_controller_software.command_manager
                         currentControllerName = controller.Name; // Keep track of the current controller
                         var semaphore = _controllerManager.ControllerLocks[controller.Name];
 
+                        var updateCommand = new Command
+                        {
+                            TargetController = controller.Name,
+                            Action = CommandDefinitions.UpdateState,
+                        };
+
                         // Log attempting to acquire semaphore
                         _log.Enqueue($"Attempting to acquire semaphore for controller: {controller.Name}");
 
@@ -67,7 +73,7 @@ namespace standa_controller_software.command_manager
                                     {
                                         try
                                         {
-                                            await controller.UpdateStatesAsync(_log);
+                                            await controller.ExecuteCommandAsync(updateCommand, semaphore);
                                             _log.Enqueue($"Successfully updated state for controller: {controller.Name}");
                                         }
                                         catch (Exception ex)

@@ -11,11 +11,13 @@ using standa_controller_software.device_manager.controller_interfaces.shutter;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.controller_interfaces.master_controller;
 using standa_controller_software.device_manager.controller_interfaces.sync;
+using System.Collections.Concurrent;
 
 namespace standa_controller_software.painter
 {
     public class PainterManager
     {
+        private readonly ConcurrentQueue<string> _log;
         private readonly CommandManager _commandManager;
         private readonly ControllerManager _controllerManager;
 
@@ -40,8 +42,9 @@ namespace standa_controller_software.painter
         }
 
 
-        public PainterManager(CommandManager commandManager, ControllerManager controllerManager)
+        public PainterManager(CommandManager commandManager, ControllerManager controllerManager, ConcurrentQueue<string> log)
         {
+            _log = log;
             _commandManager = commandManager;
             _controllerManager = controllerManager;
 
@@ -165,7 +168,7 @@ namespace standa_controller_software.painter
             var controllerManager_virtual = _controllerManager.CreateACopy(rules);
 
 
-            var masterPainterController = new PositionAndShutterController_Painter("painter", _lineCollection, controllerManager_virtual.ToolInformation);
+            var masterPainterController = new PositionAndShutterController_Painter("painter",_log, _lineCollection, controllerManager_virtual.ToolInformation);
             controllerManager_virtual.AddController(masterPainterController);
             foreach(var (controllerName, controller) in controllerManager_virtual.Controllers)
             {

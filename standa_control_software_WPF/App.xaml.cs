@@ -58,8 +58,8 @@ namespace standa_control_software_WPF
             _controllerStateUpdater = new ControllerStateUpdater(_controllerManager, _log);
             _commandManager = new CommandManager(_controllerManager, _log);
 
-            _systemPropertiesViewModel = new SystemPropertiesViewModel(_controllerManager);
-            _systemControlViewModel = new SystemControlViewModel(_controllerManager,_commandManager);
+            _systemPropertiesViewModel = new SystemPropertiesViewModel(_controllerManager, _commandManager);
+            _systemControlViewModel = new SystemControlViewModel(_controllerManager,_commandManager, _log);
             _systemInformationViewModel = new SystemInformtaionViewModel(_controllerManager);
 
 

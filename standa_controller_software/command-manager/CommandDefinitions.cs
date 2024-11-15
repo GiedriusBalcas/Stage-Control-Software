@@ -15,10 +15,6 @@ namespace standa_controller_software.command_manager
         ConnectDevice,
         Stop,
         // queue
-        StartQueueExecution,
-        AddSyncControllerBufferItem,
-        GetBufferCount,
-        OnSyncIn,
         AwaitQueuedItems,
         // positioners
         MoveAbsolute,
@@ -27,5 +23,10 @@ namespace standa_controller_software.command_manager
         // shutters
         ChangeShutterStateOnInterval,
         ChangeShutterState,
+        // sync
+        StartQueueExecution,
+        AddSyncControllerBufferItem,
+        GetBufferCount,
+
     }
 }

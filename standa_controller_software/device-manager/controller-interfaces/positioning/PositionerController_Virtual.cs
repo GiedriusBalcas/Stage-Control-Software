@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -45,7 +46,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
         //---------------------------------------------------
 
-        public PositionerController_Virtual(string name) : base(name) { }
+        public PositionerController_Virtual(string name, ConcurrentQueue<string> log) : base(name, log) { }
         
         public override void AddDevice(BaseDevice device)
         {
@@ -56,8 +57,17 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 _deviceInfo.TryAdd(positioningDevice.Name, new DeviceInformation());
             }
         }
+        public override BaseController GetVirtualCopy()
+        {
+            var controller = new PositionerController_Sim(Name, _log);
+            foreach (var device in Devices)
+            {
+                controller.AddDevice(device.Value);
+            }
+            return controller;
+        }
 
-        protected override Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore)
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
             var movementParams = command.Parameters as UpdateMovementSettingsParameters;
@@ -76,48 +86,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
             return Task.CompletedTask;
         }
-
-
-        protected override Task WaitUntilStop(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
-        {
-            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
-
-            //for (int i = 0; i < devices.Length; i++)
-            //{
-            //    if (command.Parameters[i] != null && command.Parameters[i].Length != 0 )
-            //    {
-            //        float targetPosition = (float)(command.Parameters[i][0]);
-            //        bool direction = (bool)(command.Parameters[i][1]);
-
-            //        devices[i].CurrentPosition = targetPosition;
-            //    }
-                
-            //}
-
-            return Task.CompletedTask;
-        }
-
-        protected override Task WaitUntilStopPolar(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore)
         {
             return Task.CompletedTask;
         }
-
-        public override Task UpdateStatesAsync(ConcurrentQueue<string> log)
-        {
-            return Task.CompletedTask;
-        }
-
-        public override BaseController GetVirtualCopy()
-        {
-            var controller = new PositionerController_Sim(Name);
-            foreach (var device in Devices)
-            {
-                controller.AddDevice(device.Value);
-            }
-            return controller;
-        }
-
-        protected override Task MoveAbsolute(Command command, SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override Task MoveAbsolute(Command command, SemaphoreSlim semaphore)
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
             var movementParams = command.Parameters as MoveAbsoluteParameters;
@@ -344,10 +317,28 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
             return Task.CompletedTask;
          }
-
-        public override Task Stop(SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        protected override Task Stop(Command command, SemaphoreSlim semaphore)
         {
             return Task.CompletedTask;
         }
+        protected override void ConnectDevice_implementation(BaseDevice device)
+        {
+            return;
+        }
+
+
+        protected override Task AddSyncInAction(Command command, SemaphoreSlim semaphore)
+        {
+            return Task.CompletedTask;
+        }
+        protected override Task<int> GetBufferFreeSpace(Command command, SemaphoreSlim semaphore)
+        {
+            return Task.Run(() => 
+            {
+                int number = 10; 
+                return number;
+            });
+        }
+
     }
 }

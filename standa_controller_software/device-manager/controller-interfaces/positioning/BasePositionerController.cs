@@ -23,17 +23,19 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             _methodMap[CommandDefinitions.MoveAbsolute] = new MethodInformation()
             {
                 MethodHandle = MoveAbsolute,
-                State = MethodState.Free,
             };
             _methodMap[CommandDefinitions.UpdateMoveSettings] = new MethodInformation()
             {
                 MethodHandle = UpdateMoveSettings,
-                State = MethodState.Free,
             };
+
             _methodMap[CommandDefinitions.AddSyncInAction] = new MethodInformation()
             {
                 MethodHandle = AddSyncInAction,
-                State = MethodState.Free,
+            };
+            _methodMap[CommandDefinitions.GetBufferCount] = new MethodInformation<int>()
+            {
+                MethodHandle = GetBufferFreeSpace,
             };
 
             Devices = new Dictionary<char, BasePositionerDevice>();
@@ -49,6 +51,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             else
                 throw new Exception($"Unable to add device: {device.Name}. Controller {this.Name} only accepts positioning devices.");
         }
+        public override List<BaseDevice> GetDevices()
+        {
+            return Devices.Values.Cast<BaseDevice>().ToList();
+        }
+        public override abstract BaseController GetVirtualCopy();
+
+
         protected override Task ConnectDevice(Command command, SemaphoreSlim semaphore)
         {
             if (command.Parameters is ConnectDevicesParameters connectDevicesParameters)
@@ -65,19 +74,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
             return Task.CompletedTask;
         }
-
-        public override List<BaseDevice> GetDevices()
-        {
-            return Devices.Values.Cast<BaseDevice>().ToList();
-        }
-
         protected override abstract Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore);
         protected abstract Task MoveAbsolute(Command command, SemaphoreSlim semaphore);
         protected abstract Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore);
-        protected abstract Task AddSyncInAction(Command command, SemaphoreSlim semaphore);
         protected abstract void ConnectDevice_implementation(BaseDevice device);
 
-
-        public override abstract BaseController GetVirtualCopy();
+        protected abstract Task AddSyncInAction(Command command, SemaphoreSlim semaphore);
+        protected abstract Task<int> GetBufferFreeSpace(Command command, SemaphoreSlim semaphore);
     }
 }

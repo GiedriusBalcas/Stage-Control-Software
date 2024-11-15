@@ -1,16 +1,19 @@
 ﻿
+using standa_controller_software.command_manager;
 using standa_controller_software.device_manager;
 using standa_controller_software.device_manager.attributes;
 using standa_controller_software.device_manager.controller_interfaces;
 using standa_controller_software.device_manager.devices;
 using System.Collections.ObjectModel;
 using System.Reflection;
+using System.Windows.Input;
 
 namespace standa_control_software_WPF.view_models.config_creation.system_properties
 {
     public class DevicePropViewModel : ViewModelBase
     {
         private readonly ControllerManager _systemConfig;
+        private readonly standa_controller_software.command_manager.CommandManager _commandManager;
         public readonly BaseDevice _device;
 
         public ObservableCollection<DevicePropertyDisplayItem> DeviceProperties { get; } = new ObservableCollection<DevicePropertyDisplayItem>();
@@ -63,9 +66,10 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
         }
 
 
-        public DevicePropViewModel(ControllerManager systemConfig, BaseDevice device)
+        public DevicePropViewModel(ControllerManager controllerManager, standa_controller_software.command_manager.CommandManager commandManager, BaseDevice device)
         {
-            _systemConfig = systemConfig;
+            _systemConfig = controllerManager;
+            _commandManager = commandManager;
             _device = device;
             Name = _device.Name;
             GetProperties();
@@ -101,7 +105,14 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
             if (!_device.IsConnected)
             {
                 var controller = _systemConfig.GetDeviceController<BaseController>(_device.Name);
-                await controller.ConnectDevice(_device, semaphore);
+                //await controller.ConnectDevice(_device, semaphore);
+                var connectCommand = new Command
+                {
+                    Action = CommandDefinitions.ConnectDevice,
+                    TargetController = controller.Name,
+                };
+                await _commandManager.TryExecuteCommand(connectCommand);
+
                 OnPropertyChanged(nameof(IsConnectedText));
             }
         }

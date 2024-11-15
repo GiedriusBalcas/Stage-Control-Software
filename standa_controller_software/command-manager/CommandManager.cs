@@ -34,16 +34,29 @@ namespace standa_controller_software.command_manager
 
             foreach (var (controllerName, controller) in _controllerManager.Controllers)
             {
-                _controllerManager.ControllerLocks[controllerName].Wait();
+                var semaphore = _controllerManager.ControllerLocks[controllerName];
+                semaphore.Wait();
                 try
                 {
-                    controller.InitializeController(_controllerManager.ControllerLocks[controllerName], _log);
+                    var initializeCommand = new Command
+                    {
+                        TargetController = controller.Name,
+                        Action = CommandDefinitions.Initialize,
+                    };
+
+                    controller.ExecuteCommandAsync(initializeCommand, semaphore).GetAwaiter().GetResult();
                 }
                 finally
                 {
-                _controllerManager.ControllerLocks[controllerName].Release();
+                    semaphore.Release();
                 }
             }
+        }
+
+        // interface for outside objects to execute commands.
+        public async Task TryExecuteCommand(Command command)
+        {
+            await ExecuteControllerCommandWrapper(command);
         }
 
         public CommandManagerState CurrentState
@@ -228,7 +241,7 @@ namespace standa_controller_software.command_manager
             {
                 try
                 {
-                    await masterController.ExecuteSlaveCommandsAsync(commands, semaphore, _log);
+                    await masterController.ExecuteSlaveCommandsAsync(commands, semaphore);
                 }
                 catch (Exception ex)
                 {
@@ -242,7 +255,7 @@ namespace standa_controller_software.command_manager
                 {
                     try
                     {
-                        await controller.ExecuteCommandAsync(commands[i], semaphore, _log);
+                        await controller.ExecuteCommandAsync(commands[i], semaphore);
                     }
                     catch (Exception ex)
                     {
@@ -255,20 +268,19 @@ namespace standa_controller_software.command_manager
 
         private async Task CheckAndUpdateControllerQueue(string controllerName)
         {
+            var controller = _controllerManager.Controllers[_currentQueueController];
             if (_currentQueueController != string.Empty && _currentQueueController != controllerName)
             {
                 var semaphore = _controllerManager.ControllerLocks[_currentQueueController];
                 await semaphore.WaitAsync();
-                if (_controllerManager.Controllers[_currentQueueController] is BaseMasterController queuedMasterController)
+                if (controller is IQuableController queuedMasterController)
                 {
-                    await queuedMasterController.AwaitQueuedItems(semaphore, new Dictionary<string, SemaphoreSlim>(), _log);
+                    await queuedMasterController.AwaitQueuedItems(semaphore);
                 }
                 else
-                {
-                    await _controllerManager.Controllers[_currentQueueController].AwaitQueuedItems(semaphore, _log);
-                }
+                    throw new Exception("Unexpected queued controller statement.");
             }
-            if (_controllerManager.Controllers.ContainsKey(controllerName) && _controllerManager.Controllers[controllerName].IsQuable)
+            if (_controllerManager.Controllers.ContainsKey(controllerName) && _controllerManager.Controllers[controllerName] is IQuableController)
             {
                 _currentQueueController = controllerName;
             }
@@ -280,6 +292,25 @@ namespace standa_controller_software.command_manager
             {
                 Console.WriteLine(logEntry);
             }
+        }
+        private async Task ExecuteControllerCommandWrapper(Command command)
+        {
+            var controllerName = command.TargetController;
+            if (controllerName != string.Empty && _controllerManager.Controllers.TryGetValue(controllerName, out var controller))
+            {
+                var controllerLock = await GatherSemaphoresForController([controllerName]);
+                try
+                {
+                    await controller.ExecuteCommandAsync(command, controllerLock[controllerName]);
+                }
+                finally
+                {
+                    ReleaseSemeaphores(controllerLock);
+                }
+            }
+            else
+                throw new Exception("Unable to retrive controller in master controller.");
+
         }
 
         public async void Stop()
@@ -293,11 +324,12 @@ namespace standa_controller_software.command_manager
             {
                 if (controller.MasterController is not null)
                 {
-                    await _controllerManager.ControllerLocks[controllerName].WaitAsync();
-                    await controller.Stop(_controllerManager.ControllerLocks[controllerName], _log);
-
-                    //if (_controllerManager.ControllerLocks[controllerName].CurrentCount == 0)
-                    _controllerManager.ControllerLocks[controllerName].Release();
+                    var stopCommand = new Command
+                    {
+                        TargetController = controllerName,
+                        Action = CommandDefinitions.Stop,
+                    };
+                    await ExecuteControllerCommandWrapper(stopCommand);
                 }
             }
 
@@ -305,15 +337,12 @@ namespace standa_controller_software.command_manager
             {
                 if (controller.MasterController is BaseMasterController baseMasterController)
                 {
-                    var ackquiredSemaphores = await GatherSemaphoresForController([baseMasterController.Name]);
-                    try
+                    var stopCommand = new Command
                     {
-                        await controller.Stop(ackquiredSemaphores[baseMasterController.Name], _log);
-                    }
-                    finally
-                    {
-                        ReleaseSemeaphores(ackquiredSemaphores);
-                    }
+                        TargetController = controllerName,
+                        Action = CommandDefinitions.Stop,
+                    };
+                    await ExecuteControllerCommandWrapper(stopCommand);
                 }
             }
 

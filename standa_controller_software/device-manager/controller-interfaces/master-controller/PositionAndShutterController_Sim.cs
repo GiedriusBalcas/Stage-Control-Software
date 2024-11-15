@@ -124,15 +124,23 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             return controllerCopy;
         }
         
-        protected override Task Stop(Command command, SemaphoreSlim semaphore)
+        protected override async Task Stop(Command command, SemaphoreSlim semaphore)
         {
             _buffer.Clear();
-            _syncController.Stop();
+            
+            var stopCommand = new Command
+            {
+                TargetController = _syncController.Name,
+                Action = CommandDefinitions.Stop,
+                Await = true,
+            };
+
+            await ExecuteSlaveCommand(stopCommand);
+
             _launchPending = true;
             _processingCompletionSource?.TrySetResult(true);
             _processingLastItemTakenSource?.TrySetResult(true);
 
-            return Task.CompletedTask;
-        }
+            }
     }
 }

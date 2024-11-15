@@ -22,7 +22,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         }
         private ConcurrentDictionary<char, DeviceInformation> _deviceInfo = new ConcurrentDictionary<char, DeviceInformation>();
 
-        public ShutterController_Sim(string name) : base(name)
+        public ShutterController_Sim(string name, ConcurrentQueue<string> log) : base(name, log)
         {
 
         }
@@ -40,7 +40,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         }
         public override BaseController GetVirtualCopy()
         {
-            var controller = new ShutterController_Sim(Name);
+            var controller = new ShutterController_Sim(Name, _log);
             foreach (var device in Devices)
             {
                 controller.AddDevice(device.Value.GetCopy());
@@ -49,24 +49,27 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             return controller;
         }
 
-        public override Task UpdateStatesAsync(ConcurrentQueue<string> log)
+        protected override Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore)
         {
             return Task.CompletedTask;
         }
 
-        protected override Task ChangeStateImplementation(BaseShutterDevice device, bool wantedState)
+        protected override Task ChangeState_implementation(BaseShutterDevice device, bool wantedState)
         {
             _deviceInfo[device.Name]._isOn = wantedState;
             device.IsOn = wantedState;
 
             return Task.CompletedTask;
         }
-
-        protected override async Task ChangeStateOnIntervalImplementation(BaseShutterDevice device, float duration)
+        protected override async Task ChangeStateOnInterval_implementation(BaseShutterDevice device, float duration)
         {
-            await ChangeStateImplementation(device, true);
+            await ChangeState_implementation(device, true);
             await Task.Delay((int)Math.Round(duration * 1000));
-            await ChangeStateImplementation(device, false);
+            await ChangeState_implementation(device, false);
+        }
+        protected override Task ConnectDevice_implementation(BaseDevice device)
+        {
+            return Task.CompletedTask;
         }
     }
 }

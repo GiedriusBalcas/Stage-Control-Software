@@ -21,7 +21,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         }
         private ConcurrentDictionary<char, DeviceInformation> _deviceInfo = new ConcurrentDictionary<char, DeviceInformation>();
 
-        public ShutterController_Virtual(string name) : base(name) { }
+        public ShutterController_Virtual(string name, ConcurrentQueue<string> log) : base(name, log) { }
         public override void AddDevice(BaseDevice device)
         {
             base.AddDevice(device);
@@ -36,7 +36,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         }
         public override BaseController GetVirtualCopy()
         {
-            var controller = new ShutterController_Virtual(Name);
+            var controller = new ShutterController_Virtual(Name, _log);
             foreach (var device in Devices)
             {
                 controller.AddDevice(device.Value.GetCopy());
@@ -45,29 +45,22 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             return controller;
         }
 
-        public override Task UpdateStatesAsync(ConcurrentQueue<string> log)
+        protected override Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore)
         {
-            //foreach (var device in Devices)
-            //{
-            //    device.Value.IsOn = _deviceInfo[device.Key]._isOn;
-            //    device.Value.DelayOn = _deviceInfo[device.Key]._delayOn;
-            //    device.Value.DelayOff = _deviceInfo[device.Key]._delayOff;
-            //    // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {device.Value.Name}, State: {device.Value.IsOn}");
-            //}
-
             return Task.CompletedTask;
-            //await Task.Delay(10);
         }
 
-
-        protected override Task ChangeStateImplementation(BaseShutterDevice device, bool wantedState)
+        protected override Task ChangeState_implementation(BaseShutterDevice device, bool wantedState)
         {
             device.IsOn = wantedState;
             _deviceInfo[device.Name]._isOn = wantedState;
             return Task.CompletedTask;
         }
-
-        protected override Task ChangeStateOnIntervalImplementation(BaseShutterDevice device, float duration)
+        protected override Task ChangeStateOnInterval_implementation(BaseShutterDevice device, float duration)
+        {
+            return Task.CompletedTask;
+        }
+        protected override Task ConnectDevice_implementation(BaseDevice device)
         {
             return Task.CompletedTask;
         }

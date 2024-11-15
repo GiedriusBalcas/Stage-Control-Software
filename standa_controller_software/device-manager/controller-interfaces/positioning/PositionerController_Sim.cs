@@ -17,7 +17,7 @@ using ximcWrapper;
 
 namespace standa_controller_software.device_manager.controller_interfaces.positioning
 {
-    public partial class PositionerController_Sim : BasePositionerController, IQuableController 
+    public partial class PositionerController_Sim : BasePositionerController 
     {
         //----------Virtual axes private data---------------
         private class DeviceInformation
@@ -65,59 +65,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             OnSyncIn += (char name) => OnSyncInAction(name).GetAwaiter().GetResult();
         }
 
-        protected Task<int> IQuableController.GetBufferFreeSpace(Command command, SemaphoreSlim semaphore)
-        {
-            var maxItemSize = 20;
-            var currentSize = _buffer.Count;
-
-            return maxItemSize - currentSize;
-        }
-        public void InvokeSyncIn(char deviceName)
-        {
-            OnSyncIn?.Invoke(deviceName);
-        }
-        public override void AddDevice(BaseDevice device)
-        {
-            base.AddDevice(device);
-
-            if (device is BasePositionerDevice positioningDevice)
-            {
-                _deviceInfo.TryAdd(positioningDevice.Name, new DeviceInformation()
-                {
-                    CurrentPosition = positioningDevice.CurrentPosition,
-                    CurrentSpeed = positioningDevice.CurrentSpeed,
-                    MaxSpeed = positioningDevice.MaxSpeed,
-                    Speed = positioningDevice.Speed,
-                    Acceleration = positioningDevice.Acceleration,
-                    Deceleration = positioningDevice.Deceleration,
-                });
-            }
-        }
-
-        protected override Task AddSyncInAction(Command command, SemaphoreSlim semaphore)
-        {
-                var deviceNames = command.TargetDevices;
-            var parameters = command.Parameters as AddSyncInActionParameters;
-            for (int i = 0; i < deviceNames.Length; i++)
-            {
-                var deviceName = deviceNames[i];
-                var targetPosition = parameters.MovementInformation[deviceName].Position;
-                var allocatedTime = parameters.MovementInformation[deviceName].Time;
-
-                var syncInAction = new SyncInAction()
-                {
-                    TargetPosition = targetPosition,
-                    AllocatedTime = allocatedTime
-                };
-                if (!_buffer.ContainsKey(deviceName))
-                {
-                    _buffer[deviceName] = new Queue<SyncInAction>();
-                }
-                _buffer[deviceName].Enqueue(syncInAction);
-            }
-            return Task.CompletedTask;
-        }
-
         private async Task OnSyncInAction(char name)
         {
             if (!_buffer.ContainsKey(name) || _buffer[name].Count < 1)
@@ -158,31 +105,41 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
             _ = UpdateCommandMoveA(device.Name, targetPosition, deviceCancellationTokens[device.Name].Token);
         }
-
-        public static double CalculateTargetSpeed(double totalTime, double totalDistance, double acceleration, double deceleration)
+        
+        public override void AddDevice(BaseDevice device)
         {
-            // Quadratic coefficients
-            double A = 1;
-            double B = -((acceleration + deceleration) * totalTime) / 2;
-            double C = acceleration * deceleration * totalDistance;
+            base.AddDevice(device);
 
-            // Calculate discriminant
-            double discriminant = B * B - 4 * A * C;
-
-            // Check for non-negative discriminant
-            if (discriminant < 0)
+            if (device is BasePositionerDevice positioningDevice)
             {
-                Console.WriteLine("No real solutions, check your input values.");
-                return 0;
+                _deviceInfo.TryAdd(positioningDevice.Name, new DeviceInformation()
+                {
+                    CurrentPosition = positioningDevice.CurrentPosition,
+                    CurrentSpeed = positioningDevice.CurrentSpeed,
+                    MaxSpeed = positioningDevice.MaxSpeed,
+                    Speed = positioningDevice.Speed,
+                    Acceleration = positioningDevice.Acceleration,
+                    Deceleration = positioningDevice.Deceleration,
+                });
             }
-
-            // Calculate both possible speeds (only one will be physically meaningful)
-            double v_target1 = (-B + Math.Sqrt(discriminant)) / (2 * A);
-            double v_target2 = (-B - Math.Sqrt(discriminant)) / (2 * A);
-
-            // Return the positive, realistic target speed
-            return Math.Max(v_target1, v_target2);
         }
+        public override BaseController GetVirtualCopy()
+        {
+            var controller = new PositionerController_Sim(Name, _log);
+            foreach (var device in Devices)
+            {
+                controller.AddDevice(device.Value.GetCopy());
+            }
+            controller.MasterController = this.MasterController;
+            return controller;
+        }
+        public void InvokeSyncIn(char deviceName)
+        {
+            OnSyncIn?.Invoke(deviceName);
+        }
+
+
+
 
         protected override async Task MoveAbsolute(Command command, SemaphoreSlim semaphore)
         {
@@ -232,7 +189,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
 
         }
-
         protected override async Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore)
         {
             // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: upd start");
@@ -251,7 +207,107 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 await task;
             }
         }
+        protected override async Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore)
+        {
+            foreach (var positioner in Devices)
+            {
+                positioner.Value.CurrentPosition = _deviceInfo[positioner.Key].CurrentPosition;
+                positioner.Value.CurrentSpeed = _deviceInfo[positioner.Key].CurrentSpeed;
+                positioner.Value.Acceleration = _deviceInfo[positioner.Key].Acceleration;
+                positioner.Value.Deceleration = _deviceInfo[positioner.Key].Deceleration;
+                positioner.Value.Speed = _deviceInfo[positioner.Key].Speed;
 
+                _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
+            }
+            await Task.Delay(1);
+        }
+        protected override Task Stop(Command command, SemaphoreSlim semaphore)
+        {
+            _buffer.Clear();
+
+            foreach(var (deviceName, device) in Devices)
+            {
+                if (deviceCancellationTokens.ContainsKey(deviceName))
+                {
+                    deviceCancellationTokens[deviceName].Cancel();
+                }
+            }
+
+            return Task.CompletedTask;
+        }
+        protected override void ConnectDevice_implementation(BaseDevice device)
+        {
+            if (device is BasePositionerDevice positioningDevice && _deviceInfo.TryGetValue(positioningDevice.Name, out DeviceInformation deviceInfo))
+            {
+                deviceInfo.MaxSpeed = positioningDevice.MaxSpeed;
+                positioningDevice.Speed = positioningDevice.DefaultSpeed;
+                positioningDevice.Acceleration = positioningDevice.MaxAcceleration;
+                positioningDevice.Deceleration = positioningDevice.MaxDeceleration;
+
+                deviceInfo.Speed = Math.Min(positioningDevice.Speed, positioningDevice.MaxSpeed);
+                deviceInfo.Acceleration = Math.Min(positioningDevice.Acceleration, positioningDevice.MaxAcceleration);
+                deviceInfo.Deceleration = Math.Min(positioningDevice.Deceleration, positioningDevice.MaxDeceleration);
+            }
+        }
+
+        protected override Task<int> GetBufferFreeSpace(Command command, SemaphoreSlim semaphore)
+        {
+            return Task.Run(() =>
+            {
+                var maxItemSize = 20;
+                var currentSize = _buffer.Count;
+
+                return maxItemSize - currentSize;
+            });
+        }
+        protected override Task AddSyncInAction(Command command, SemaphoreSlim semaphore)
+        {
+            var deviceNames = command.TargetDevices;
+            var parameters = command.Parameters as AddSyncInActionParameters;
+            for (int i = 0; i < deviceNames.Length; i++)
+            {
+                var deviceName = deviceNames[i];
+                var targetPosition = parameters.MovementInformation[deviceName].Position;
+                var allocatedTime = parameters.MovementInformation[deviceName].Time;
+
+                var syncInAction = new SyncInAction()
+                {
+                    TargetPosition = targetPosition,
+                    AllocatedTime = allocatedTime
+                };
+                if (!_buffer.ContainsKey(deviceName))
+                {
+                    _buffer[deviceName] = new Queue<SyncInAction>();
+                }
+                _buffer[deviceName].Enqueue(syncInAction);
+            }
+            return Task.CompletedTask;
+        }
+
+        private static double CalculateTargetSpeed(double totalTime, double totalDistance, double acceleration, double deceleration)
+        {
+            // Quadratic coefficients
+            double A = 1;
+            double B = -((acceleration + deceleration) * totalTime) / 2;
+            double C = acceleration * deceleration * totalDistance;
+
+            // Calculate discriminant
+            double discriminant = B * B - 4 * A * C;
+
+            // Check for non-negative discriminant
+            if (discriminant < 0)
+            {
+                Console.WriteLine("No real solutions, check your input values.");
+                return 0;
+            }
+
+            // Calculate both possible speeds (only one will be physically meaningful)
+            double v_target1 = (-B + Math.Sqrt(discriminant)) / (2 * A);
+            double v_target2 = (-B - Math.Sqrt(discriminant)) / (2 * A);
+
+            // Return the positive, realistic target speed
+            return Math.Max(v_target1, v_target2);
+        }
         private Task UpdateMovementSettings(char name, float speedValue, float accelValue, float decelValue)
         {
             _deviceInfo[name].Speed = Math.Min(speedValue, Devices[name].MaxSpeed); ;
@@ -260,8 +316,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
             return Task.CompletedTask;
         }
-
-        protected async Task WaitUntilStopAsync(Dictionary<char, float?> waitUntilPositions, Dictionary<char, bool> directions, SemaphoreSlim semaphore)
+        private async Task WaitUntilStopAsync(Dictionary<char, float?> waitUntilPositions, Dictionary<char, bool> directions, SemaphoreSlim semaphore)
         {
             //var devices = waitUntilPositions.Keys.Select(deviceName => Devices[deviceName]).ToArray();
             var queuedItems = new List<Func<Task<bool>>>();
@@ -341,9 +396,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
 
         }
-
-
-
         private async Task UpdateCommandMoveA(char name, float targetPosition, CancellationToken cancellationToken)
         {
 
@@ -454,63 +506,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             _deviceInfo[name].MoveStatus = 0;
 
             OnSyncOut?.Invoke(name);
-        }
-
-        protected override async Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore)
-        {
-            foreach (var positioner in Devices)
-            {
-                positioner.Value.CurrentPosition = _deviceInfo[positioner.Key].CurrentPosition;
-                positioner.Value.CurrentSpeed = _deviceInfo[positioner.Key].CurrentSpeed;
-                positioner.Value.Acceleration = _deviceInfo[positioner.Key].Acceleration;
-                positioner.Value.Deceleration = _deviceInfo[positioner.Key].Deceleration;
-                positioner.Value.Speed = _deviceInfo[positioner.Key].Speed;
-
-                _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
-            }
-            await Task.Delay(1);
-        }
-
-        public override BaseController GetVirtualCopy()
-        {
-            var controller = new PositionerController_Sim(Name, _log);
-            foreach (var device in Devices)
-            {
-                controller.AddDevice(device.Value.GetCopy());
-            }
-            controller.MasterController = this.MasterController;
-            return controller;
-        }
-
-
-        protected override Task Stop(Command command, SemaphoreSlim semaphore)
-        {
-            _buffer.Clear();
-
-            foreach(var (deviceName, device) in Devices)
-            {
-                if (deviceCancellationTokens.ContainsKey(deviceName))
-                {
-                    deviceCancellationTokens[deviceName].Cancel();
-                }
-            }
-
-            return Task.CompletedTask;
-        }
-
-        protected override void ConnectDevice_implementation(BaseDevice device)
-        {
-            if (device is BasePositionerDevice positioningDevice && _deviceInfo.TryGetValue(positioningDevice.Name, out DeviceInformation deviceInfo))
-            {
-                deviceInfo.MaxSpeed = positioningDevice.MaxSpeed;
-                positioningDevice.Speed = positioningDevice.DefaultSpeed;
-                positioningDevice.Acceleration = positioningDevice.MaxAcceleration;
-                positioningDevice.Deceleration = positioningDevice.MaxDeceleration;
-
-                deviceInfo.Speed = Math.Min(positioningDevice.Speed, positioningDevice.MaxSpeed);
-                deviceInfo.Acceleration = Math.Min(positioningDevice.Acceleration, positioningDevice.MaxAcceleration);
-                deviceInfo.Deceleration = Math.Min(positioningDevice.Deceleration, positioningDevice.MaxDeceleration);
-            }
         }
     }
 }

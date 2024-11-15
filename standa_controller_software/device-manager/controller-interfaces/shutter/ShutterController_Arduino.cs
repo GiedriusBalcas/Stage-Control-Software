@@ -1,4 +1,5 @@
-﻿using standa_controller_software.device_manager.devices;
+﻿using standa_controller_software.command_manager;
+using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -28,13 +29,30 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         private SerialPort serialPort;
 
         
-        public ShutterController_Arduino(string name) : base(name)
+        public ShutterController_Arduino(string name, ConcurrentQueue<string> log) : base(name, log)
         {
         }
 
-        public override async Task InitializeController(SemaphoreSlim semaphore, ConcurrentQueue<string> log)
+        public override BaseController GetVirtualCopy()
         {
-            await base.InitializeController(semaphore, log);
+            var controller = new ShutterController_Arduino(Name, _log)
+            {
+                MasterController = this.MasterController,
+                ID = this.ID,
+            };
+
+            // Copy devices
+            foreach (var device in Devices.Values)
+            {
+                controller.AddDevice(device.GetCopy());
+            }
+
+            return controller;
+        }
+
+        protected override async Task InitializeController(Command command, SemaphoreSlim semaphore)
+        {
+            await base.InitializeController(command, semaphore);
 
             serialPort = new SerialPort(this.ID, 9600, Parity.None, 8, StopBits.One)
             {
@@ -49,14 +67,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             serialPort.DiscardInBuffer();
             serialPort.DiscardOutBuffer();
         }
-
-        public override void AddDevice(BaseDevice device)
+        protected override Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore)
         {
-            base.AddDevice(device);
-            // No additional device-specific setup required
+            var currentState = GetState(out bool state);
+            Devices.First().Value.IsOn = state;
+            return Task.CompletedTask;
         }
 
-        protected override async Task ChangeStateImplementation(BaseShutterDevice device, bool wantedState)
+        protected override async Task ChangeState_implementation(BaseShutterDevice device, bool wantedState)
         {
             EnsurePortIsOpen();
 
@@ -68,23 +86,36 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             serialPort.Write(packet, 0, packet.Length);
 
             // Read and process the response
-            ResponsePacket response = ReadResponse();
+            ResponsePacket response = await ReadResponse();
 
             var processedResponse = ProcessResponse(response);
             if (processedResponse == false)
                 _log.Enqueue("Arduino_shutter: error response received.");
         }
-
-
-        //public bool ChangeStateForInterval(float duration)
-        //{
-        //   
-        //}
-
-        public override async Task UpdateStatesAsync(ConcurrentQueue<string> log)
+        protected override async Task ChangeStateOnInterval_implementation(BaseShutterDevice device, float duration)
         {
-            var currentState = GetState(out bool state);
-            Devices.First().Value.IsOn = state;
+            EnsurePortIsOpen();
+
+            // Construct the command packet
+            byte[] payload = BitConverter.GetBytes(duration);
+            byte[] packet = ConstructPacket(CMD_CHANGE_STATE_FOR_INTERVAL, payload);
+
+            // Send the packet
+            serialPort.Write(packet, 0, packet.Length);
+
+            // Read and process the response
+            ResponsePacket response = await ReadResponse();
+
+            var processedResponse = ProcessResponse(response);
+            if (processedResponse == false)
+                _log.Enqueue("Arduino_shutter: error response received.");
+
+            await Task.Delay((int)(duration * 1000));
+
+        }
+        protected override Task ConnectDevice_implementation(BaseDevice device)
+        {
+            return Task.CompletedTask;
         }
 
         private bool GetState(out bool shutterState)
@@ -99,7 +130,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             serialPort.Write(packet, 0, packet.Length);
 
             // Read and process the response
-            ResponsePacket response = ReadResponse();
+            ResponsePacket response = ReadResponse().GetAwaiter().GetResult();
 
             if (response.ResponseCode == RESP_SHUTTER_STATE && response.PayloadLength == 1)
             {
@@ -115,13 +146,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
                 throw new Exception($"Unexpected response code: {response.ResponseCode}");
             }
         }
-
         private void EnsurePortIsOpen()
         {
             if (serialPort == null || !serialPort.IsOpen)
                 throw new InvalidOperationException("Serial port is not open.");
         }
-
         private byte[] ConstructPacket(byte commandId, byte[] payload)
         {
             payload ??= new byte[0];
@@ -139,7 +168,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
 
             return packet;
         }
-        private ResponsePacket ReadResponse()
+        private async Task<ResponsePacket> ReadResponse()
         {
             int timeout = serialPort.ReadTimeout;
             DateTime startTime = DateTime.Now;
@@ -182,13 +211,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
                 }
                 else
                 {
-                    Thread.Sleep(1); // Wait for data
+                    await Task.Delay(1); // Wait for data
                 }
             }
 
             throw new TimeoutException("Timeout waiting for response.");
         }
-
         private bool ProcessResponse(ResponsePacket response)
         {
             if (response.ResponseCode == RESP_CMD_SUCCESS)
@@ -204,7 +232,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
                 throw new Exception($"Unexpected response code: {response.ResponseCode}");
             }
         }
-
         private byte CalculateChecksum(byte code, byte payloadLength, byte[] payload)
         {
             int sum = code + payloadLength;
@@ -217,7 +244,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             }
             return (byte)(sum % 256);
         }
-
         private class ResponsePacket
         {
             public byte ResponseCode { get; }
@@ -232,48 +258,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             }
         }
 
-        public override BaseController GetVirtualCopy()
-        {
-            var controller = new ShutterController_Arduino(Name)
-            {
-                MasterController = this.MasterController,
-                ID = this.ID,
-            };
 
-            // Copy devices
-            foreach (var device in Devices.Values)
-            {
-                controller.AddDevice(device.GetCopy());
-            }
 
-            return controller;
-        }
-
-        public override async Task Stop(SemaphoreSlim semaphore, ConcurrentQueue<string> log)
-        {
-            return;
-        }
-
-        protected override async Task ChangeStateOnIntervalImplementation(BaseShutterDevice device, float duration)
-        {
-            EnsurePortIsOpen();
-
-            // Construct the command packet
-            byte[] payload = BitConverter.GetBytes(duration);
-            byte[] packet = ConstructPacket(CMD_CHANGE_STATE_FOR_INTERVAL, payload);
-
-            // Send the packet
-            serialPort.Write(packet, 0, packet.Length);
-
-            // Read and process the response
-            ResponsePacket response = ReadResponse();
-
-            var processedResponse = ProcessResponse(response);
-            if (processedResponse == false)
-                _log.Enqueue("Arduino_shutter: error response received.");
-
-            await Task.Delay((int)(duration * 1000));
-
-        }
     }
 }
