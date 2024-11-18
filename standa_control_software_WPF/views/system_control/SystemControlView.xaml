@@ -24,7 +24,7 @@
             <RowDefinition Height="auto"/>
             <RowDefinition Height="auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="50"/>
+            <RowDefinition Height="20"/>
         </Grid.RowDefinitions>
         
         
@@ -199,7 +199,7 @@
                     <ColumnDefinition Width="auto"/>
                 </Grid.ColumnDefinitions>
                 
-                <glWpfControl:GLWpfControl Grid.Column="0"
+                <glWpfControl:GLWpfControl Grid.Column="0" Grid.ColumnSpan="2"
                            x:Name="glControl" 
                            Margin="10,10,10,0"
                            />
@@ -209,7 +209,8 @@
                         VerticalAlignment="Top"
                         Margin="0,10,10,0"
                         Padding="5,10,5,10"
-                        Style="{StaticResource parentBorder}">
+                        Style="{StaticResource parentBorder}"
+                        DataContext="{Binding CameraViewModel}">
                     <StackPanel Orientation="Vertical"
                                 Margin="0">
                         <Button Content="xy"

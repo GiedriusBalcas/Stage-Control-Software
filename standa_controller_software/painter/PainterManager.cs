@@ -21,9 +21,9 @@ namespace standa_controller_software.painter
         private readonly ControllerManager _controllerManager;
 
 
-        private RenderLayer _commandLayer;
-        private RenderLayer _toolPointLayer;
-        private RenderLayer _orientationLayer;
+        public RenderLayer CommandLayer;
+        public RenderLayer ToolPointLayer;
+        public RenderLayer OrientationLayer;
         private LineObjectCollection _lineCollection;
 
         private List<RenderLayer> _renderLayers { get; set; }
@@ -36,21 +36,37 @@ namespace standa_controller_software.painter
 
             _lineCollection = new LineObjectCollection();
 
-            _commandLayer = CreateCommandLayer();
-            _toolPointLayer = CreateToolPointLayer();
-            _orientationLayer = CreateOrientationArrowsLayer();
-            _toolPointLayer.Camera = _commandLayer.Camera;
-
-            _renderLayers = [_commandLayer, _toolPointLayer];
+            CommandLayer = CreateCommandLayer();
+            ToolPointLayer = CreateToolPointLayer();
+            OrientationLayer = CreateOrientationArrowsLayer(CommandLayer);
+            ToolPointLayer.Camera = CommandLayer.Camera;
+            
+            _renderLayers = [CommandLayer, ToolPointLayer, OrientationLayer];
         }
 
-        private RenderLayer CreateOrientationArrowsLayer()
+        private RenderLayer CreateOrientationArrowsLayer(RenderLayer commandLayer)
         {
-            var vertexShaderSource = "C:\\Users\\giedr\\OneDrive\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\ConsoleApplication_For_Tests\\Shaders\\LineDrawingLayer\\VertexShader.vert";
+            var vertexShaderSource = "C:\\Users\\giedr\\OneDrive\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\openTK_painter\\reference_shaders\\VertexShader_TranlateToEdge.vert";
 
             var fragmentShaderSource = "C:\\Users\\giedr\\OneDrive\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\ConsoleApplication_For_Tests\\Shaders\\LineDrawingLayer\\FragmentShader.frag";
+            var orientationLayer = new RenderLayer(vertexShaderSource, fragmentShaderSource);
 
-            return new RenderLayer(vertexShaderSource, fragmentShaderSource);
+            orientationLayer.Camera.IsOrthographic = true;
+            orientationLayer.Camera.IsTrackingTool = false;
+            orientationLayer.Camera.ReferencePosition = new OpenTK.Mathematics.Vector3(0, 0, 0);
+            orientationLayer.Camera.Distance = 20f;
+            var referenceLines = new LineObjectCollection() 
+            {
+                lineWidth = 5f,
+            };
+
+            referenceLines.AddLine(new Vector3(0, 0, 0), new Vector3(1, 0, 0), new Vector4(1, 0, 0, 1));
+            referenceLines.AddLine(new Vector3(0, 0, 0), new Vector3(0, 1, 0), new Vector4(0, 1, 0, 1));
+            referenceLines.AddLine(new Vector3(0, 0, 0), new Vector3(0, 0, 1), new Vector4(0, 0, 1, 1));
+
+            orientationLayer.AddObjectCollection(referenceLines);
+
+            return orientationLayer;
         }
 
         private RenderLayer CreateToolPointLayer()
@@ -72,16 +88,16 @@ namespace standa_controller_software.painter
         {
             _controllerManager.ToolInformation.RecalculateToolPosition() ; // Recalculate positions before drawing
 
-            var toolIndeces = _toolPointLayer.RenderCollections.FirstOrDefault()?.GetIndices();
+            var toolIndeces = ToolPointLayer.RenderCollections.FirstOrDefault()?.GetIndices();
             Vector3 currentPointPos = toolIndeces is not null && toolIndeces.Length == 3 ? new Vector3(toolIndeces[0], toolIndeces[1], toolIndeces[2]) : new Vector3(0, 0, 0);
             if (true || _controllerManager.ToolInformation.Position != currentPointPos)
             {
-                _toolPointLayer.ClearCollections() ;
+                ToolPointLayer.ClearCollections() ;
                 var pointCollection = new PointObjectCollection();
                 pointCollection.AddPoint(_controllerManager.ToolInformation.Position, 20, _controllerManager.ToolInformation.IsOn ? new Vector4(1,0,0,1) : new Vector4(1,1,0,1));
-                _toolPointLayer.AddObjectCollection(pointCollection);
+                ToolPointLayer.AddObjectCollection(pointCollection);
                 //_toolPointLayer.UpdateUniforms();
-                _toolPointLayer.InitializeCollections();
+                ToolPointLayer.InitializeCollections();
             }
         }
 
@@ -119,7 +135,7 @@ namespace standa_controller_software.painter
             
             var commandManager_virtual = new CommandManager(controllerManager_virtual, new System.Collections.Concurrent.ConcurrentQueue<string>());
             
-            _commandLayer.ClearCollections();
+            CommandLayer.ClearCollections();
             _lineCollection.ClearCollection();
 
             foreach (var commandLine in commandLines)
@@ -127,7 +143,7 @@ namespace standa_controller_software.painter
                 commandManager_virtual.ExecuteCommandLine(commandLine).GetAwaiter().GetResult();
             }
 
-            _commandLayer.AddObjectCollection(_lineCollection);
+            CommandLayer.AddObjectCollection(_lineCollection);
         }
 
 

@@ -18,7 +18,7 @@ namespace opentk_painter_library.common
                 UpdateCameraPosition();
             }
         }
-        public Vector3 CameraPosition { get; private set; }
+        public Vector3 CameraPosition { get; set; }
 
         public Vector3 Front { get; private set; }
         public Vector3 Right { get; private set; }
@@ -88,7 +88,7 @@ namespace opentk_painter_library.common
             get => _distance;
             set
             {
-                _distance = Math.Max(value, 1f);
+                _distance = Math.Max(value, 0.01f);
                 UpdateCameraPosition();
             }
         }
@@ -150,9 +150,9 @@ namespace opentk_painter_library.common
         public Matrix4 GetProjectionMatrix()
         {
             if (IsOrthographic)
-                return Matrix4.CreateOrthographic(Distance * (float)Math.Tan(_fovy) * AspectRatio, Distance * (float)Math.Tan(_fovy), 0.0001f, 10000000f);
+                return Matrix4.CreateOrthographic(Distance * (float)Math.Tan(_fovy) * AspectRatio, Distance * (float)Math.Tan(_fovy), 0.01f, 100000000f);
 
-            return Matrix4.CreatePerspectiveFieldOfView(_fovy, AspectRatio, 0.0001f, 10000000.0f);
+            return Matrix4.CreatePerspectiveFieldOfView(_fovy, AspectRatio, 0.01f, 10000000.0f);
         }
 
         public void FitObject(List<System.Numerics.Vector3> positionsNumeric)
@@ -187,6 +187,10 @@ namespace opentk_painter_library.common
             float width = maxX - minX;
             float height = maxY - minY;
             float depth = maxZ - minZ;
+
+            width *= 2;
+            height *= 2;
+            depth   *= 2;
 
             float distanceForWidth = (float)(width / 2.0f / Math.Tan(FovY / 2 / 180 * Math.PI) / AspectRatio);
             float distanceForHeight = (float)(height / 2.0f / Math.Tan(FovY / 2 / 180 * Math.PI));
@@ -229,6 +233,10 @@ namespace opentk_painter_library.common
 
                 width = maxX - minX;
                 height = maxY - minY;
+
+                width *= 1.5f;
+                height *= 1.5f;
+                depth *= 1.5f;
 
                 distanceForWidth = Distance - Distance * (1 - width / 2) / 2;
                 distanceForHeight = Distance - Distance * (1 - height / 2) / 2;

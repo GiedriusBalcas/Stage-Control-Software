@@ -18,6 +18,7 @@ using standa_control_software_WPF.views.behaviours;
 using opentk_painter_library;
 using Antlr4.Runtime.Misc;
 using opentk_painter_library.common;
+using standa_control_software_WPF.view_models.system_control.control;
 
 namespace standa_control_software_WPF.views.system_control
 {
@@ -29,6 +30,7 @@ namespace standa_control_software_WPF.views.system_control
        
         private SystemControlViewModel _viewModel;
         private List<RenderLayer> _renderLayers;
+        private CameraViewModel _cameraViewModel;
         private OrbitalCamera _camera => _renderLayers[0].Camera;
         private System.Windows.Point _lastPos;
         private LineBackgroundTransformer _highlighter;
@@ -50,24 +52,32 @@ namespace standa_control_software_WPF.views.system_control
 
         }
 
-        //void UpdateLineHighlight(int lineNumber)
-        //{
-        //    Dispatcher.Invoke(() =>
-        //    {
-        //        _highlighter.LineNumber = lineNumber;
-        //        AvalonTextEditor.TextArea.TextView.Redraw();
-        //    });
-        //}
+        private void GlControl_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            _cameraViewModel.AspectRatio = (float)(glControl.ActualWidth / (float)glControl.ActualHeight);
+
+            _cameraViewModel.WindowWidth = (float)glControl.ActualWidth;
+            _cameraViewModel.WindowHeight = (float)glControl.ActualHeight;
+        }
+
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             
+
             _viewModel = DataContext as SystemControlViewModel;
-            _renderLayers = _viewModel.GetRenderLayers();
 
             if (_viewModel is not null)
             {
+                _renderLayers = _viewModel.GetRenderLayers();
+                _cameraViewModel = _viewModel.CameraViewModel;
+
                 _renderLayers.ForEach(layer => layer.IsGLInitialized = true);
+            
+                _cameraViewModel.WindowWidth = (float)glControl.ActualWidth;
+                _cameraViewModel.WindowHeight = (float)glControl.ActualHeight;
+
+                glControl.SizeChanged += GlControl_SizeChanged;
                 glControl.Render += glControl_Render;
                 glControl.MouseMove += glControl_MouseMove;
                 glControl.MouseWheel += glControl_MouseWheel;
@@ -80,6 +90,7 @@ namespace standa_control_software_WPF.views.system_control
                 }
 
             }
+
             if (Application.Current.Resources["DarkBackgroundColorBrush"] is SolidColorBrush darkBrush)
             {
                 var wpfColor = darkBrush.Color;
@@ -97,11 +108,16 @@ namespace standa_control_software_WPF.views.system_control
             }
             _renderLayers.ForEach(layer => layer.IsGLInitialized = false);
             glControl.Dispose();
+            glControl.SizeChanged -= GlControl_SizeChanged;
+            glControl.Render -= glControl_Render;
+            glControl.MouseMove -= glControl_MouseMove;
+            glControl.MouseWheel -= glControl_MouseWheel;
+            glControl.Unloaded -= glControl_Unload;
         }
 
         private void glControl_Render(TimeSpan delta)
         {
-            //GL.ClearColor(_backgroundColor);
+            GL.ClearColor(_backgroundColor);
             //GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
 
@@ -133,9 +149,9 @@ namespace standa_control_software_WPF.views.system_control
                 float dx = (float)(pos.X - _lastPos.X);
                 float dy = (float)(pos.Y - _lastPos.Y);
 
-                _camera.Yaw += dx;
-                _camera.Pitch += dy;
-                
+                _cameraViewModel.Yaw += dx;
+                _cameraViewModel.Pitch += dy;
+
                 glControl.InvalidateVisual(); // Force re-render
             }
 
@@ -145,18 +161,21 @@ namespace standa_control_software_WPF.views.system_control
                 var dx = (float)(pos.X - _lastPos.X) / (float)glControl.ActualHeight;
                 var dy = (float)(pos.Y - _lastPos.Y) / (float)glControl.ActualHeight; // Use 'dz' to represent movement along camera's local Z axis
 
-                _camera.ReferencePosition += _camera.Right * dx *200;
-                _camera.ReferencePosition += _camera.Up * dy *200;
-
+                _cameraViewModel.ReferencePositionXY = new Vector2(dx, dy);
             }
             _lastPos = e.GetPosition(this);
         }
 
         private void glControl_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
         {
-            float dr = e.Delta *1;
-            _renderLayers[0].Camera.Distance -= dr;
-            _renderLayers[0].Camera.AspectRatio = (float)(glControl.ActualWidth / (float)glControl.ActualHeight);
+            float delta = e.Delta;
+            var dr = Math.Sign(delta) * 1;
+
+            _cameraViewModel.Distance -= dr;
+            _cameraViewModel.AspectRatio = (float)(glControl.ActualWidth / (float)glControl.ActualHeight);
+
+            _cameraViewModel.WindowWidth = (float)glControl.ActualWidth;
+            _cameraViewModel.WindowHeight = (float)glControl.ActualHeight;
         }
 
         private void avalonEditor_Loaded(object sender, RoutedEventArgs e)

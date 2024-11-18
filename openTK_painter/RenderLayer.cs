@@ -31,7 +31,6 @@ namespace opentk_painter_library
 
         public void UpdateUniforms()
         {
-
             _viewUniform.Value = Camera.GetViewMatrix();
             _projectionUniform.Value = Camera.GetProjectionMatrix();
         }

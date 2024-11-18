@@ -1,4 +1,5 @@
 ﻿using standa_control_software_WPF.view_models.commands;
+using standa_control_software_WPF.view_models.system_control.control;
 using standa_controller_software.command_manager;
 using standa_controller_software.custom_functions;
 using standa_controller_software.device_manager;
@@ -19,15 +20,15 @@ namespace standa_control_software_WPF.view_models.system_control
         private readonly standa_controller_software.command_manager.CommandManager _commandManager;
         private readonly ControllerManager _controllerManager;
         private readonly FunctionManager _functionDefinitionLibrary;
-        private standa_controller_software.command_manager.CommandManager _commandManager_virtual;
         private readonly TextInterpreterWrapper _textInterpreter;
         private readonly PainterManager _painterManager;
         private string _inputText = "";
         private string _outputMessage;
         private readonly ConcurrentQueue<string> _log;
-
         private DocumentViewModel _selectedDocument;
         
+
+        public CameraViewModel CameraViewModel { get; set; }
         public string InputText
         {
             get { return _inputText; }
@@ -95,6 +96,7 @@ namespace standa_control_software_WPF.view_models.system_control
             _functionDefinitionLibrary = new FunctionManager(_controllerManager, _commandManager);
             _textInterpreter = new TextInterpreterWrapper() { DefinitionLibrary = _functionDefinitionLibrary.Definitions };
             _painterManager = new PainterManager(_commandManager, _controllerManager, _log);
+            CameraViewModel = new CameraViewModel(_painterManager, _controllerManager);
 
             AddNewDocumentCommand = new RelayCommand(() => AddNewDocument());
             OpenDocumentCommand = new RelayCommand(() => OpenDocument());
