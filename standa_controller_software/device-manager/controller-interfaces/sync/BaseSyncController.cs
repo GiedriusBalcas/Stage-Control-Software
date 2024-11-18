@@ -38,8 +38,17 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                 MethodHandle = GetBufferCount,
             };
         }
-        
-        public override abstract BaseController GetVirtualCopy();
+
+        public override BaseController GetVirtualCopy()
+        {
+            var virtualCopy = new SyncController_Virtual(Name, _log)
+            {
+                ID  = this.ID,
+                MasterController = this.MasterController,
+            };
+
+            return virtualCopy;
+        }
         public override List<BaseDevice> GetDevices()
         {
             return new List<BaseDevice>();

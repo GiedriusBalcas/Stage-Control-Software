@@ -1,6 +1,7 @@
 ﻿using standa_controller_software.command_manager;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.controller_interfaces.shutter;
+using standa_controller_software.device_manager.controller_interfaces.sync;
 using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
@@ -19,6 +20,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             
         }
 
+        public virtual Task AwaitQueuedItems(SemaphoreSlim semaphore)
+        {
+            return Task.CompletedTask;
+        }
+
         protected override async Task ChangeState(Command[] commands, SemaphoreSlim semaphore)
         {
             foreach (Command command in commands)
@@ -33,7 +39,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 await ExecuteSlaveCommand(command);
             }
         }
-
         protected override async Task MoveAbsolute(Command[] commands, SemaphoreSlim semaphore)
         {
             foreach(Command command in commands)
@@ -42,7 +47,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             }
 
         }
-
         public override void AddSlaveController(BaseController controller, SemaphoreSlim controllerLock)
         {
             if(controller is ShutterController_Virtual shutterController)
@@ -55,24 +59,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 SlaveControllers.Add(positionerController.Name, positionerController);
                 SlaveControllersLocks.Add(positionerController.Name, controllerLock);
             }
-        }
-
-        public override BaseController GetVirtualCopy()
-        {
-            var controllerCopy = new PositionAndShutterController_Virtual(this.Name, _log);
-            foreach (var slaveController in SlaveControllers)
+            else if (controller is BaseSyncController syncController)
             {
-                controllerCopy.AddSlaveController(slaveController.Value.GetVirtualCopy(), SlaveControllersLocks[slaveController.Key]);
+                SlaveControllers.Add(syncController.Name, syncController);
+                SlaveControllersLocks.Add(syncController.Name, controllerLock);
             }
-
-            return controllerCopy;
         }
-        
-        public virtual Task AwaitQueuedItems(SemaphoreSlim semaphore)
-        {
-            return Task.CompletedTask;
-        }
-
         protected override Task Stop(Command command, SemaphoreSlim semaphore)
         {
             return Task.CompletedTask;

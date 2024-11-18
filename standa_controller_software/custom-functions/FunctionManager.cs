@@ -27,14 +27,7 @@ namespace standa_controller_software.custom_functions
 
         public void InitializeDefinitions()
         {
-            var rules = new Dictionary<Type, Type>
-            {
-                { typeof(BasePositionerController), typeof(PositionerController_Virtual) },
-                { typeof(BaseShutterController), typeof(ShutterController_Virtual) },
-                { typeof(BaseSyncController), typeof(SyncController_Sim) },
-                { typeof(BaseMasterController), typeof(PositionAndShutterController_Virtual)}
-            };
-            _controllerManager_virtual = _controllerManager.CreateACopy(rules);
+            _controllerManager_virtual = _controllerManager.CreateAVirtualCopy();
             _commandManager_virtual = new CommandManager(_controllerManager_virtual, new System.Collections.Concurrent.ConcurrentQueue<string>());
             _commandManager_virtual.ClearQueue();
             

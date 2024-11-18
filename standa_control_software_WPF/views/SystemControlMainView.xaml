@@ -90,8 +90,7 @@
                 </ListBox>-->
 
 
-                <Button
-                        Command="{Binding CheckCommandTextCommand}"
+                <Button Command="{Binding CreateCommandQueueFromInputCommand}"
                         Style="{StaticResource customButtonStyleForBar}">
                     <StackPanel Orientation="Horizontal">
                         <Path Width="20" Height="15" Fill="{StaticResource FontColorBrush}" Data="{StaticResource parseIconPath}" Stretch="Uniform"/>
@@ -100,8 +99,7 @@
                 </Button>
 
 
-                <Button 
-                        Command="{Binding ExecuteCommandsCommand}"
+                <Button Command="{Binding ExecuteCommandQueueCommand}"
                         Style="{StaticResource customButtonStyleForBar}">
                     <StackPanel Orientation="Horizontal">
                         <Path Width="20" Height="15" Fill="{StaticResource FontColorBrush}" Data="{StaticResource executeIcontPath}" Stretch="Uniform"/>
@@ -111,7 +109,7 @@
 
 
 
-                <Button
+                <!--<Button
                         Command="{Binding PauseDebuggingCommand}"
                         Style="{StaticResource customButtonStyleForBar}">
                     <StackPanel Orientation="Horizontal">
@@ -126,9 +124,8 @@
                         <Path Width="20" Height="15" Fill="{StaticResource FontColorBrush}" Data="{StaticResource resumeIconPath}" Stretch="Uniform"/>
                         <TextBlock Text="Resume" VerticalAlignment="Center" Margin="5,0,0,0"/>
                     </StackPanel>
-                </Button>
-                <Button 
-                        Command="{Binding StopDebuggingCommand}"
+                </Button>-->
+                <Button Command="{Binding ForceStopCommand}"
                         Style="{StaticResource customButtonStyleForBar}">
                     <StackPanel Orientation="Horizontal">
                         <Path Width="20" Height="15" Fill="{StaticResource FontColorBrush}" Data="{StaticResource stopIconPath}" Stretch="Uniform"/>
@@ -136,7 +133,7 @@
                     </StackPanel>
                 </Button>
 
-                <Separator 
+                <!--<Separator 
                     BorderThickness="1" 
                     BorderBrush="{StaticResource LightBackgroundColorBrush}" 
                     Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
@@ -149,7 +146,7 @@
                         <Path Width="20" Height="15" Fill="{StaticResource FontColorBrush}" Data="{StaticResource foreceStopIconPath}" Stretch="Uniform"/>
                         <TextBlock Text="Force Stop" VerticalAlignment="Center" Margin="5,0,0,0"/>
                     </StackPanel>
-                </Button>
+                </Button>-->
             </StackPanel>
         </Border>
 

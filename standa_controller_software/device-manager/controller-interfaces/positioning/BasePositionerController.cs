@@ -55,8 +55,19 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         {
             return Devices.Values.Cast<BaseDevice>().ToList();
         }
-        public override abstract BaseController GetVirtualCopy();
+        public override BaseController GetVirtualCopy()
+        {
+            var virtualController = new PositionerController_Virtual(Name, _log)
+            {
+                MasterController = this.MasterController,
+            };
+            foreach (var (deviceName,device) in Devices)
+            {
+                virtualController.AddDevice(device.GetCopy());
+            }
 
+            return virtualController;
+        }
 
         protected override Task ConnectDevice(Command command, SemaphoreSlim semaphore)
         {

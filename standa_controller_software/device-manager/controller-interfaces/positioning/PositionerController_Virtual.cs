@@ -59,16 +59,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 _deviceInfo.TryAdd(positioningDevice.Name, new DeviceInformation());
             }
         }
-        public override BaseController GetVirtualCopy()
-        {
-            var controller = new PositionerController_Sim(Name, _log);
-            foreach (var device in Devices)
-            {
-                controller.AddDevice(device.Value);
-            }
-            return controller;
-        }
-
+       
         protected override Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore)
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();

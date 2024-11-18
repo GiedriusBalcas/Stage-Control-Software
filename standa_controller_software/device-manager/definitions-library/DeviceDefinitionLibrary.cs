@@ -36,17 +36,17 @@ namespace standa_controller_software.device_manager
                 {
                     Name = "Virtual Positioner Controller",
                     Type = typeof(PositionerController_Sim),
-                    AllowedDevices = positionerDeviceDefinitions
+                    AllowedDevices = positionerDeviceDefinitions,
+                    VirtualType = typeof(PositionerController_Virtual)
                 },
                 new ControllerInfo
                 {
                     Name = "Positioner Controller XIMC",
                     Type = typeof(PositionerController_XIMC),
-                    AllowedDevices = positionerDeviceDefinitions
+                    AllowedDevices = positionerDeviceDefinitions,
+                    VirtualType = typeof(PositionerController_Virtual)
                 }
             };
-
-
 
 
             var shutterDeviceDefinitions = new List<DeviceInfo>

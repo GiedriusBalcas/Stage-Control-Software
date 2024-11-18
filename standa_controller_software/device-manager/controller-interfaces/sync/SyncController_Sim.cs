@@ -45,17 +45,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
             _gotSyncOutFrom.Add(deviceName);
         }
-        public override BaseController GetVirtualCopy()
-        {
-            var controller = new SyncController_Sim(Name, _log)
-            {
-                MasterController = this.MasterController,
-                ID = this.ID,
-            };
-            
-            return controller;
-        }
-
+        
         protected override Task Stop(Command command, SemaphoreSlim semaphore)
         {
             _buffer.Clear();

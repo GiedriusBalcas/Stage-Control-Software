@@ -39,7 +39,18 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             else
                 throw new Exception($"Unable to add device: {device.Name}. Controller {this.Name} only accepts positioning devices.");
         }
-        public override abstract BaseController GetVirtualCopy();
+        public override BaseController GetVirtualCopy()
+        {
+            var virtualCopy = new ShutterController_Virtual(Name, _log) 
+            {
+                MasterController = this.MasterController,
+            };
+            foreach (var (deviceName, device) in Devices)
+            {
+                virtualCopy.AddDevice(device);
+            }
+            return virtualCopy;
+        }
         public override List<BaseDevice> GetDevices()
         {
             return Devices.Values.Cast<BaseDevice>().ToList();

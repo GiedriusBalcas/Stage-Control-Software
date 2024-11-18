@@ -18,29 +18,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         {
         }
 
-
-        private void GotMessageFromSyncExecuter(string Message)
-        {
-            if (Message == "0x01") // Arduino signaled buffer space is available
-            {
-                SendCommandIfAvailable().GetAwaiter().GetResult();
-            }
-            else if (Message == "0x02") // Arduino signaled execution end
-            {
-                _processingCompletionSource.TrySetResult(true); 
-                _processingLastItemTakenSource.TrySetResult(true);
-
-                _log?.Enqueue("Sync controller signaled execution completed");
-            }
-            else if (Message == "0x03") // Arduino signaled buffer is empty
-            {
-                _processingLastItemTakenSource.TrySetResult(true);
-
-                _log?.Enqueue("Sync controller signaled las item taken");
-            }
-        }
-
-
         public override void AddSlaveController(BaseController controller, SemaphoreSlim controllerLock)
         {
             if (controller is ShutterController_Sim shutterController)
@@ -112,19 +89,28 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     }
                 }
             }
-        }
-       
-        public override BaseController GetVirtualCopy()
-        {
-            var controllerCopy = new PositionAndShutterController_Virtual(this.Name, _log);
-            foreach (var slaveController in SlaveControllers)
-            {
-                controllerCopy.AddSlaveController(slaveController.Value.GetVirtualCopy(), SlaveControllersLocks[slaveController.Key]);
-            }
+        } 
 
-            return controllerCopy;
+        private void GotMessageFromSyncExecuter(string Message)
+        {
+            if (Message == "0x01") // Arduino signaled buffer space is available
+            {
+                SendCommandIfAvailable().GetAwaiter().GetResult();
+            }
+            else if (Message == "0x02") // Arduino signaled execution end
+            {
+                _processingCompletionSource.TrySetResult(true); 
+                _processingLastItemTakenSource.TrySetResult(true);
+
+                _log?.Enqueue("Sync controller signaled execution completed");
+            }
+            else if (Message == "0x03") // Arduino signaled buffer is empty
+            {
+                _processingLastItemTakenSource.TrySetResult(true);
+
+                _log?.Enqueue("Sync controller signaled las item taken");
+            }
         }
-        
         protected override async Task Stop(Command command, SemaphoreSlim semaphore)
         {
             _buffer.Clear();

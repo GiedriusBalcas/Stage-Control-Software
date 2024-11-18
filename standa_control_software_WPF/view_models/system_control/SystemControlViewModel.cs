@@ -27,7 +27,7 @@ namespace standa_control_software_WPF.view_models.system_control
         private readonly ConcurrentQueue<string> _log;
 
         private DocumentViewModel _selectedDocument;
-
+        
         public string InputText
         {
             get { return _inputText; }

@@ -79,48 +79,17 @@ namespace standa_controller_software.device_manager
                 .ToList(); // Filter by the specified device type 
         }
 
-        public ControllerManager CreateACopy(Dictionary<Type, Type> typeConversionDictionary = null)
+        public ControllerManager CreateAVirtualCopy()
         {
             var controllerManager_copy = new ControllerManager(_log);
 
             foreach (var controllerEntry in Controllers)
             {
                 var originalController = controllerEntry.Value;
-                var originalType = originalController.GetType();
-                Type newType = originalType;
-
-                // Check if there's a replacement type in the dictionary for the exact type or any of its base types
-                if (typeConversionDictionary != null)
-                {
-                    foreach (var kvp in typeConversionDictionary)
-                    {
-                        if (kvp.Key.IsAssignableFrom(originalType))
-                        {
-                            newType = kvp.Value;
-                            break;
-                        }
-                    }
-                }
-
+                
                 // Create a new instance of the replacement type or the original type
-                BaseController newController;
-                if (newType != originalType)
-                {
-                    // Assume a constructor that takes the original controller's name as a parameter
-                    newController = Activator.CreateInstance(newType, [controllerEntry.Value.Name, _log]) as BaseController;
-
-                    var devices = controllerEntry.Value.GetDevices();
-                    foreach (var device in devices)
-                    {
-                        var deviceCopy = device.GetCopy();
-                        newController.AddDevice(deviceCopy);
-                    }
-                }
-                else
-                {
-                    // If no replacement, clone the original controller
-                    newController = originalController.GetVirtualCopy(); // Assuming IController has a Clone method
-                }
+                var newController = originalController.GetVirtualCopy(); // Assuming IController has a Clone method
+                
 
                 if (newController is not null)
                 {

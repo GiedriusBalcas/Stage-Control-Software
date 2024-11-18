@@ -66,6 +66,17 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             _buffer = new Queue<MovementInformation>();
         }
 
+        public override BaseController GetVirtualCopy()
+        {
+            var virtualCopy = new PositionAndShutterController_Virtual(Name, _log)
+            {
+                ID = this.ID,
+                MasterController = this.MasterController,
+            };
+
+            return virtualCopy;
+        }
+
         public virtual async Task AwaitQueuedItems(SemaphoreSlim semaphore)
         {
             await ProcessQueue(semaphore);

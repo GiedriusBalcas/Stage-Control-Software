@@ -34,16 +34,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
                 });
             }
         }
-        public override BaseController GetVirtualCopy()
-        {
-            var controller = new ShutterController_Virtual(Name, _log);
-            foreach (var device in Devices)
-            {
-                controller.AddDevice(device.Value.GetCopy());
-            }
-
-            return controller;
-        }
+        
 
         protected override Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore)
         {

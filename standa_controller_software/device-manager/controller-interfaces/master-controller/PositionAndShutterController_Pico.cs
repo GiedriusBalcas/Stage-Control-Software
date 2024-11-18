@@ -19,31 +19,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             
         }
 
-        private void OnSyncControllerExecutionEnd()
-        {
-            if(_processingCompletionSource is not null)
-                _processingCompletionSource.TrySetResult(true);
-            if (_processingLastItemTakenSource is not null)
-                _processingLastItemTakenSource.TrySetResult(true);
-
-            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled that execution finalized.");
-        }
-        private void OnSyncControllerLastBufferItemTaken()
-        {
-            if(_processingLastItemTakenSource is not null)
-                _processingLastItemTakenSource.TrySetResult(true);
-
-            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled that last item was taken.");
-        }
-        private async Task OnSyncControllerBufferSpaceAvailable()
-        {
-           _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled buffer has free slot");
-            await SendCommandIfAvailable();
-        }
-
         public override void AddSlaveController(BaseController controller, SemaphoreSlim controllerLock)
         {
-            if (controller is ShutterController_Sim shutterController)
+            if (controller is BaseShutterController shutterController)
             {
                 SlaveControllers.Add(shutterController.Name, shutterController);
                 SlaveControllersLocks.Add(shutterController.Name, controllerLock);
@@ -65,21 +43,28 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
             }
         }
-
-
-
-        public override BaseController GetVirtualCopy()
+        
+        private void OnSyncControllerExecutionEnd()
         {
-            var controllerCopy = new PositionAndShutterController_Virtual(this.Name, _log);
-            foreach (var slaveController in SlaveControllers)
-            {
-                controllerCopy.AddSlaveController(slaveController.Value.GetVirtualCopy(), SlaveControllersLocks[slaveController.Key]);
-            }
+            if(_processingCompletionSource is not null)
+                _processingCompletionSource.TrySetResult(true);
+            if (_processingLastItemTakenSource is not null)
+                _processingLastItemTakenSource.TrySetResult(true);
 
-            return controllerCopy;
+            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled that execution finalized.");
         }
+        private void OnSyncControllerLastBufferItemTaken()
+        {
+            if(_processingLastItemTakenSource is not null)
+                _processingLastItemTakenSource.TrySetResult(true);
 
-
+            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled that last item was taken.");
+        }
+        private async Task OnSyncControllerBufferSpaceAvailable()
+        {
+           _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled buffer has free slot");
+            await SendCommandIfAvailable();
+        }
         protected override Task Stop(Command command, SemaphoreSlim semaphore)
         {
             _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: stop encountered.");

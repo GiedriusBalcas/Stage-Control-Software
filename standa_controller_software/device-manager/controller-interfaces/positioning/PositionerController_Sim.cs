@@ -123,16 +123,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 });
             }
         }
-        public override BaseController GetVirtualCopy()
-        {
-            var controller = new PositionerController_Sim(Name, _log);
-            foreach (var device in Devices)
-            {
-                controller.AddDevice(device.Value.GetCopy());
-            }
-            controller.MasterController = this.MasterController;
-            return controller;
-        }
         public void InvokeSyncIn(char deviceName)
         {
             OnSyncIn?.Invoke(deviceName);

@@ -75,16 +75,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         {
         }
 
-        public override BaseController GetVirtualCopy()
-        {
-            var controller = new SyncController_Pico(Name, _log)
-            {
-                MasterController = this.MasterController,
-                ID = this.ID,
-            };
-
-            return controller;
-        }
 
         protected override Task InitializeController(Command command, SemaphoreSlim semaphore)
         {

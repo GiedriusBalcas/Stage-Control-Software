@@ -33,22 +33,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         {
         }
 
-        public override BaseController GetVirtualCopy()
-        {
-            var controller = new ShutterController_Arduino(Name, _log)
-            {
-                MasterController = this.MasterController,
-                ID = this.ID,
-            };
-
-            // Copy devices
-            foreach (var device in Devices.Values)
-            {
-                controller.AddDevice(device.GetCopy());
-            }
-
-            return controller;
-        }
 
         protected override async Task InitializeController(Command command, SemaphoreSlim semaphore)
         {

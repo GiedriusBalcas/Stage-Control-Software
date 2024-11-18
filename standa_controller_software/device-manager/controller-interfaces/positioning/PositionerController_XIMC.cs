@@ -84,31 +84,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 _deviceInfo.TryAdd(positioningDevice.Name, new DeviceInformation());
             }
         }
-        public override BaseController GetVirtualCopy()
-        {
-            var controller = new PositionerController_XIMC(Name, _log);
-            foreach (var device in Devices)
-            {
-                controller.AddDevice(device.Value.GetCopy());
-                controller._deviceInfo[device.Key] = new DeviceInformation()
-                {
-                    name = this._deviceInfo[device.Key].name,
-                    id = this._deviceInfo[device.Key].id,
-                    maxAcceleration = this._deviceInfo[device.Key].maxAcceleration,
-                    maxDeceleration = this._deviceInfo[device.Key].maxDeceleration,
-                    maxSpeed = this._deviceInfo[device.Key].maxSpeed,
-                    calibration_t = this._deviceInfo[device.Key].calibration_t,
-                    statusCalibrated_t = this._deviceInfo[device.Key].statusCalibrated_t,
-                    engineSettingsCalibrated_t = this._deviceInfo[device.Key].engineSettingsCalibrated_t,
-                    engineSettings_t = this._deviceInfo[device.Key].engineSettings_t,
-                    status_t = this._deviceInfo[device.Key].status_t,
-                    deviceInformation_t = this._deviceInfo[device.Key].deviceInformation_t,
-                    moveSettings_t = this._deviceInfo[device.Key].moveSettings_t,
-                };
-            }
-
-            return controller;
-        }
         
         protected override void ConnectDevice_implementation(BaseDevice device)
         {

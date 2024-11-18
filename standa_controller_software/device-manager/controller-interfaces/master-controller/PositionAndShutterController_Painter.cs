@@ -44,17 +44,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 SlaveControllersLocks.Add(positionerController.Name, controllerLock);
             }
         }
-        public override BaseController GetVirtualCopy()
-        {
-            var controllerCopy = new PositionAndShutterController_Virtual(this.Name, _log);
-            foreach (var slaveController in SlaveControllers)
-            {
-                controllerCopy.AddSlaveController(slaveController.Value.GetVirtualCopy(), SlaveControllersLocks[slaveController.Key]);
-            }
-
-            return controllerCopy;
-        }
-
+        
         public override Task AwaitQueuedItems(SemaphoreSlim semaphore)
         {
             return Task.CompletedTask;
