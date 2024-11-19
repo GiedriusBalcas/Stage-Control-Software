@@ -1,11 +1,19 @@
 ﻿using OxyPlot;
 using OxyPlot.Series;
 using standa_control_software_WPF.view_models.commands;
+using standa_controller_software.command_manager.command_parameter_library;
+using standa_controller_software.command_manager;
+using standa_controller_software.device_manager;
+using standa_controller_software.device_manager.controller_interfaces.shutter;
 using standa_controller_software.device_manager.devices;
 using System;
 using System.Timers;
 using System.Windows.Automation;
 using System.Windows.Input;
+using standa_controller_software.device_manager.controller_interfaces.positioning;
+using standa_controller_software.custom_functions;
+using standa_controller_software.custom_functions.definitions;
+using System.Runtime.CompilerServices;
 
 namespace standa_control_software_WPF.view_models.system_control.information
 {
@@ -22,38 +30,6 @@ namespace standa_control_software_WPF.view_models.system_control.information
         private LineSeries _speedSeries;
         private System.Timers.Timer _plotUpdateTimer;
 
-
-        public PositionerDeviceViewModel(BaseDevice device) : base(device)
-        {
-            if (device is BasePositionerDevice positioner)
-            {
-                _positioner = positioner;
-                _positioner.PositionChanged += OnPositionChanged;
-                _positioner.ConnectionStateChanged += OnConnectionStateChanged;
-
-                Position = _positioner.CurrentPosition;
-                Speed = _positioner.CurrentSpeed;
-                IsConnected = _positioner.IsConnected;
-
-                InitializePlotModel();
-
-                // Initialize commands
-                StopCommand = new RelayCommand(ExecuteStop);
-                HomeCommand = new RelayCommand(ExecuteHome);
-                MoveCommand = new RelayCommand(ExecuteMove);
-                ShiftCommand = new RelayCommand(ExecuteShift);
-
-                StartAcquisitionCommand = new RelayCommand(StartAcquisition);
-                StopAcquisitionCommand = new RelayCommand(StopAcquisition);
-            }
-            else
-            {
-                throw new ArgumentException("Device must be a BasePositionerDevice", nameof(device));
-            }
-        }
-
-        // Properties
-
         public float Position
         {
             get => _position;
@@ -66,7 +42,6 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 }
             }
         }
-
         public float Speed
         {
             get => _speed;
@@ -79,22 +54,12 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 }
             }
         }
-
-        public bool NeedsToBeTracked
-        {
-            get => _needsToBeTracked;
-            set
-            {
-                if (_needsToBeTracked != value)
-                {
-                    _needsToBeTracked = value;
-                    OnPropertyChanged(nameof(NeedsToBeTracked));
-                }
-            }
-        }
-
+        
         // PlotModel for OxyPlot
         private PlotModel _plotModel;
+        private float _targetMoveAbsoluteValue;
+        private float _targetMoveRelativeValue;
+
         public PlotModel PlotModel
         {
             get => _plotModel;
@@ -105,14 +70,66 @@ namespace standa_control_software_WPF.view_models.system_control.information
             }
         }
 
+
+        public float TargetMoveAbsoluteValue
+        {
+            get => _targetMoveAbsoluteValue;
+            set
+            {
+                if (_targetMoveAbsoluteValue != value)
+                {
+                    _targetMoveAbsoluteValue = value;
+                    OnPropertyChanged(nameof(TargetMoveAbsoluteValue));
+                }
+            }
+        }
+        public float TargetMoveRelativeValue
+        {
+            get => _targetMoveRelativeValue;
+            set
+            {
+                if (_targetMoveRelativeValue != value)
+                {
+                    _targetMoveRelativeValue = value;
+                    OnPropertyChanged(nameof(TargetMoveRelativeValue));
+                }
+            }
+        }
         // Commands
         public ICommand StopCommand { get; }
         public ICommand HomeCommand { get; }
         public ICommand MoveCommand { get; }
         public ICommand ShiftCommand { get; }
 
-        public ICommand StartAcquisitionCommand { get; }
-        public ICommand StopAcquisitionCommand { get; }
+        public PositionerDeviceViewModel(BaseDevice device, standa_controller_software.command_manager.CommandManager commandManager, ControllerManager controllerManager) : base(device, commandManager, controllerManager)
+        {
+            if (device is BasePositionerDevice positioner)
+            {
+                _positioner = positioner;
+                _positioner.PositionChanged += OnPositionChanged;
+                _positioner.ConnectionStateChanged += OnConnectionStateChanged;
+
+                Position = _positioner.CurrentPosition;
+                Speed = _positioner.CurrentSpeed;
+                IsConnected = _positioner.IsConnected;
+                TargetMoveAbsoluteValue = _positioner.CurrentPosition;
+                TargetMoveRelativeValue = 0f;
+                
+                InitializePlotModel();
+
+                // Initialize commands
+                StopCommand = new RelayCommand(ExecuteStop);
+                HomeCommand = new RelayCommand(ExecuteHome);
+                MoveCommand = new RelayCommand(() => Task.Run(async() => await ExecuteMove() ) );
+                ShiftCommand = new RelayCommand(() => Task.Run(async () => await ExecuteShift()));
+
+            }
+            else
+            {
+                throw new ArgumentException("Device must be a BasePositionerDevice", nameof(device));
+            }
+        }
+
 
         // Methods
 
@@ -140,7 +157,7 @@ namespace standa_control_software_WPF.view_models.system_control.information
             PlotModel.Series.Add(_speedSeries);
         }
 
-        private void StartAcquisition()
+        public override void StartAcquisition()
         {
             _isAcquiring = true;
             _acquisitionStartTime = DateTime.Now;
@@ -156,7 +173,7 @@ namespace standa_control_software_WPF.view_models.system_control.information
             _plotUpdateTimer.Start();
         }
 
-        private void StopAcquisition()
+        public override void StopAcquisition()
         {
             _isAcquiring = false;
             _plotUpdateTimer?.Stop();
@@ -210,14 +227,45 @@ namespace standa_control_software_WPF.view_models.system_control.information
             //_positioner.Home();
         }
 
-        private void ExecuteMove()
+        private async Task ExecuteMove()
         {
-            // Implement Move logic, possibly using an input value
+            if (_positioner.IsConnected)
+            {
+                var functionDefinitionLibrary = new FunctionManager(_controllerManager, _commandManager);
+                functionDefinitionLibrary.ClearCommandQueue();
+                functionDefinitionLibrary.InitializeDefinitions();
+
+                functionDefinitionLibrary.Definitions.ExecuteFunction("jumpA", [_positioner.Name.ToString(), TargetMoveAbsoluteValue]);
+
+                _commandManager.ClearQueue();
+                foreach (var commandLine in functionDefinitionLibrary.ExtractCommands())
+                {
+                    _commandManager.EnqueueCommandLine(commandLine);
+                }
+                await Task.Run(() => _commandManager.ProcessQueue());
+
+            }
         }
 
-        private void ExecuteShift()
+        private async Task ExecuteShift()
         {
-            // Implement Shift logic, possibly using an input value
+            if (_positioner.IsConnected)
+            {
+                var functionDefinitionLibrary = new FunctionManager(_controllerManager, _commandManager);
+                functionDefinitionLibrary.ClearCommandQueue();
+                functionDefinitionLibrary.InitializeDefinitions();
+
+                var targetPositionAbsolute = _positioner.CurrentPosition + TargetMoveRelativeValue;
+                functionDefinitionLibrary.Definitions.ExecuteFunction("jumpA", [_positioner.Name.ToString(), targetPositionAbsolute]);
+
+                _commandManager.ClearQueue();
+                foreach (var commandLine in functionDefinitionLibrary.ExtractCommands())
+                {
+                    _commandManager.EnqueueCommandLine(commandLine);
+                }
+                await Task.Run(() => _commandManager.ProcessQueue());
+
+            }
         }
 
         // IDisposable implementation

@@ -1,27 +1,23 @@
-﻿using OxyPlot;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
+using OxyPlot;
+using OxyPlot.Series;
+using OxyPlot.Axes;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace standa_control_software_WPF.views.system_control.information
 {
     /// <summary>
-    /// Interaction logic for ToolGraphControl.xaml
+    /// Interaction logic for PositionTrackingControl.xaml
     /// </summary>
-    public partial class ToolGraphControl : UserControl
+    public partial class ShutterGraphControl : UserControl
     {
-        public ToolGraphControl()
+        public ShutterGraphControl()
         {
             InitializeComponent(); InitializeComponent();
             this.Unloaded += PositionTrackerView_Unloaded;
@@ -47,7 +43,7 @@ namespace standa_control_software_WPF.views.system_control.information
             if (Application.Current.Resources["LightBackgroundColorBrush"] is SolidColorBrush lightBrush)
             {
                 var wpfColor = lightBrush.Color;
-                oxyColorLight = OxyColor.FromArgb(wpfColor.A, wpfColor.R, wpfColor.G, wpfColor.B);
+                oxyColorLight = OxyColor.FromArgb(50, wpfColor.R, wpfColor.G, wpfColor.B);
             }
             if (Application.Current.Resources["FontColorBrush"] is SolidColorBrush whiteBrush)
             {
@@ -55,16 +51,16 @@ namespace standa_control_software_WPF.views.system_control.information
                 oxyColorWhite = OxyColor.FromArgb(wpfColor.A, wpfColor.R, wpfColor.G, wpfColor.B);
             }
 
-            if (PlotAll.Model != null)
+            if (PositionPlot.Model != null)
             {
-                var plotModel = PlotAll.Model;
+                var plotModel = PositionPlot.Model;
 
                 plotModel.PlotAreaBackground = OxyColors.Transparent;
                 plotModel.PlotAreaBorderColor = oxyColorWhite;
                 plotModel.Background = OxyColors.Transparent;
                 plotModel.TextColor = oxyColorWhite;
                 plotModel.Title = "";
-
+                
 
                 foreach (var axis in plotModel.Axes)
                 {
@@ -74,7 +70,7 @@ namespace standa_control_software_WPF.views.system_control.information
                     axis.ExtraGridlineColor = oxyColorWhite;
                     axis.MajorGridlineColor = oxyColorLight;
                     axis.MinorGridlineColor = oxyColorWhite;
-                    axis.MajorGridlineStyle = LineStyle.Solid;
+                    axis.MajorGridlineStyle = LineStyle.Solid;    
                 }
 
                 // Important: refresh the plot to apply changes
@@ -85,7 +81,7 @@ namespace standa_control_software_WPF.views.system_control.information
 
         private void PositionTrackerView_Unloaded(object sender, RoutedEventArgs e)
         {
-            PlotAll.Model = null;
+            PositionPlot.Model = null;
         }
     }
 }

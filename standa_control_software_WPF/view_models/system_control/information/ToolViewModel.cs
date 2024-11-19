@@ -83,24 +83,14 @@ namespace standa_control_software_WPF.view_models.system_control.information
         }
 
 
-        public ICommand StartAcquisitionCommand { get; }
-        public ICommand StopAcquisitionCommand { get; }
         public ToolViewModel(ToolInformation toolInformation)
         {
-            
                 _tool = toolInformation;
                 _tool.PositionChanged += _tool_PositionChanged; ;
                 
                 Speed = 0f;
 
-                //InitializePlotModel();
-                
-
-                StartAcquisitionCommand = new RelayCommand(StartAcquisition);
-                StopAcquisitionCommand = new RelayCommand(StopAcquisition);
-            InitializePlotModel();
-
-
+                InitializePlotModel();
         }
 
         private void _tool_PositionChanged(Vector3 vector)
@@ -155,7 +145,7 @@ namespace standa_control_software_WPF.view_models.system_control.information
             PlotModel.Series.Add(_speedSeries);
         }
 
-        private void StartAcquisition()
+        public void StartAcquisition()
         {
             _isAcquiring = true;
             _acquisitionStartTime = DateTime.Now;
@@ -174,7 +164,7 @@ namespace standa_control_software_WPF.view_models.system_control.information
             _plotUpdateTimer.Start();
         }
 
-        private void StopAcquisition()
+        public void StopAcquisition()
         {
             _isAcquiring = false;
             _plotUpdateTimer?.Stop();

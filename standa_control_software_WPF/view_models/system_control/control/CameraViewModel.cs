@@ -188,30 +188,18 @@ namespace standa_control_software_WPF.view_models.system_control.control
 
         private void ExecuteCameraViewXYCommand()
         {
-            _painterManager.CommandLayer.Camera.Pitch = 90;
-            _painterManager.CommandLayer.Camera.Yaw = 90;
-
-            _painterManager.OrientationLayer.Camera.Pitch = 90;
-            _painterManager.OrientationLayer.Camera.Yaw = 90;
-
+            Pitch = 90;
+            Yaw = 90;
         }
         private void ExecuteCameraViewXZCommand()
         {
-            _painterManager.CommandLayer.Camera.Pitch = 0;
-            _painterManager.CommandLayer.Camera.Yaw = 90;
-
-            _painterManager.OrientationLayer.Camera.Pitch = 0;
-            _painterManager.OrientationLayer.Camera.Yaw = 90;
-
+            Pitch = 0;
+            Yaw = 90;
         }
         private void ExecuteCameraViewYZCommand()
         {
-            _painterManager.CommandLayer.Camera.Pitch = 0;
-            _painterManager.CommandLayer.Camera.Yaw = 0;
-
-            _painterManager.OrientationLayer.Camera.Pitch = 0;
-            _painterManager.OrientationLayer.Camera.Yaw = 0;
-
+            Pitch = 0;
+            Yaw = 0;
         }
         
         private float ScaleValue(int intValue)

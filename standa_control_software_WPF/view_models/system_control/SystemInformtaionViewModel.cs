@@ -16,7 +16,7 @@ namespace standa_control_software_WPF.view_models.system_control
     public class SystemInformtaionViewModel : ViewModelBase
     {
         private readonly ControllerManager _controllerManager;
-
+        private readonly standa_controller_software.command_manager.CommandManager _commandManager;
         private double _acquisitionDuration;
 
         public Vector3 ToolPos
@@ -58,15 +58,17 @@ namespace standa_control_software_WPF.view_models.system_control
 
         public ObservableCollection<DeviceViewModel> Devices { get; set; }
         public ToolViewModel ToolViewModel { get; set; }
-        public SystemInformtaionViewModel(ControllerManager controllerManager)
+        public SystemInformtaionViewModel(ControllerManager controllerManager, standa_controller_software.command_manager.CommandManager commandManager)
         {
             _controllerManager = controllerManager;
+            _commandManager = commandManager;
             Devices = new ObservableCollection<DeviceViewModel>();
 
             foreach (BaseDevice device in _controllerManager.GetDevices<BaseDevice>())
             {
                 var deviceViewModel = CreateViewModelForDevice(device);
-                Devices.Add(deviceViewModel);
+                if(deviceViewModel is not null)
+                    Devices.Add(deviceViewModel);
             }
 
             ToolViewModel = new ToolViewModel(_controllerManager.ToolInformation);
@@ -74,26 +76,25 @@ namespace standa_control_software_WPF.view_models.system_control
 
         private void StopContiniousAcquisition()
         {
-            foreach (var deviceViewModel in Devices.OfType<PositionerDeviceViewModel>())
+            foreach (var deviceViewModel in Devices)
             {
-                deviceViewModel.StopAcquisitionCommand.Execute(null);
+                deviceViewModel.StopAcquisition();
             }
     
-            ToolViewModel.StopAcquisitionCommand.Execute(null);
+            ToolViewModel.StopAcquisition();
         }
 
         private void StartContiniousAcquisition()
         {
-            foreach (var deviceViewModel in Devices.OfType<PositionerDeviceViewModel>())
+            foreach (var deviceViewModel in Devices)
             {
                 if (deviceViewModel.NeedsToBeTracked)
                 {
-                    deviceViewModel.StartAcquisitionCommand.Execute(null);
+                    deviceViewModel.StartAcquisition();
                 }
-
-                if (ToolViewModel.NeedsToBeTracked)
-                    ToolViewModel.StartAcquisitionCommand.Execute(null);
             }
+            if (ToolViewModel.NeedsToBeTracked)
+                ToolViewModel.StartAcquisition();
         }
 
 
@@ -105,49 +106,39 @@ namespace standa_control_software_WPF.view_models.system_control
             {
                 if (deviceViewModel.NeedsToBeTracked)
                 {
-                    deviceViewModel.StartAcquisitionCommand.Execute(null);
+                    deviceViewModel.StartAcquisition();
                 }
             }
+            if (ToolViewModel.NeedsToBeTracked)
+                ToolViewModel.StartAcquisition();
 
             // Stop acquisition after the specified duration
             Task.Delay(TimeSpan.FromSeconds(AcquisitionDuration)).ContinueWith(_ =>
             {
                 foreach (var deviceViewModel in Devices.OfType<PositionerDeviceViewModel>())
                 {
-                    deviceViewModel.StopAcquisitionCommand.Execute(null);
+                    deviceViewModel.StopAcquisition();
                 }
+                if (ToolViewModel.NeedsToBeTracked)
+                    ToolViewModel.StopAcquisition();
             });
         }
-        // Event handler for device updates
-        private void OnDeviceUpdated(object sender, BaseDevice device)
-        {
-            // Check if the device already has a corresponding ViewModel in the collection
-            var viewModel = Devices.FirstOrDefault(vm => vm.Name == device.Name);
-
-            if (viewModel == null)
-            {
-                // Create the ViewModel if it's a new device
-                viewModel = CreateViewModelForDevice(device);
-                Devices.Add(viewModel);
-            }
-
-            // Update the ViewModel with the new device state
-            viewModel.UpdateFromDevice(device);
-        }
+        
+        
 
         // Factory method to create a ViewModel based on the device type
-        private DeviceViewModel CreateViewModelForDevice(BaseDevice device)
+        private DeviceViewModel? CreateViewModelForDevice(BaseDevice device)
         {
             if (device is BasePositionerDevice positionerDevice)
             {
-                return new PositionerDeviceViewModel(positionerDevice);
+                return new PositionerDeviceViewModel(positionerDevice, _commandManager,_controllerManager);
             }
             else if (device is BaseShutterDevice shutterDevice)
             {
-                return new ShutterDeviceViewModel(shutterDevice);
+                return new ShutterDeviceViewModel(shutterDevice, _commandManager, _controllerManager);
             }
 
-            throw new NotSupportedException("Device type not supported");
+            return null;
         }
 
 

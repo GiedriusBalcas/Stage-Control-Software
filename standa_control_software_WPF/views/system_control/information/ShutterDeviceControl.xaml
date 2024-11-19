@@ -75,7 +75,7 @@
                         Content="Change State"
                         Width="auto"
                         Style="{StaticResource customButtonStyle}"
-                        Command="{Binding ChangeState}" />
+                        Command="{Binding ToggleStateCommand}" />
                 
                 <StackPanel Grid.Row="3"
                             VerticalAlignment="Bottom"

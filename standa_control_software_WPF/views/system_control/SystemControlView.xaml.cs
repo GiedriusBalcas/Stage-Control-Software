@@ -118,14 +118,6 @@ namespace standa_control_software_WPF.views.system_control
         private void glControl_Render(TimeSpan delta)
         {
             GL.ClearColor(_backgroundColor);
-            //GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-
-
-            //float aspectRatio = (float)(glControl.ActualWidth / (float)glControl.ActualHeight);
-            //float fovy = 45;
-
-            //_viewModel.UpdateCameraSetting(aspectRatio, fovy);
-            //_viewModel.UpdateRenderer();
 
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
@@ -134,10 +126,6 @@ namespace standa_control_software_WPF.views.system_control
                 layer.UpdateUniforms();
                 layer.DrawLayer();
             }
-
-            //Context.SwapBuffers();
-            //base.OnRenderFrame(args);
-
         }
 
         

@@ -43,7 +43,7 @@ namespace standa_control_software_WPF.views.system_control.information
             if (Application.Current.Resources["LightBackgroundColorBrush"] is SolidColorBrush lightBrush)
             {
                 var wpfColor = lightBrush.Color;
-                oxyColorLight = OxyColor.FromArgb(wpfColor.A, wpfColor.R, wpfColor.G, wpfColor.B);
+                oxyColorLight = OxyColor.FromArgb(50, wpfColor.R, wpfColor.G, wpfColor.B);
             }
             if (Application.Current.Resources["FontColorBrush"] is SolidColorBrush whiteBrush)
             {
@@ -57,15 +57,20 @@ namespace standa_control_software_WPF.views.system_control.information
 
                 plotModel.PlotAreaBackground = OxyColors.Transparent;
                 plotModel.PlotAreaBorderColor = oxyColorWhite;
+                plotModel.Background = OxyColors.Transparent;
                 plotModel.TextColor = oxyColorWhite;
+                plotModel.Title = "";
+                
+
                 foreach (var axis in plotModel.Axes)
                 {
                     axis.TextColor = oxyColorWhite;
                     axis.AxislineColor = oxyColorWhite;
                     axis.TicklineColor = oxyColorWhite;
                     axis.ExtraGridlineColor = oxyColorWhite;
-                    axis.MajorGridlineColor = oxyColorWhite;
+                    axis.MajorGridlineColor = oxyColorLight;
                     axis.MinorGridlineColor = oxyColorWhite;
+                    axis.MajorGridlineStyle = LineStyle.Solid;    
                 }
 
                 // Important: refresh the plot to apply changes

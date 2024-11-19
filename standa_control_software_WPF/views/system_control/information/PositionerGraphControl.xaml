@@ -9,15 +9,35 @@
              d:DesignHeight="450"
              d:DesignWidth="800">
     <Grid>
-        <StackPanel Margin="10">
-            <TextBlock Text="{Binding Name}"
-                       FontWeight="Bold"
-                       FontSize="14"
-                       Margin="0,0,0,5" />
-            <oxy:PlotView x:Name="PositionPlot"
-                          Background="Transparent"
-                          Model="{Binding PlotModel}"
-                          Height="200" />
-        </StackPanel>
+        <Border Background="{StaticResource MidBackgroundColorBrush}"
+                BorderBrush="AliceBlue"
+                BorderThickness="0"
+                Margin="10,10"
+                Padding="20,10"
+                Style="{StaticResource parentBorder}"
+                Width="auto">
+
+            <StackPanel>
+                <TextBlock Text="{Binding Name}"
+                           FontWeight="Bold"
+                           FontSize="14"
+                           Margin="0,0,0,0" />
+                <oxy:PlotView x:Name="PositionPlot"
+                              Background="Transparent"
+                              Model="{Binding PlotModel}"
+                              Height="200">
+                    <oxy:PlotView.Resources>
+                        <Style TargetType="oxy:TrackerControl">
+                            <Setter Property="Background"
+                                    Value="{StaticResource DarkBackgroundColorBrush}" />
+                        </Style>
+                    </oxy:PlotView.Resources>
+                </oxy:PlotView>
+
+            </StackPanel>
+
+        </Border>
+
+
     </Grid>
 </UserControl>

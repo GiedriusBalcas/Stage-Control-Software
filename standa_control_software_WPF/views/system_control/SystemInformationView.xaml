@@ -41,6 +41,44 @@
             <controls:ToolGraphControl Visibility="{Binding NeedsToBeTracked, Converter={StaticResource BoolToVisibilityConverter}}" />
         </DataTemplate>
 
+
+        <Style x:Key="ScrollThumbs"
+               TargetType="{x:Type Thumb}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate>
+                        <Grid x:Name="Grid">
+                            <Rectangle HorizontalAlignment="Stretch"
+                                       VerticalAlignment="Stretch"
+                                       Width="Auto"
+                                       Height="Auto"
+                                       Fill="Transparent" />
+                            <Border x:Name="Rectangle1"
+                                    CornerRadius="10 0 0 10"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch"
+                                    Width="Auto"
+                                    Height="Auto"
+                                    Background="{TemplateBinding Background}" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Tag"
+                                     Value="Horizontal">
+                                <Setter TargetName="Rectangle1"
+                                        Property="Width"
+                                        Value="Auto" />
+                                <Setter TargetName="Rectangle1"
+                                        Property="Height"
+                                        Value="7" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        
+
     </UserControl.Resources>
 
     <Grid Background="Transparent">

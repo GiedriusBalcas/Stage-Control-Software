@@ -79,6 +79,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Update="views\system_control\information\ShutterGraphControl.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="libximc.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

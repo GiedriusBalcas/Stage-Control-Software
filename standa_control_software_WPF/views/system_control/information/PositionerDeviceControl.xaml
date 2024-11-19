@@ -91,7 +91,7 @@
                              Width="75"
                              Height="20"
                              Margin="5,0,0,0"
-                             Text="{Binding SomeMoveValue}" />
+                             Text="{Binding TargetMoveAbsoluteValue}" />
 
 
                     <Button Grid.Column="0"
@@ -104,7 +104,7 @@
                              Width="75"
                              Height="20"
                              Margin="5,0,0,0"
-                             Text="{Binding SomeShiftValue}" />
+                             Text="{Binding TargetMoveRelativeValue}" />
 
                 </Grid>
                 
