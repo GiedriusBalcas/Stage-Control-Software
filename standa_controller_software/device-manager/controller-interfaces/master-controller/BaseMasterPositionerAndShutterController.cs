@@ -338,6 +338,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         {
             await AwaitExecutionEnd();
             
+            // Theres a problem with XIMC, forced to wait, maybe for their Jerk implementation?. (I think). 
+            await Task.Delay(30);
+
             if (_updateMoveSettingsCommands != null)
             {
                 foreach (Command command in _updateMoveSettingsCommands)
@@ -356,7 +359,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             _log.Enqueue("master: sent Sync Controller to execute its buffer");
 
             _launchPending = true;
-            //await AwaitExecutionEnd();
+            await AwaitExecutionEnd();
 
 
         }
