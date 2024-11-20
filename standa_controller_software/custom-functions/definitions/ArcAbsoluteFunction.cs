@@ -419,7 +419,9 @@ namespace standa_controller_software.custom_functions.definitions
                 waitUntilPos_end[xDevice.Name] = Bx;
                 waitUntilPos_end[yDevice.Name] = By;
 
-                float timeToDecelerate = allocatedTime_guess - rethrow;
+                float allocatedTime_guess_end = (arcLength + additionalDistanceToStop_end) / trajectorySpeed;
+
+                float timeToDecelerate = allocatedTime_guess_end - rethrow;
 
                 ShutterInfo shutterInfo = new ShutterInfo();
                 var shutterDevice = _controllerManager.GetDevices<ShutterDevice>().First();
@@ -428,7 +430,7 @@ namespace standa_controller_software.custom_functions.definitions
                 shutterInfo.DelayOff = Math.Max(timeToDecelerate*1000f + shutterDevice.DelayOff, 0);
 
                 // Create the movement commands.
-                List<Command> commandsMovement_end = CreateMovementCommands(shutter, groupedDevicesByController, positionerMovementInformation_end, allocatedTime_guess, null, waitUntilPos_end, shutterInfo); //
+                List<Command> commandsMovement_end = CreateMovementCommands(shutter, groupedDevicesByController, positionerMovementInformation_end, allocatedTime_guess, rethrow, waitUntilPos_end, shutterInfo); //
 
                 _commandManager.EnqueueCommandLine(commandsMovement_end.ToArray());
                 _commandManager.TryExecuteCommandLine(commandsMovement_end.ToArray()).GetAwaiter().GetResult();

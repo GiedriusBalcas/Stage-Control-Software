@@ -41,7 +41,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             public ExecutionInformation ExecutionInformation;
         }
 
-        protected Queue<MovementInformation> _buffer;
+        protected ConcurrentQueue<MovementInformation> _buffer;
         protected Command[]? _updateMoveSettingsCommands = null;
         protected bool _launchPending = true;
         protected bool _updateLaunchPending;
@@ -63,7 +63,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 MethodHandle = UpdateMoveSettings,
             };
 
-            _buffer = new Queue<MovementInformation>();
+            _buffer = new ConcurrentQueue<MovementInformation>();
         }
 
         public override BaseController GetVirtualCopy()
@@ -168,11 +168,17 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         {
             if (_buffer.Count > 0)
             {
-                var movementInformation = _buffer.Dequeue();
-                var PosInfoControllerGroups = movementInformation.PositionerInfoGroups;
-                var execInfo = movementInformation.ExecutionInformation;
+                if(_buffer.TryDequeue(out var movementInformation))
+                {
+                    var PosInfoControllerGroups = movementInformation.PositionerInfoGroups;
+                    var execInfo = movementInformation.ExecutionInformation;
 
-                await SendBufferItemToControllers(PosInfoControllerGroups, execInfo);
+                    await SendBufferItemToControllers(PosInfoControllerGroups, execInfo);
+                }
+                else
+                {
+                    throw new Exception("master: Was Unable to dequeue a command from the buffer");
+                }
             }
 
         }
@@ -314,12 +320,19 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
             for (int i = 0; i < Math.Min(minFreeItemCount - 2, bufferCount); i++)
             {
-                var movementInformation = _buffer.Dequeue();
-                var PosInfoControllerGroups = movementInformation.PositionerInfoGroups;
-                var execInfo = movementInformation.ExecutionInformation;
+                if(_buffer.TryDequeue(out var movementInformation))
+                {
+                    var PosInfoControllerGroups = movementInformation.PositionerInfoGroups;
+                    var execInfo = movementInformation.ExecutionInformation;
 
-                await SendBufferItemToControllers(PosInfoControllerGroups, execInfo);
+                    await SendBufferItemToControllers(PosInfoControllerGroups, execInfo);
+                }
+                else
+                {
+                    throw new Exception("master: Was Unable to dequeue a command from the buffer");
+                }
             }
+
         }
         protected async Task ProcessQueue(SemaphoreSlim semaphore)
         {
@@ -334,6 +347,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
                 _updateMoveSettingsCommands = null;
             }
+            //await AwaitExecutionEnd();
 
             await FillControllerBuffers(semaphore);
             _log.Enqueue("master: filled slaves to the brim");
@@ -342,7 +356,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             _log.Enqueue("master: sent Sync Controller to execute its buffer");
 
             _launchPending = true;
-            
+            //await AwaitExecutionEnd();
+
 
         }
         protected async Task AwaitExecutionEnd()

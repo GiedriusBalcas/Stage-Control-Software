@@ -213,7 +213,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             }
             else
             {
-                throw new Exception($"Unexpected response code: {response.ResponseCode}");
+                _log.Enqueue($"Arduino Shutter Controller: Unexpected response code: {response.ResponseCode}");
+                return false;
             }
         }
         private byte CalculateChecksum(byte code, byte payloadLength, byte[] payload)
