@@ -83,6 +83,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         {
             return Task.CompletedTask;
         }
+        protected override Task<bool> IsDeviceStationary(BasePositionerDevice device)
+        {
+            var result = true;
+            return Task.FromResult(result);
+        }
         protected override Task MoveAbsolute(Command command, SemaphoreSlim semaphore)
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();

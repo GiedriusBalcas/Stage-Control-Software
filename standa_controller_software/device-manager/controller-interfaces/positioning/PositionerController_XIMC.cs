@@ -142,6 +142,17 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 CallResponse = API.set_move_settings_calb(deviceInfo.id, ref deviceInfo.moveSettings_t, ref deviceInfo.calibration_t);
             }
         }
+        protected override Task<bool> IsDeviceStationary(BasePositionerDevice device)
+        {
+            var deviceInfo = _deviceInfo[device.Name];
+            CallResponse = API.get_status_calb(deviceInfo.id, out deviceInfo.statusCalibrated_t, ref deviceInfo.calibration_t);
+            var moveStatus = (deviceInfo.statusCalibrated_t.MvCmdSts & MOVE_CMD_RUNNING) != 0;
+            var currentPosition = deviceInfo.statusCalibrated_t.CurPosition; ;
+            device.CurrentPosition = currentPosition;
+
+            var result = !moveStatus;
+            return Task.FromResult(result);
+        }
         protected override Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore)
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();

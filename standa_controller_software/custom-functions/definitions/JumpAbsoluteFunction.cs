@@ -202,7 +202,7 @@ namespace standa_controller_software.custom_functions.definitions
                 List<Command> updateParametersCommandLine = CreateUpdateCommands(positionerMovementInfos, groupedDevicesByController, blending);
 
                 _commandManager.EnqueueCommandLine(updateParametersCommandLine.ToArray());
-                _commandManager.ExecuteCommandLine(updateParametersCommandLine.ToArray()).GetAwaiter().GetResult();
+                _commandManager.TryExecuteCommandLine(updateParametersCommandLine.ToArray()).GetAwaiter().GetResult();
                 foreach (var (name, device) in devices)
                 {
                     device.UpdatePending = false;
@@ -250,10 +250,10 @@ namespace standa_controller_software.custom_functions.definitions
             }
 
             // Create the movement commands.
-            List<Command> commandsMovement = CreateMovementCommands(isShutterUsed, groupedDevicesByController, positionerMovementInfos, allocatedTimeWithoutDecel, waitUntilTime, waitUntilPosDict);
+            List<Command> commandsMovement = CreateMovementCommands(isShutterUsed, groupedDevicesByController, positionerMovementInfos, allocatedTime, waitUntilTime, waitUntilPosDict);
 
             _commandManager.EnqueueCommandLine(commandsMovement.ToArray());
-            _commandManager.ExecuteCommandLine(commandsMovement.ToArray()).GetAwaiter().GetResult();
+            _commandManager.TryExecuteCommandLine(commandsMovement.ToArray()).GetAwaiter().GetResult();
         }
 
 

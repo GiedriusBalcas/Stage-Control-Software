@@ -68,11 +68,6 @@ namespace standa_controller_software.command_manager
         {
             return _log;
         }
-        public void ClearQueue()
-        {
-            _commandQueue.Clear();
-            CurrentState = CommandManagerState.Waiting;
-        }
         public IEnumerable<Command[]> GetCommandQueueList()
         {
             return [.. _commandQueue];
@@ -102,6 +97,11 @@ namespace standa_controller_software.command_manager
             }
 
             return csvStringBuilder.ToString();
+        }
+        public void ClearQueue()
+        {
+            _commandQueue.Clear();
+            CurrentState = CommandManagerState.Waiting;
         }
 
         public async void Stop()
@@ -166,7 +166,28 @@ namespace standa_controller_software.command_manager
         {
             _commandQueue.Enqueue(commands);
         }
-        public async Task ExecuteCommandLine(Command[] commandLine)
+        public async Task TryExecuteCommand(Command command)
+        {
+            await ExecuteControllerCommandWrapper(command);
+        }
+        public async Task TryExecuteCommandLine(Command[] commandLine)
+        {
+            if(CurrentState == CommandManagerState.Waiting)
+            {
+                CurrentState = CommandManagerState.Processing;
+
+                await ExecuteCommandLine(commandLine);
+                await CheckAndUpdateControllerQueue(String.Empty);
+
+                CurrentState = CommandManagerState.Waiting;
+            }
+            else
+            {
+                throw new Exception("Unable to execute command line.");
+            }
+        }
+
+        private async Task ExecuteCommandLine(Command[] commandLine)
         {
             var commandsByController = commandLine
                         .GroupBy(c => c.TargetController)
@@ -229,11 +250,6 @@ namespace standa_controller_software.command_manager
             await ExecuteCommandLineGroup(commandsByMasterController);
 
         }
-        public async Task TryExecuteCommand(Command command)
-        {
-            await ExecuteControllerCommandWrapper(command);
-        }
-        
         private async Task ExecuteCommandLineGroup(Dictionary<string, Command[]> commandsByMasterController)
         {
             // gathering all the semaphores needed for the command execution before starting execution.

@@ -128,6 +128,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             OnSyncIn?.Invoke(deviceName);
         }
 
+        
         protected override async Task MoveAbsolute(Command command, SemaphoreSlim semaphore)
         {
             // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: move start");
@@ -172,6 +173,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             await WaitUntilStopAsync(waitUntilPositions, directions, semaphore);
 
 
+        }
+        protected override Task<bool> IsDeviceStationary(BasePositionerDevice device)
+        {
+            var result = _deviceInfo[device.Name].MoveStatus == 0;
+            device.CurrentPosition = _deviceInfo[device.Name].CurrentPosition;
+            return Task.FromResult(result);
         }
         protected override async Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore)
         {

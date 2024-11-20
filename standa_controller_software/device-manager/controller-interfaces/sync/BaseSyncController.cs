@@ -33,7 +33,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             {
                 MethodHandle = StartQueueExecution,
             };
-            _methodMap[CommandDefinitions.GetBufferCount] = new MethodInformation()
+            _methodMap[CommandDefinitions.GetBufferCount] = new MethodInformation<int>()
             {
                 MethodHandle = GetBufferCount,
             };

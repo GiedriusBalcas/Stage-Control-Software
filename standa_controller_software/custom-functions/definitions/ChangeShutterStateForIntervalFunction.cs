@@ -88,7 +88,7 @@ namespace standa_controller_software.custom_functions.definitions
             }
 
             _commandManager.EnqueueCommandLine(ChangeStateCommandLine.ToArray());
-            _commandManager.ExecuteCommandLine(ChangeStateCommandLine.ToArray()).GetAwaiter().GetResult();
+            _commandManager.TryExecuteCommandLine(ChangeStateCommandLine.ToArray()).GetAwaiter().GetResult();
         }
 
 

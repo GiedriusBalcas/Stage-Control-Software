@@ -291,7 +291,7 @@ namespace standa_controller_software.custom_functions.definitions
 
                 var commands_update = CreateUpdateCommands(positionerMovementInfo, groupedDevicesByController);
                 _commandManager.EnqueueCommandLine(commands_update);
-                _commandManager.ExecuteCommandLine(commands_update).GetAwaiter().GetResult();
+                _commandManager.TryExecuteCommandLine(commands_update).GetAwaiter().GetResult();
 
                 CalculateTangentEndpoint(
                         centerX, centerY,
@@ -320,7 +320,7 @@ namespace standa_controller_software.custom_functions.definitions
                 List<Command> commandsMovement_start = CreateMovementCommands(shutter, groupedDevicesByController, positionerMovementInformation_start, allocatedTime_guess_start, timeToAccelerate, waitUntilPos_start, shutterInfo); //rethrow_guess* multiplier     allocatedTime_guess * multiplier
 
                 _commandManager.EnqueueCommandLine(commandsMovement_start.ToArray());
-                _commandManager.ExecuteCommandLine(commandsMovement_start.ToArray()).GetAwaiter().GetResult();
+                _commandManager.TryExecuteCommandLine(commandsMovement_start.ToArray()).GetAwaiter().GetResult();
             }
 
             double prevVelX = 0;
@@ -378,7 +378,7 @@ namespace standa_controller_software.custom_functions.definitions
                 List<Command> commandsMovement = CreateMovementCommands(shutter, groupedDevicesByController, positionerMovementInformation, allocatedTime_guess, rethrow, waitUntilPos, shutterInfo_segments); //rethrow     waitUntilPos
 
                 _commandManager.EnqueueCommandLine(commandsMovement.ToArray());
-                _commandManager.ExecuteCommandLine(commandsMovement.ToArray()).GetAwaiter().GetResult();
+                _commandManager.TryExecuteCommandLine(commandsMovement.ToArray()).GetAwaiter().GetResult();
 
 
                 prevVelX = velX_avg;
@@ -431,7 +431,7 @@ namespace standa_controller_software.custom_functions.definitions
                 List<Command> commandsMovement_end = CreateMovementCommands(shutter, groupedDevicesByController, positionerMovementInformation_end, allocatedTime_guess, null, waitUntilPos_end, shutterInfo); //
 
                 _commandManager.EnqueueCommandLine(commandsMovement_end.ToArray());
-                _commandManager.ExecuteCommandLine(commandsMovement_end.ToArray()).GetAwaiter().GetResult();
+                _commandManager.TryExecuteCommandLine(commandsMovement_end.ToArray()).GetAwaiter().GetResult();
             }
 
         }

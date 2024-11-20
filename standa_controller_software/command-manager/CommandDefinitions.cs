@@ -20,6 +20,7 @@ namespace standa_controller_software.command_manager
         MoveAbsolute,
         UpdateMoveSettings,
         AddSyncInAction,
+        WaitForStop,
         // shutters
         ChangeShutterStateOnInterval,
         ChangeShutterState,

@@ -149,6 +149,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
             if (isUpdateNeeded = true)
             {
+
                 await ProcessQueue(semaphore);
 
                 if (_updateMoveSettingsCommands != null)
@@ -240,7 +241,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             int minFreeItemCount = int.MaxValue;
             foreach (var (controllerName, controller) in SlaveControllers)
             {
-                if (controller is BasePositionerController || controller is BaseSyncController)
+                if (controller is BasePositionerController)
                 {
                     foreach (var device in controller.GetDevices())
                     {
@@ -268,6 +269,31 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                         }
                     }
                 }
+                else if(controller is BaseSyncController)
+                {
+                    var command = new Command
+                    {
+                        Action = CommandDefinitions.GetBufferCount,
+                        Await = true,
+                        Parameters = new GetBufferCountParameters
+                        {
+                            Device = '\0',
+                        },
+                        TargetController = controller.Name,
+                        TargetDevices = controller.GetDevices().Select(device => device.Name).ToArray(),
+                    };
+
+                    var semaphore = await GatherSemaphoresForController([controllerName]);
+                    try
+                    {
+                        var bufferSpace = await controller.ExecuteCommandAsync<int>(command, semaphore[controllerName]);
+                        minFreeItemCount = Math.Min(minFreeItemCount, bufferSpace);
+                    }
+                    finally
+                    {
+                        ReleaseSemeaphores(semaphore);
+                    }
+                }
             }
 
             if (minFreeItemCount == int.MaxValue)
@@ -280,6 +306,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: trying to fill slave buffers");
 
             int minFreeItemCount = await GetMinFreeBufferItemCount();
+            if(minFreeItemCount < 2)
+                _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: available buffer spave is slaves is less than 2.");
+
+
             int bufferCount = _buffer.Count;
 
             for (int i = 0; i < Math.Min(minFreeItemCount - 2, bufferCount); i++)

@@ -240,9 +240,8 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 _commandManager.ClearQueue();
                 foreach (var commandLine in functionDefinitionLibrary.ExtractCommands())
                 {
-                    _commandManager.EnqueueCommandLine(commandLine);
+                    await _commandManager.TryExecuteCommandLine(commandLine);
                 }
-                await Task.Run(() => _commandManager.ProcessQueue());
 
             }
         }
@@ -261,9 +260,8 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 _commandManager.ClearQueue();
                 foreach (var commandLine in functionDefinitionLibrary.ExtractCommands())
                 {
-                    _commandManager.EnqueueCommandLine(commandLine);
+                    await _commandManager.TryExecuteCommandLine(commandLine);
                 }
-                await Task.Run(() => _commandManager.ProcessQueue());
 
             }
         }

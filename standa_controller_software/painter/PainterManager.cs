@@ -140,7 +140,7 @@ namespace standa_controller_software.painter
 
             foreach (var commandLine in commandLines)
             {
-                commandManager_virtual.ExecuteCommandLine(commandLine).GetAwaiter().GetResult();
+                commandManager_virtual.TryExecuteCommandLine(commandLine).GetAwaiter().GetResult();
             }
 
             CommandLayer.AddObjectCollection(_lineCollection);

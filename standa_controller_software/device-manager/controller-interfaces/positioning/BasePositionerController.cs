@@ -28,6 +28,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             {
                 MethodHandle = UpdateMoveSettings,
             };
+            _methodMap[CommandDefinitions.WaitForStop] = new MethodInformation()
+            {
+                MethodHandle = WaitForStop,
+            };
 
             _methodMap[CommandDefinitions.AddSyncInAction] = new MethodInformation()
             {
@@ -87,6 +91,27 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         }
         protected override abstract Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore);
         protected abstract Task MoveAbsolute(Command command, SemaphoreSlim semaphore);
+        protected async Task WaitForStop(Command command, SemaphoreSlim semaphore)
+        {
+
+            var devicesToAwait = command.TargetDevices.ToList();
+            while (devicesToAwait.Count > 0)
+            {
+                List<char> devicesToRemove = new List<char>();
+                foreach (var deviceName in devicesToAwait)
+                {
+                    var device = Devices[deviceName];
+                    bool isStationary = await IsDeviceStationary(device);
+                    if (isStationary)
+                        devicesToRemove.Add(deviceName);
+                }
+                foreach (var item in devicesToRemove)
+                {
+                    devicesToAwait.Remove(item);
+                }
+            }
+        }
+        protected abstract Task<bool> IsDeviceStationary(BasePositionerDevice device);
         protected abstract Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore);
         protected abstract void ConnectDevice_implementation(BaseDevice device);
 

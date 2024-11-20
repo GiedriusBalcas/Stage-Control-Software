@@ -192,6 +192,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
         private async Task ExecuteQueue(SemaphoreSlim semaphore)
         {
+            _allowedToRun = true;
             var timer = new Stopwatch();
             bool lastItemTaken = false;
             var startTime = timer.ElapsedMilliseconds;

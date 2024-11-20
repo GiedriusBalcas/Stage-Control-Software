@@ -20,7 +20,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             
         }
 
-        public virtual Task AwaitQueuedItems(SemaphoreSlim semaphore)
+        public override Task AwaitQueuedItems(SemaphoreSlim semaphore)
         {
             return Task.CompletedTask;
         }

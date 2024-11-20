@@ -331,7 +331,7 @@ namespace standa_controller_software.custom_functions.definitions
             List<Command> updateParametersCommandLine = CreateUpdateCommands(positionerMovementInfos, groupedDevicesByController);
 
             _commandManager.EnqueueCommandLine(updateParametersCommandLine.ToArray());
-            _commandManager.ExecuteCommandLine(updateParametersCommandLine.ToArray()).GetAwaiter().GetResult();
+            _commandManager.TryExecuteCommandLine(updateParametersCommandLine.ToArray()).GetAwaiter().GetResult();
 
             // STEP 10: Create and execute movement commands
 
@@ -358,7 +358,7 @@ namespace standa_controller_software.custom_functions.definitions
             }
 
             _commandManager.EnqueueCommandLine(movementCommandsLine.ToArray());
-            _commandManager.ExecuteCommandLine(movementCommandsLine.ToArray()).GetAwaiter().GetResult();
+            _commandManager.TryExecuteCommandLine(movementCommandsLine.ToArray()).GetAwaiter().GetResult();
 
             if (isShutterUsed)
             {
