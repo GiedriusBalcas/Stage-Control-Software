@@ -32,8 +32,12 @@ namespace standa_control_software_WPF.view_models.system_control.information
             {
                 _state = value;
                 OnPropertyChanged(nameof(State));
+                OnPropertyChanged(nameof(CurrentState));
+
             }
         }
+        public string CurrentState { get => State ? "open" : "closed"; } 
+
         // PlotModel for OxyPlot
         private LineSeries _stateSeries;
         private PlotModel _plotModel;

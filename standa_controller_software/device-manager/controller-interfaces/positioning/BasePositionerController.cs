@@ -32,6 +32,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             {
                 MethodHandle = WaitForStop,
             };
+            _methodMap[CommandDefinitions.Home] = new MethodInformation()
+            {
+                MethodHandle = Home,
+            };
 
             _methodMap[CommandDefinitions.AddSyncInAction] = new MethodInformation()
             {
@@ -91,6 +95,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         }
         protected override abstract Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore);
         protected abstract Task MoveAbsolute(Command command, SemaphoreSlim semaphore);
+        protected abstract Task Home(Command command, SemaphoreSlim semaphore);
         protected async Task WaitForStop(Command command, SemaphoreSlim semaphore)
         {
 

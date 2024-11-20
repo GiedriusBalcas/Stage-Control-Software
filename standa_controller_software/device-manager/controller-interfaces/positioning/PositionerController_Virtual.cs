@@ -64,6 +64,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return Task.CompletedTask;
 
         }
+        protected override Task Home(Command command, SemaphoreSlim semaphore)
+        {
+            return Task.CompletedTask;
+        }
         protected override Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore)
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();

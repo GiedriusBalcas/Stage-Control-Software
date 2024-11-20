@@ -224,7 +224,7 @@ namespace standa_controller_software.custom_functions.definitions
                 throw new Exception("Max Acceleration value of the device is issuficient for the arc movement.");
 
 
-            float additionalDistanceToStop = accuracy_time * trajectorySpeed + 2 * trajectorySpeed * trajectorySpeed / (2 * accelerationForArc); // [um
+            float additionalDistanceToStop = accuracy_time * trajectorySpeed + 1 * trajectorySpeed * trajectorySpeed / (2 * accelerationForArc); // [um
 
 
             var arcLength = dtheta * radius;
@@ -236,8 +236,8 @@ namespace standa_controller_software.custom_functions.definitions
             var startPosX = (float)(Math.Cos(startAngle) * radius) + centerX;
             var startPosY = (float)(Math.Sin(startAngle) * radius) + centerY;
 
-            double startVelX = Math.Abs(-trajectorySpeed * Math.Sin(startAngle));
-            double startVelY = Math.Abs(trajectorySpeed * Math.Cos(startAngle));
+            double startVelX = isCCW? Math.Abs(-trajectorySpeed * Math.Sin(startAngle)) : Math.Abs(trajectorySpeed * Math.Sin(startAngle));
+            double startVelY = isCCW ? Math.Abs(trajectorySpeed * Math.Cos(startAngle)) : Math.Abs(-trajectorySpeed * Math.Cos(startAngle));
 
             bool needStartMovement = false;
             bool needPositionChange = Math.Abs(startPosX - xDevice.CurrentPosition) > accuracy || Math.Abs(startPosY - yDevice.CurrentPosition) > accuracy;
@@ -258,7 +258,7 @@ namespace standa_controller_software.custom_functions.definitions
                     centerX, centerY,
                     (double)startPosX, (double)startPosY,
                     distanceToAccelerate,
-                    false,
+                    !isCCW,
                     out double x_tang_start, out double y_tang_start);
 
                 _jumpFunction.ExecutionCore([xDevice.Name, yDevice.Name], [(float)x_tang_start, (float)y_tang_start], false, accuracy, null, null, false);
@@ -297,7 +297,7 @@ namespace standa_controller_software.custom_functions.definitions
                         centerX, centerY,
                         (double)startPosX, (double)startPosY,
                         additionalDistanceToStop,
-                        true,
+                        isCCW,
                         out double x_tang_start_over, out double y_tang_start_over);
 
                 var positionerMovementInformation_start = GetMovementInformation(xDevice, yDevice, (float)x_tang_start_over, (float)y_tang_start_over, trajectorySpeed, (float)startVelX, (float)startVelY, (float)0, (float)0, accelerationForArc, out float allocatedTime_start);
@@ -323,25 +323,19 @@ namespace standa_controller_software.custom_functions.definitions
                 _commandManager.TryExecuteCommandLine(commandsMovement_start.ToArray()).GetAwaiter().GetResult();
             }
 
-            double prevVelX = 0;
-            double prevVelY = 0;
-
-            float Ax, Ay, Bx, By;
+            
+            float Bx, By;
 
             // loop through the segments until last one.
-            prevVelX = Math.Abs(-trajectorySpeed * Math.Sin(startAngle));
-            prevVelY = Math.Abs(trajectorySpeed * Math.Cos(startAngle));
 
-            double maxAccelSoFarX = 0f;
-            double maxAccelSoFarY = 0f;
+
+            double prevVelX = isCCW ? Math.Abs(-trajectorySpeed * Math.Sin(startAngle)) : Math.Abs(trajectorySpeed * Math.Sin(startAngle));
+            double prevVelY = isCCW ? Math.Abs(trajectorySpeed * Math.Cos(startAngle)) : Math.Abs(-trajectorySpeed * Math.Cos(startAngle));
 
             float allocatedTime_guess = (arcLength + additionalDistanceToStop) / trajectorySpeed;
 
-            for (float theta = startAngle + dtheta; theta < endAngle ; theta += dtheta)
+            for (float theta = startAngle + (isCCW? dtheta: -dtheta); isCCW? theta < endAngle : theta > endAngle; theta += (isCCW ? dtheta : - dtheta))
             {
-                Ax = (float)(Math.Cos(theta - dtheta) * radius) + centerX;
-                Ay = (float)(Math.Sin(theta - dtheta) * radius) + centerY;
-
                 Bx = (float)(Math.Cos(theta) * radius) + centerX;
                 By = (float)(Math.Sin(theta) * radius) + centerY;
 
@@ -356,7 +350,7 @@ namespace standa_controller_software.custom_functions.definitions
                     centerX, centerY,
                     (double)Bx, (double)By,
                     additionalDistanceToStop,
-                    true,
+                    isCCW,
                     out double x_tang, out double y_tang);
 
                 // CREATE UPDATE MOVEMENT SETTINGS COMMANDS
@@ -392,9 +386,6 @@ namespace standa_controller_software.custom_functions.definitions
             bool endIsNeeded = true;
             if (endIsNeeded)
             {
-                Ax = (float)(Math.Cos(endAngle - dtheta) * radius) + centerX;
-                Ay = (float)(Math.Sin(endAngle - dtheta) * radius) + centerY;
-
                 Bx = (float)(Math.Cos(endAngle) * radius) + centerX;
                 By = (float)(Math.Sin(endAngle) * radius) + centerY;
                 
@@ -409,7 +400,7 @@ namespace standa_controller_software.custom_functions.definitions
                     centerX, centerY,
                     (double)Bx, (double)By,
                     additionalDistanceToStop_end,
-                    true,
+                    isCCW,
                     out double x_tang_end, out double y_tang_end);
                 
                 // CREATE UPDATE MOVEMENT SETTINGS COMMANDS

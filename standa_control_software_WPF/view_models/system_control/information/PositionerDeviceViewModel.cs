@@ -119,7 +119,7 @@ namespace standa_control_software_WPF.view_models.system_control.information
 
                 // Initialize commands
                 StopCommand = new RelayCommand(ExecuteStop);
-                HomeCommand = new RelayCommand(ExecuteHome);
+                HomeCommand = new RelayCommand(() => Task.Run(async () => await ExecuteHome()));
                 MoveCommand = new RelayCommand(() => Task.Run(async() => await ExecuteMove() ) );
                 ShiftCommand = new RelayCommand(() => Task.Run(async () => await ExecuteShift()));
 
@@ -221,12 +221,21 @@ namespace standa_control_software_WPF.view_models.system_control.information
         {
             //_positioner.Stop();
         }
-
-        private void ExecuteHome()
+        private async Task ExecuteHome()
         {
-            //_positioner.Home();
-        }
+            if (_positioner.IsConnected)
+            {
+                var controller = _controllerManager.GetDeviceController<BasePositionerController>(_positioner.Name);
+                var command = new Command
+                {
+                    TargetController = controller.Name,
+                    TargetDevices = [_positioner.Name],
+                    Action = CommandDefinitions.Home,
+                };
 
+                await _commandManager.TryExecuteCommand(command);
+            }
+        }
         private async Task ExecuteMove()
         {
             if (_positioner.IsConnected)

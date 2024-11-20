@@ -339,12 +339,27 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             await AwaitExecutionEnd();
             
             // Theres a problem with XIMC, forced to wait, maybe for their Jerk implementation?. (I think). 
-            await Task.Delay(30);
+            //await Task.Delay(30);
+
 
             if (_updateMoveSettingsCommands != null)
             {
                 foreach (Command command in _updateMoveSettingsCommands)
                 {
+                    // first, let's await until the device is stationary.
+                    var targetDevices = command.TargetDevices;
+                    var targetController = command.TargetController;
+
+                    var waitUntilStopCommand = new Command
+                    {
+                        Action = CommandDefinitions.WaitForStop,
+                        Await = true,
+                        TargetController = targetController,
+                        TargetDevices = targetDevices,
+                    };
+
+                    await ExecuteSlaveCommand(waitUntilStopCommand);
+
                     await ExecuteSlaveCommand(command);
                 }
 

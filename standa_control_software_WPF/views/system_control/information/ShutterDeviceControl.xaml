@@ -58,7 +58,7 @@
                          Text="{Binding CurrentState, Mode=OneWay}"
                          IsEnabled="False"
                          VerticalAlignment="Center"
-                         TextAlignment="Right"
+                         TextAlignment="Center"
                          Width="40" />
 
             </Grid>

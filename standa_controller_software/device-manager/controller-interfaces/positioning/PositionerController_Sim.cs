@@ -163,6 +163,16 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         /// Adds a new device to the controller.
         /// Initializes device information.
         /// </summary>
+        /// 
+        protected override Task Home(Command command, SemaphoreSlim semaphore)
+        {
+            foreach (var (deviceName, device) in Devices)
+            {
+                _deviceInfo[deviceName].CurrentPosition = 0;
+            }
+
+            return Task.CompletedTask;
+        }
         public override void AddDevice(BaseDevice device)
         {
             base.AddDevice(device);

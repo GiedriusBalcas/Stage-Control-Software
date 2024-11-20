@@ -201,10 +201,10 @@ namespace standa_controller_software.custom_functions.definitions
             }
 
             // STEP 4: Calculate line kinematic parameters
-            if (!TryGetLineKinParameters(trajectorySpeed, ref positionerMovementInfos, out float timeToAccel_line, out float timeToDecel_line, out float totalTime_line))
+            if (!TryGetLineKinParametersInitial(trajectorySpeed, ref positionerMovementInfos))
                 throw new Exception("Failed to calculate kinematic parameters for line movement.");
-
             
+
 
             // Now that we have TargetAcceleration and TargetDeceleration, we can calculate lead-in and lead-out offsets
 
@@ -596,7 +596,80 @@ namespace standa_controller_software.custom_functions.definitions
             return true;
         }
 
+        private bool TryGetLineKinParametersInitial(
+        float trajectorySpeed,
+        ref Dictionary<char, PositionerMovementInformation> positionerMovementInfos)
+        {
+            char[] deviceNames = positionerMovementInfos.Keys.ToArray();
+            Dictionary<char, float> movementRatio = new Dictionary<char, float>();
 
+            //Calculate the initial and final tool positions
+            var startToolPoint = _controllerManager.ToolInformation.CalculateToolPositionUpdate
+                (
+                    positionerMovementInfos.ToDictionary(positionerInfo => positionerInfo.Key, kvp => kvp.Value.StartingMovementParameters.Position)
+                );
+
+            var endToolPoint = _controllerManager.ToolInformation.CalculateToolPositionUpdate
+                (
+                    positionerMovementInfos.ToDictionary(positionerInfo => positionerInfo.Key, kvp => kvp.Value.TargetMovementParameters.Position)
+                );
+
+            if (startToolPoint == endToolPoint)
+            {
+                throw new Exception("Error encountered, when trying to get kinematic parameters. Starting point and end point are the same.");
+            }
+
+            // TODO: calculate the speed according to DefaultSpeed of positioners used.
+
+            float trajectorySpeedCalculated = trajectorySpeed;
+
+            // Calculate trajectory length
+            float trajectoryLength = (endToolPoint - startToolPoint).Length();
+
+
+            // Calculate the target kinematic parameters
+            var projectedMaxAccelerations = new Dictionary<char, float>();
+            var projectedMaxDecelerations = new Dictionary<char, float>();
+            var projectedMaxSpeeds = new Dictionary<char, float>();
+
+            foreach (char name in deviceNames)
+            {
+                movementRatio[name] = trajectoryLength / positionerMovementInfos[name].TargetMovementParameters.Distance;
+                projectedMaxAccelerations[name] = positionerMovementInfos[name].PositionerParameters.MaxAcceleration * movementRatio[name];
+                projectedMaxDecelerations[name] = positionerMovementInfos[name].PositionerParameters.MaxDeceleration * movementRatio[name];
+                projectedMaxSpeeds[name] = positionerMovementInfos[name].PositionerParameters.MaxSpeed * movementRatio[name];
+            }
+            var projectedMaxAcceleration = projectedMaxAccelerations.Min(kvp => kvp.Value);
+            var projectedMaxDeceleration = projectedMaxDecelerations.Min(kvp => kvp.Value);
+            var projectedMaxSpeed = Math.Min(trajectorySpeedCalculated, projectedMaxSpeeds.Min(kvp => kvp.Value));
+
+            var timesToAccel = new Dictionary<char, float>();
+            var timesToDecel = new Dictionary<char, float>();
+
+            foreach (char name in deviceNames)
+            {
+                positionerMovementInfos[name].TargetMovementParameters.Acceleration = projectedMaxAcceleration / movementRatio[name];
+                positionerMovementInfos[name].TargetMovementParameters.Deceleration = projectedMaxDeceleration / movementRatio[name];
+                positionerMovementInfos[name].TargetMovementParameters.TargetSpeed = projectedMaxSpeed / movementRatio[name];
+
+                int direction = positionerMovementInfos[name].TargetMovementParameters.Direction ? 1 : -1;
+                timesToAccel[name] = Math.Abs(positionerMovementInfos[name].TargetMovementParameters.TargetSpeed * direction - positionerMovementInfos[name].StartingMovementParameters.Speed) / positionerMovementInfos[name].TargetMovementParameters.Acceleration;
+                timesToDecel[name] = Math.Abs(positionerMovementInfos[name].TargetMovementParameters.TargetSpeed * direction - 0) / positionerMovementInfos[name].TargetMovementParameters.Deceleration;
+            }
+
+            var maxTimeToAccel = timesToAccel.Max(kvp => kvp.Value);
+            var maxTimeToDecel = timesToAccel.Max(kvp => kvp.Value);
+
+            foreach (char name in deviceNames)
+            {
+                positionerMovementInfos[name].TargetMovementParameters.Acceleration = positionerMovementInfos[name].TargetMovementParameters.Acceleration * (timesToAccel[name] / maxTimeToAccel);
+                positionerMovementInfos[name].TargetMovementParameters.Deceleration = positionerMovementInfos[name].TargetMovementParameters.Deceleration * (timesToDecel[name] / maxTimeToDecel);
+            }
+
+            var selectedPosInfo = positionerMovementInfos.Where(kvp => kvp.Value.TargetMovementParameters.Acceleration > 0).First().Value;
+            
+            return true;
+        }
         //private float CalculateTotalTimeForMovementInfo(PositionerMovementInformation info, out float timeToAccel, out float timeToDecel, out float totalTime)
         //{
         //    timeToAccel = 0f;

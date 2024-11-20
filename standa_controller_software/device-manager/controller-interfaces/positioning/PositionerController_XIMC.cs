@@ -102,6 +102,16 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             }
             return Task.CompletedTask;
         }
+
+        protected override Task Home(Command command, SemaphoreSlim semaphore)
+        {
+            var targetDeviceNames = command.TargetDevices;
+            foreach (var deviceName in targetDeviceNames)
+            {
+                CallResponse = API.command_home(_deviceInfo[deviceName].id);
+            }
+            return Task.CompletedTask;
+        }
         protected override void ConnectDevice_implementation(BaseDevice device)
         {
             if (device is BasePositionerDevice positioningDevice && _deviceInfo.TryGetValue(positioningDevice.Name, out DeviceInformation deviceInfo))

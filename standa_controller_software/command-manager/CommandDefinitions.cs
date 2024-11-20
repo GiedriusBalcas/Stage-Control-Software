@@ -21,6 +21,7 @@ namespace standa_controller_software.command_manager
         UpdateMoveSettings,
         AddSyncInAction,
         WaitForStop,
+        Home,
         // shutters
         ChangeShutterStateOnInterval,
         ChangeShutterState,
