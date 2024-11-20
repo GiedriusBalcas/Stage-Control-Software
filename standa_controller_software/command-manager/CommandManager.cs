@@ -120,7 +120,8 @@ namespace standa_controller_software.command_manager
                         TargetController = controllerName,
                         Action = CommandDefinitions.Stop,
                     };
-                    await ExecuteControllerCommandWrapper(stopCommand);
+                    //await ExecuteControllerCommandWrapper(stopCommand);
+                    await controller.ForceStop();
                 }
             }
 
@@ -133,7 +134,8 @@ namespace standa_controller_software.command_manager
                         TargetController = controllerName,
                         Action = CommandDefinitions.Stop,
                     };
-                    await ExecuteControllerCommandWrapper(stopCommand);
+                    await baseMasterController.ForceStop();
+
                 }
             }
 

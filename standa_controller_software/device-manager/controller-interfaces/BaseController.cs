@@ -80,10 +80,9 @@ namespace standa_controller_software.device_manager.controller_interfaces
             if (_methodMap.TryGetValue(command.Action, out var method))
             {
                 if (command.Await)
-                    //await method.MethodHandle(command, semaphore);
                     await method.InvokeAsync(command, semaphore);
                 else
-                    _ = method.InvokeAsync(command, semaphore);
+                    _ = Task.Run(() => method.InvokeAsync(command, semaphore));
             }
             else
             {
@@ -91,6 +90,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
             }
         }
         public abstract List<BaseDevice> GetDevices();
+        public abstract Task ForceStop();
         //TODO: GetCopy() method is not used as supposed to. It's only used to create a virtual one, so a more efficient way should exist.
         public abstract BaseController GetVirtualCopy();
         public abstract void AddDevice(BaseDevice device);

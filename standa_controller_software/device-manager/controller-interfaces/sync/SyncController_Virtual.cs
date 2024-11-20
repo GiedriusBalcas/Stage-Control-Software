@@ -15,7 +15,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         {
         }
 
-
+        public override Task ForceStop()
+        {
+            return Task.CompletedTask;
+        }
         protected override Task AddSyncBufferItem_implementation(char[] Devices, bool Launch, float Rethrow, bool Shutter, float Shutter_delay_on, float Shutter_delay_off)
         {
             throw new NotImplementedException();

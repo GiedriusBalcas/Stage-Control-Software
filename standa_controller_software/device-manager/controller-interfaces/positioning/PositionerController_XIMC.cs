@@ -84,7 +84,24 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 _deviceInfo.TryAdd(positioningDevice.Name, new DeviceInformation());
             }
         }
-        
+        public override Task ForceStop()
+        {
+            foreach (var (deviceName, device) in Devices)
+            {
+                if (device.IsConnected)
+                {
+                    CallResponse = API.command_stop(_deviceInfo[device.Name].id);
+                    CallResponse = API.get_sync_in_settings_calb(_deviceInfo[deviceName].id, out sync_in_settings_calb_t sync_in_settings_calb, ref _deviceInfo[deviceName].calibration_t);
+                    CallResponse = API.get_status_calb(_deviceInfo[deviceName].id, out _deviceInfo[deviceName].statusCalibrated_t, ref _deviceInfo[deviceName].calibration_t);
+                    var position = _deviceInfo[deviceName].statusCalibrated_t.CurPosition;
+
+                    sync_in_settings_calb.Position = position;
+
+                    CallResponse = API.set_sync_in_settings_calb(_deviceInfo[deviceName].id, ref sync_in_settings_calb, ref _deviceInfo[deviceName].calibration_t);
+                }
+            }
+            return Task.CompletedTask;
+        }
         protected override void ConnectDevice_implementation(BaseDevice device)
         {
             if (device is BasePositionerDevice positioningDevice && _deviceInfo.TryGetValue(positioningDevice.Name, out DeviceInformation deviceInfo))

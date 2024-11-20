@@ -44,7 +44,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 SlaveControllersLocks.Add(positionerController.Name, controllerLock);
             }
         }
-        
+        public override Task ForceStop()
+        {
+            return Task.CompletedTask;
+
+        }
+
         public override Task AwaitQueuedItems(SemaphoreSlim semaphore)
         {
             return Task.CompletedTask;

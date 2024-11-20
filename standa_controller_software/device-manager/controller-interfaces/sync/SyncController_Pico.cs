@@ -75,7 +75,21 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         {
         }
 
-
+        public override async Task ForceStop()
+        {
+            try
+            {
+                await ClearBuffer();
+            }
+            catch (Exception ex)
+            {
+                _log.Enqueue($"{DateTime.Now:HH:mm:ss.fff}: Exception during Stop: {ex.Message}");
+            }
+            finally
+            {
+                // Do not close the serial port or cancel the reading task
+            }
+        }
         protected override Task InitializeController(Command command, SemaphoreSlim semaphore)
         {
             base.InitializeController(command, semaphore);

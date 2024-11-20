@@ -7,17 +7,12 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Transactions;
-using System.Xml.Linq;
-using ximcWrapper;
 
 namespace standa_controller_software.device_manager.controller_interfaces.positioning
 {
-    public partial class PositionerController_Sim : BasePositionerController 
+    public partial class PositionerController_Sim : BasePositionerController
     {
         //----------Virtual axes private data---------------
         private class DeviceInformation
@@ -25,94 +20,158 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             private float _acceleration = 1000;
             private float _deceleration = 1000;
             private float _speed = 100;
+
             public float Acceleration
             {
-                get { return _acceleration; }
-                set { _acceleration = value; }
+                get => _acceleration;
+                set => _acceleration = value;
             }
+
             public float Deceleration
             {
-                get { return _deceleration; }
-                set { _deceleration = value; }
+                get => _deceleration;
+                set => _deceleration = value;
             }
+
             public float Speed
             {
-                get { return _speed; }
-                set { _speed = Math.Min(value, this.MaxSpeed); ; }
+                get => _speed;
+                set => _speed = Math.Min(value, this.MaxSpeed);
             }
+
             public float CurrentPosition { get; set; } = 0;
             public uint MoveStatus { get; set; } = 0;
-            public string Name { get; set; }
+            public char Name { get; set; }
             public float CurrentSpeed { get; set; } = 0;
             public float MaxSpeed { get; set; } = 1000;
         }
+
+        // Device information indexed by char name
         private ConcurrentDictionary<char, DeviceInformation> _deviceInfo = new ConcurrentDictionary<char, DeviceInformation>();
+
+        // Structure to hold SyncInAction commands
         private struct SyncInAction
         {
             public float TargetPosition;
             public float AllocatedTime;
         }
-        private Dictionary<char, Queue<SyncInAction>> _buffer = new Dictionary<char, Queue<SyncInAction>>();
+
+        // Buffer to hold SyncInAction commands per device
+        private ConcurrentDictionary<char, ConcurrentQueue<SyncInAction>> _buffer = new ConcurrentDictionary<char, ConcurrentQueue<SyncInAction>>();
+
         //---------------------------------------------------
 
-        public event Action<char> OnSyncOut;
-        public event  Action<char> OnSyncIn;
+        // Track running move tasks per device
+        private ConcurrentDictionary<char, Task> _runningMoveTasks = new ConcurrentDictionary<char, Task>();
 
+        // Cancellation tokens per device
+        private ConcurrentDictionary<char, CancellationTokenSource> _deviceCancellationTokens = new ConcurrentDictionary<char, CancellationTokenSource>();
+
+        // Per-device locks for synchronization
+        private ConcurrentDictionary<char, SemaphoreSlim> _deviceLocks = new ConcurrentDictionary<char, SemaphoreSlim>();
+
+        // Events
+        public event Action<char> OnSyncOut;
+        public event Func<char, Task> OnSyncIn;
+
+        // Constructor
         public PositionerController_Sim(string name, ConcurrentQueue<string> log) : base(name, log)
         {
-
-
-            OnSyncIn += (char name) => OnSyncInAction(name).GetAwaiter().GetResult();
+            // Subscribe to OnSyncIn event with asynchronous handler
+            OnSyncIn += async (char deviceName) => await OnSyncInAction(deviceName);
         }
 
-        private async Task OnSyncInAction(char name)
+        /// <summary>
+        /// Asynchronous handler for OnSyncIn event.
+        /// Ensures that only one UpdateCommandMoveA runs per device.
+        /// </summary>
+        private async Task OnSyncInAction(char deviceName)
         {
-            if (!_buffer.ContainsKey(name) || _buffer[name].Count < 1)
-                _log.Enqueue("Got sync in signal, when no buffered items exist.");
+            // Acquire per-device lock
+            var deviceLock = _deviceLocks.GetOrAdd(deviceName, _ => new SemaphoreSlim(1, 1));
 
-            var parameters = _buffer[name].Dequeue();
-
-            var distance = Math.Abs(parameters.TargetPosition - _deviceInfo[name].CurrentPosition);
-            var recalculatedTargetSpeed = parameters.AllocatedTime > 0f
-                ? distance / parameters.AllocatedTime
-                : 0f;
-            //var recalculatedTargetSpeed = CalculateTargetSpeed(parameters.AllocatedTime, distance, _deviceInfo[name].Acceleration, _deviceInfo[name].Deceleration);
-
-            _deviceInfo[name].Speed = (float)recalculatedTargetSpeed;
-
-            float targetPosition = parameters.TargetPosition;
-            
-
-            var device = Devices[name];
-            if (!deviceCancellationTokens.ContainsKey(device.Name))
+            await deviceLock.WaitAsync();
+            try
             {
-                deviceCancellationTokens[device.Name] = new CancellationTokenSource();
+                // Check if there are any buffered SyncInAction commands
+                if (!_buffer.ContainsKey(deviceName) || _buffer[deviceName].IsEmpty)
+                {
+                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Received SyncIn signal for '{deviceName}', but no buffered commands exist.");
+                    return;
+                }
+
+                // Dequeue the next SyncInAction command
+                if (_buffer[deviceName].TryDequeue(out var syncInAction))
+                {
+                    // Recalculate target speed based on allocated time and distance
+                    var distance = Math.Abs(syncInAction.TargetPosition - _deviceInfo[deviceName].CurrentPosition);
+                    var recalculatedTargetSpeed = syncInAction.AllocatedTime > 0f
+                        ? distance / syncInAction.AllocatedTime
+                        : 0f;
+
+                    _deviceInfo[deviceName].Speed = recalculatedTargetSpeed;
+                    float targetPosition = syncInAction.TargetPosition;
+
+                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Processing SyncInAction for '{deviceName}': TargetPosition={targetPosition}, AllocatedTime={syncInAction.AllocatedTime}");
+
+                    // Manage cancellation tokens
+                    if (_deviceCancellationTokens.TryGetValue(deviceName, out var existingCts))
+                    {
+                        // Cancel the existing movement task
+                        existingCts.Cancel();
+
+                        // Await the completion of the existing task
+                        if (_runningMoveTasks.TryGetValue(deviceName, out var existingTask))
+                        {
+                            try
+                            {
+                                await existingTask;
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Existing movement task for '{deviceName}' was canceled.");
+                            }
+                            catch (Exception ex)
+                            {
+                                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Error in existing movement task for '{deviceName}': {ex.Message}");
+                            }
+                        }
+
+                        // Dispose of the old CancellationTokenSource and create a new one
+                        existingCts.Dispose();
+                        _deviceCancellationTokens[deviceName] = new CancellationTokenSource();
+                    }
+                    else
+                    {
+                        // No existing CancellationTokenSource, create a new one
+                        _deviceCancellationTokens[deviceName] = new CancellationTokenSource();
+                    }
+
+                    // Start the UpdateCommandMoveA task and track it
+                    var moveTask = UpdateCommandMoveA(deviceName, targetPosition, _deviceCancellationTokens[deviceName].Token);
+                    _runningMoveTasks[deviceName] = moveTask;
+                }
             }
-            else if (deviceCancellationTokens[device.Name].IsCancellationRequested)
+            finally
             {
-                deviceCancellationTokens[device.Name].Dispose();
-                deviceCancellationTokens[device.Name] = new CancellationTokenSource();
+                // Release the per-device lock
+                deviceLock.Release();
             }
-            else
-            {
-                deviceCancellationTokens[device.Name].Cancel();
-                deviceCancellationTokens[device.Name] = new CancellationTokenSource();
-            }
-
-
-            _deviceInfo[device.Name].MoveStatus = 1;
-            _log?.Enqueue($"SyncInAction called on {name}");
-
-            _ = UpdateCommandMoveA(device.Name, targetPosition, deviceCancellationTokens[device.Name].Token);
         }
-        
+
+        /// <summary>
+        /// Adds a new device to the controller.
+        /// Initializes device information.
+        /// </summary>
         public override void AddDevice(BaseDevice device)
         {
             base.AddDevice(device);
 
             if (device is BasePositionerDevice positioningDevice)
             {
-                _deviceInfo.TryAdd(positioningDevice.Name, new DeviceInformation()
+                char deviceName = positioningDevice.Name; // Assuming Name is a single char
+
+                var deviceInfo = new DeviceInformation
                 {
                     CurrentPosition = positioningDevice.CurrentPosition,
                     CurrentSpeed = positioningDevice.CurrentSpeed,
@@ -120,164 +179,365 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     Speed = positioningDevice.Speed,
                     Acceleration = positioningDevice.Acceleration,
                     Deceleration = positioningDevice.Deceleration,
-                });
-            }
-        }
-        public void InvokeSyncIn(char deviceName)
-        {
-            OnSyncIn?.Invoke(deviceName);
-        }
+                    Name = positioningDevice.Name
+                };
 
-        
-        protected override async Task MoveAbsolute(Command command, SemaphoreSlim semaphore)
-        {
-            // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: move start");
-            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
-            var movementParameters = command.Parameters as MoveAbsoluteParameters;
-
-            List<Task> tasks = new List<Task>();
-            for (int i = 0; i < devices.Length; i++)
-            {
-                var device = devices[i];
-                if (!deviceCancellationTokens.ContainsKey(device.Name))
+                if (_deviceInfo.TryAdd(deviceName, deviceInfo))
                 {
-                    deviceCancellationTokens[device.Name] = new CancellationTokenSource();
-                }
-                else if (deviceCancellationTokens[device.Name].IsCancellationRequested)
-                {
-                    deviceCancellationTokens[device.Name].Dispose();
-                    deviceCancellationTokens[device.Name] = new CancellationTokenSource();
+                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Added device '{deviceName}' with initial settings.");
                 }
                 else
                 {
-                    deviceCancellationTokens[device.Name].Cancel();
-                    deviceCancellationTokens[device.Name] = new CancellationTokenSource();
+                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Device '{deviceName}' already exists.");
                 }
+            }
+        }
 
-                float targetPosition = movementParameters.PositionerInfo[device.Name].TargetPosition;
+        /// <summary>
+        /// Invokes the OnSyncIn event for a given device.
+        /// </summary>
+        public void InvokeSyncIn(char deviceName)
+        {
+            _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] InvokeSyncIn called for '{deviceName}'.");
 
-                _deviceInfo[device.Name].MoveStatus = 1;
-                var task = UpdateCommandMoveA(device.Name, targetPosition, deviceCancellationTokens[device.Name].Token);
-                tasks.Add(task);
+            // Fire and forget asynchronous event handlers
+            var handlers = OnSyncIn?.GetInvocationList().Cast<Func<char, Task>>().ToList();
+            if (handlers != null && handlers.Count > 0)
+            {
+                foreach (var handler in handlers)
+                {
+                    _ = Task.Run(() => handler.Invoke(deviceName));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Forces all devices to stop their movements.
+        /// Cancels all running tasks and clears the buffer.
+        /// </summary>
+        public override async Task ForceStop()
+        {
+            _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] ForceStop initiated.");
+
+            // Cancel all cancellation tokens
+            foreach (var cts in _deviceCancellationTokens.Values)
+            {
+                cts.Cancel();
             }
 
+            // Await all running movement tasks
+            foreach (var kvp in _runningMoveTasks)
+            {
+                try
+                {
+                    await kvp.Value;
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected, do nothing
+                }
+                catch (Exception ex)
+                {
+                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Error in ForceStop for '{kvp.Key}': {ex.Message}");
+                }
+            }
+
+            // Clear all buffers
+            _buffer.Clear();
+
+            _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] ForceStop completed.");
+        }
+
+        /// <summary>
+        /// Moves devices to absolute positions based on the provided command.
+        /// </summary>
+        protected override async Task MoveAbsolute(Command command, SemaphoreSlim semaphore)
+        {
+            _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] MoveAbsolute initiated.");
+
+            var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
+            var movementParameters = command.Parameters as MoveAbsoluteParameters;
+
+            for (int i = 0; i < devices.Length; i++)
+            {
+                var device = devices[i];
+                char deviceName = device.Name; // Assuming Name is a single char
+
+                // Acquire per-device lock
+                var deviceLock = _deviceLocks.GetOrAdd(deviceName, _ => new SemaphoreSlim(1, 1));
+
+                await deviceLock.WaitAsync();
+                try
+                {
+                    // Manage cancellation tokens
+                    if (_deviceCancellationTokens.TryGetValue(deviceName, out var existingCts))
+                    {
+                        // Cancel the existing task
+                        existingCts.Cancel();
+
+                        // Await the existing task to ensure it has completed
+                        if (_runningMoveTasks.TryGetValue(deviceName, out var existingTask))
+                        {
+                            try
+                            {
+                                await existingTask;
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Existing movement task for '{deviceName}' was canceled.");
+                            }
+                            catch (Exception ex)
+                            {
+                                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Error in existing movement task for '{deviceName}': {ex.Message}");
+                            }
+                        }
+
+                        // Dispose of the old CancellationTokenSource and create a new one
+                        existingCts.Dispose();
+                        _deviceCancellationTokens[deviceName] = new CancellationTokenSource();
+                    }
+                    else
+                    {
+                        // No existing CancellationTokenSource, create a new one
+                        _deviceCancellationTokens[deviceName] = new CancellationTokenSource();
+                    }
+
+                    // Extract target position from command parameters
+                    float targetPosition = movementParameters.PositionerInfo[deviceName].TargetPosition;
+
+                    _deviceInfo[deviceName].MoveStatus = 1;
+                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] MoveAbsolute called on '{deviceName}' with TargetPosition={targetPosition}.");
+
+                    // Start the UpdateCommandMoveA task and track it
+                    var moveTask = UpdateCommandMoveA(deviceName, targetPosition, _deviceCancellationTokens[deviceName].Token);
+                    _runningMoveTasks[deviceName] = moveTask;
+                }
+                finally
+                {
+                    // Release the per-device lock
+                    deviceLock.Release();
+                }
+            }
+
+            // Prepare wait until stop conditions
             var waitUntilPositions = new Dictionary<char, float?>();
             var directions = new Dictionary<char, bool>();
+
             foreach (var (deviceName, movementInfo) in movementParameters.PositionerInfo)
             {
                 waitUntilPositions[deviceName] = movementInfo.WaitUntilPosition;
                 directions[deviceName] = movementInfo.Direction;
             }
 
-            _ = Task.WhenAll(tasks);
+            // Wait until all devices have stopped moving
             await WaitUntilStopAsync(waitUntilPositions, directions, semaphore);
 
-
+            _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] MoveAbsolute completed.");
         }
+
+        /// <summary>
+        /// Checks if a device is stationary.
+        /// </summary>
         protected override Task<bool> IsDeviceStationary(BasePositionerDevice device)
         {
-            var result = _deviceInfo[device.Name].MoveStatus == 0;
-            device.CurrentPosition = _deviceInfo[device.Name].CurrentPosition;
-            return Task.FromResult(result);
+            char deviceName = device.Name; // Assuming Name is a single char
+            bool isStationary = _deviceInfo[deviceName].MoveStatus == 0;
+            device.CurrentPosition = _deviceInfo[deviceName].CurrentPosition;
+            return Task.FromResult(isStationary);
         }
+
+        /// <summary>
+        /// Updates movement settings for devices based on the provided command.
+        /// </summary>
         protected override async Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore)
         {
-            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: updadte in XIMS-----------------------------------start");
+            _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] UpdateMoveSettings initiated.");
+
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
             var movementParams = command.Parameters as UpdateMovementSettingsParameters;
-
 
             for (int i = 0; i < devices.Length; i++)
             {
                 var device = devices[i];
-                float speedValue = movementParams.MovementSettingsInformation[device.Name].TargetSpeed;
-                float accelValue = movementParams.MovementSettingsInformation[device.Name].TargetAcceleration;
-                float decelValue = movementParams.MovementSettingsInformation[device.Name].TargetDeceleration;
-                
-                var task = UpdateMovementSettings(device.Name, speedValue, accelValue, decelValue);
-                await task;
+                char deviceName = device.Name; // Assuming Name is a single char
+                float speedValue = movementParams.MovementSettingsInformation[deviceName].TargetSpeed;
+                float accelValue = movementParams.MovementSettingsInformation[deviceName].TargetAcceleration;
+                float decelValue = movementParams.MovementSettingsInformation[deviceName].TargetDeceleration;
+
+                await UpdateMovementSettings(deviceName, speedValue, accelValue, decelValue);
+
+                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Updated movement settings for '{deviceName}': Speed={speedValue}, Acceleration={accelValue}, Deceleration={decelValue}.");
             }
+
+            _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] UpdateMoveSettings completed.");
         }
+
+        /// <summary>
+        /// Updates the internal state of devices asynchronously.
+        /// </summary>
         protected override async Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore)
         {
             foreach (var positioner in Devices)
             {
-                positioner.Value.CurrentPosition = _deviceInfo[positioner.Key].CurrentPosition;
-                positioner.Value.CurrentSpeed = _deviceInfo[positioner.Key].CurrentSpeed;
-                positioner.Value.Acceleration = _deviceInfo[positioner.Key].Acceleration;
-                positioner.Value.Deceleration = _deviceInfo[positioner.Key].Deceleration;
-                positioner.Value.Speed = _deviceInfo[positioner.Key].Speed;
+                char deviceName = positioner.Key; // Assuming key is a single char
+                var deviceInfo = _deviceInfo[deviceName];
 
-                _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
+                positioner.Value.CurrentPosition = deviceInfo.CurrentPosition;
+                positioner.Value.CurrentSpeed = deviceInfo.CurrentSpeed;
+                positioner.Value.Acceleration = deviceInfo.Acceleration;
+                positioner.Value.Deceleration = deviceInfo.Deceleration;
+                positioner.Value.Speed = deviceInfo.Speed;
+
+                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Updated state for device '{deviceName}': " +
+                            $"CurrentPos={positioner.Value.CurrentPosition}, " +
+                            $"CurrentSpeed={positioner.Value.CurrentSpeed}, " +
+                            $"Accel={positioner.Value.Acceleration}, " +
+                            $"Decel={positioner.Value.Deceleration}, " +
+                            $"Speed={positioner.Value.Speed}.");
             }
-            await Task.Delay(1);
-        }
-        protected override Task Stop(Command command, SemaphoreSlim semaphore)
-        {
-            _buffer.Clear();
 
-            foreach(var (deviceName, device) in Devices)
+            await Task.Delay(1); // Simulate asynchronous operation
+        }
+
+        /// <summary>
+        /// Stops all device movements based on the provided command.
+        /// </summary>
+        protected override async Task Stop(Command command, SemaphoreSlim semaphore)
+        {
+            _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Stop initiated.");
+
+            // Clear the buffer
+            _buffer = new ConcurrentDictionary<char, ConcurrentQueue<SyncInAction>>();
+
+            // Cancel all cancellation tokens
+            foreach (var cts in _deviceCancellationTokens.Values)
             {
-                if (deviceCancellationTokens.ContainsKey(deviceName))
+                cts.Cancel();
+            }
+
+            // Await all running movement tasks
+            foreach (var kvp in _runningMoveTasks)
+            {
+                try
                 {
-                    deviceCancellationTokens[deviceName].Cancel();
+                    await kvp.Value;
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected, do nothing
+                }
+                catch (Exception ex)
+                {
+                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Error in Stop for '{kvp.Key}': {ex.Message}");
                 }
             }
 
-            return Task.CompletedTask;
+            _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Stop completed.");
         }
+
+        /// <summary>
+        /// Connects a device to the controller, initializing its settings.
+        /// </summary>
         protected override void ConnectDevice_implementation(BaseDevice device)
         {
-            if (device is BasePositionerDevice positioningDevice && _deviceInfo.TryGetValue(positioningDevice.Name, out DeviceInformation deviceInfo))
+            if (device is BasePositionerDevice positioningDevice)
             {
-                deviceInfo.MaxSpeed = positioningDevice.MaxSpeed;
-                positioningDevice.Speed = positioningDevice.DefaultSpeed;
-                positioningDevice.Acceleration = positioningDevice.MaxAcceleration;
-                positioningDevice.Deceleration = positioningDevice.MaxDeceleration;
+                char deviceName = positioningDevice.Name; // Assuming Name is a single char
 
-                deviceInfo.Speed = Math.Min(positioningDevice.Speed, positioningDevice.MaxSpeed);
-                deviceInfo.Acceleration = Math.Min(positioningDevice.Acceleration, positioningDevice.MaxAcceleration);
-                deviceInfo.Deceleration = Math.Min(positioningDevice.Deceleration, positioningDevice.MaxDeceleration);
+                if (_deviceInfo.TryGetValue(deviceName, out DeviceInformation deviceInfo))
+                {
+                    deviceInfo.MaxSpeed = positioningDevice.MaxSpeed;
+                    positioningDevice.Speed = positioningDevice.DefaultSpeed;
+                    positioningDevice.Acceleration = positioningDevice.MaxAcceleration;
+                    positioningDevice.Deceleration = positioningDevice.MaxDeceleration;
+
+                    deviceInfo.Speed = Math.Min(positioningDevice.Speed, positioningDevice.MaxSpeed);
+                    deviceInfo.Acceleration = Math.Min(positioningDevice.Acceleration, positioningDevice.MaxAcceleration);
+                    deviceInfo.Deceleration = Math.Min(positioningDevice.Deceleration, positioningDevice.MaxDeceleration);
+
+                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Connected device '{deviceName}' with settings: " +
+                                $"Speed={deviceInfo.Speed}, " +
+                                $"Acceleration={deviceInfo.Acceleration}, " +
+                                $"Deceleration={deviceInfo.Deceleration}, " +
+                                $"MaxSpeed={deviceInfo.MaxSpeed}.");
+                }
+                else
+                {
+                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Attempted to connect device '{deviceName}', but it does not exist in _deviceInfo.");
+                }
             }
         }
 
+        /// <summary>
+        /// Retrieves the free space available in the buffer for new SyncInAction commands.
+        /// </summary>
         protected override Task<int> GetBufferFreeSpace(Command command, SemaphoreSlim semaphore)
         {
             return Task.Run(() =>
             {
-                var maxItemSize = 20;
-                var currentSize = _buffer.Count;
+                const int maxItemSize = 20; // Maximum buffer size per device
+                int freeSpace = 0;
 
-                return maxItemSize - currentSize;
+                foreach (var deviceName in command.TargetDevices)
+                {
+                    if (_buffer.TryGetValue(deviceName, out var queue))
+                    {
+                        freeSpace += maxItemSize - queue.Count;
+                    }
+                    else
+                    {
+                        freeSpace += maxItemSize;
+                    }
+                }
+
+                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Buffer free space: {freeSpace}.");
+                return freeSpace;
             });
         }
+
+        /// <summary>
+        /// Adds SyncInAction commands to the buffer based on the provided command.
+        /// </summary>
         protected override Task AddSyncInAction(Command command, SemaphoreSlim semaphore)
         {
             var deviceNames = command.TargetDevices;
             var parameters = command.Parameters as AddSyncInActionParameters;
+
             for (int i = 0; i < deviceNames.Length; i++)
             {
-                var deviceName = deviceNames[i];
-                var targetPosition = parameters.MovementInformation[deviceName].Position;
-                var allocatedTime = parameters.MovementInformation[deviceName].Time;
+                char deviceName = deviceNames[i];
+                float targetPosition = parameters.MovementInformation[deviceName].Position;
+                float allocatedTime = parameters.MovementInformation[deviceName].Time;
 
-                var syncInAction = new SyncInAction()
+                var syncInAction = new SyncInAction
                 {
                     TargetPosition = targetPosition,
                     AllocatedTime = allocatedTime
                 };
-                if (!_buffer.ContainsKey(deviceName))
+
+                var queue = _buffer.GetOrAdd(deviceName, _ => new ConcurrentQueue<SyncInAction>());
+                const int maxBufferSizePerDevice = 20;
+
+                if (queue.Count < maxBufferSizePerDevice)
                 {
-                    _buffer[deviceName] = new Queue<SyncInAction>();
+                    queue.Enqueue(syncInAction);
+                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Added SyncInAction for '{deviceName}': TargetPosition={targetPosition}, AllocatedTime={allocatedTime}.");
                 }
-                _buffer[deviceName].Enqueue(syncInAction);
+                else
+                {
+                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Buffer full for '{deviceName}'. SyncInAction discarded.");
+                }
             }
+
             return Task.CompletedTask;
         }
 
+        /// <summary>
+        /// Calculates the target speed based on total time, distance, acceleration, and deceleration.
+        /// </summary>
         private static double CalculateTargetSpeed(double totalTime, double totalDistance, double acceleration, double deceleration)
         {
-            // Quadratic coefficients
+            // Quadratic equation coefficients
             double A = 1;
             double B = -((acceleration + deceleration) * totalTime) / 2;
             double C = acceleration * deceleration * totalDistance;
@@ -285,218 +545,245 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             // Calculate discriminant
             double discriminant = B * B - 4 * A * C;
 
-            // Check for non-negative discriminant
             if (discriminant < 0)
             {
-                Console.WriteLine("No real solutions, check your input values.");
+                Console.WriteLine("No real solutions. Check your input values.");
                 return 0;
             }
 
-            // Calculate both possible speeds (only one will be physically meaningful)
+            // Calculate both possible speeds
             double v_target1 = (-B + Math.Sqrt(discriminant)) / (2 * A);
             double v_target2 = (-B - Math.Sqrt(discriminant)) / (2 * A);
 
             // Return the positive, realistic target speed
             return Math.Max(v_target1, v_target2);
         }
-        private Task UpdateMovementSettings(char name, float speedValue, float accelValue, float decelValue)
+
+        /// <summary>
+        /// Updates movement settings for a specific device.
+        /// </summary>
+        private Task UpdateMovementSettings(char deviceName, float speedValue, float accelValue, float decelValue)
         {
-            _deviceInfo[name].Speed = Math.Min(speedValue, Devices[name].MaxSpeed); ;
-            _deviceInfo[name].Acceleration = Math.Min(accelValue, Devices[name].MaxAcceleration);
-            _deviceInfo[name].Deceleration = Math.Min(decelValue, Devices[name].MaxDeceleration);
+            if (_deviceInfo.TryGetValue(deviceName, out var deviceInfo))
+            {
+                deviceInfo.Speed = Math.Min(speedValue, deviceInfo.MaxSpeed);
+                deviceInfo.Acceleration = Math.Min(accelValue, deviceInfo.Acceleration);
+                deviceInfo.Deceleration = Math.Min(decelValue, deviceInfo.Deceleration);
+
+                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Updated movement settings for '{deviceName}': Speed={speedValue}, Acceleration={accelValue}, Deceleration={decelValue}.");
+            }
+            else
+            {
+                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Attempted to update settings for unknown device '{deviceName}'.");
+            }
 
             return Task.CompletedTask;
         }
+
+        /// <summary>
+        /// Waits asynchronously until all specified devices have stopped moving.
+        /// </summary>
         private async Task WaitUntilStopAsync(Dictionary<char, float?> waitUntilPositions, Dictionary<char, bool> directions, SemaphoreSlim semaphore)
         {
-            //var devices = waitUntilPositions.Keys.Select(deviceName => Devices[deviceName]).ToArray();
-            var queuedItems = new List<Func<Task<bool>>>();
+            var waitTasks = new List<Task>();
 
-            foreach(var deviceName in waitUntilPositions.Keys)
+            foreach (var deviceName in waitUntilPositions.Keys)
             {
-                var device = Devices[deviceName];
-                if (waitUntilPositions[deviceName] == null)
+                waitTasks.Add(Task.Run(async () =>
                 {
-                    queuedItems.Add
-                        (
-                            async () =>
-                            {
-                                await Task.Delay(10);
-                                bool boolCheck = _deviceInfo[device.Name].MoveStatus != 0;
-                                var currentPosition = _deviceInfo[device.Name].CurrentPosition;
-                                device.CurrentPosition = currentPosition;
-                                device.CurrentSpeed = _deviceInfo[device.Name].CurrentSpeed;
-                                return boolCheck;
-                            }
-                        );
-                }
-                else
-                {
-                    float targetPosition = (float)(waitUntilPositions[deviceName]);
-                    bool direction = (bool)(directions[deviceName]);
-                    queuedItems.Add
-                        (
-                            async () =>
-                            {
-                                var moveStatus = _deviceInfo[device.Name].MoveStatus != 0;
-                                var currentPosition = _deviceInfo[device.Name].CurrentPosition;
-                                device.CurrentSpeed = _deviceInfo[device.Name].CurrentSpeed;
-                                device.CurrentPosition = currentPosition;
+                    while (true)
+                    {
+                        // Check if movement is still in progress
+                        bool isMoving = _deviceInfo[deviceName].MoveStatus != 0;
+                        float currentPosition = _deviceInfo[deviceName].CurrentPosition;
+                        float? targetWaitPosition = waitUntilPositions[deviceName];
+                        bool direction = directions[deviceName];
 
+                        bool conditionMet = targetWaitPosition == null
+                            ? !isMoving
+                            : (direction ? currentPosition >= targetWaitPosition.Value : currentPosition <= targetWaitPosition.Value);
 
-                                ////// Testing Remove afterwards
-                                //var currentPositionX = _deviceInfo['x'].CurrentPosition;
-                                //Devices['x'].CurrentPosition = currentPositionX;
-                                //var currentPositionY = _deviceInfo['y'].CurrentPosition;
-                                //Devices['y'].CurrentPosition = currentPositionY;
+                        if (conditionMet)
+                        {
+                            break;
+                        }
 
-                                var boolCheck = moveStatus && (direction ? currentPosition < targetPosition : currentPosition > targetPosition);
-                                await Task.Delay(10);
-
-                                return boolCheck;
-                            }
-                        );
-                }
+                        await Task.Delay(10);
+                    }
+                }));
             }
-
 
             try
             {
-                while (queuedItems.Count > 0)
-                {
-                    var itemsToRemove = new List<Func<Task<bool>>>();
-
-                    foreach (var queuedItem in queuedItems)
-                    {
-                        if (!(await queuedItem.Invoke()))
-                        {
-                            itemsToRemove.Add(queuedItem);
-                        }
-                    }
-
-                    foreach (var item in itemsToRemove)
-                    {
-                        queuedItems.Remove(item);
-                    }
-                }
+                await Task.WhenAll(waitTasks);
+                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] All devices have stopped moving as per WaitUntilStopAsync.");
             }
             catch (Exception ex)
             {
-                throw new Exception("Smth wrong with wait until in Virtual Positioner");
+                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Error in WaitUntilStopAsync: {ex.Message}");
+                throw new Exception("An error occurred while waiting for devices to stop moving.", ex);
+            }
+        }
+
+        /// <summary>
+        /// Handles the movement of a device towards a target position.
+        /// Ensures that only one instance runs per device and handles cancellation.
+        /// </summary>
+        private async Task UpdateCommandMoveA(char deviceName, float targetPosition, CancellationToken cancellationToken)
+        {
+            if (!_deviceInfo.TryGetValue(deviceName, out var device))
+            {
+                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] UpdateCommandMoveA called for unknown device '{deviceName}'.");
+                return;
             }
 
+            _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] UpdateCommandMoveA started for '{deviceName}' towards Position={targetPosition}.");
 
-        }
-        private async Task UpdateCommandMoveA(char name, float targetPosition, CancellationToken cancellationToken)
-        {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-            var targetSpeed = _deviceInfo[name].Speed;
-            var targetAccel = _deviceInfo[name].Acceleration;
-            var targetDecel = _deviceInfo[name].Deceleration;
-            
+            // Helper functions
+            float DistanceToStop() =>
+                0.5f * device.Deceleration * MathF.Pow(device.CurrentSpeed / device.Deceleration, 2);
 
-            _log?.Enqueue($"UpdateCommandMoveA called on {name}");
+            float DirectionToTarget() =>
+                MathF.Sign(targetPosition - device.CurrentPosition);
 
-            var stopwatch = new System.Diagnostics.Stopwatch();
-            stopwatch.Start();
+            float DistanceToTarget() =>
+                MathF.Abs(targetPosition - device.CurrentPosition);
 
-            var distanceToStop = () => 0.5f * targetDecel * Math.Pow((Math.Abs(_deviceInfo[name].CurrentSpeed) / targetDecel), 2);
-            var directionToTarget = () => Math.Sign(targetPosition - _deviceInfo[name].CurrentPosition);
-            var distanceToTarget = () => Math.Abs(targetPosition - _deviceInfo[name].CurrentPosition);
-            var pointDifference = () => targetPosition - _deviceInfo[name].CurrentPosition;
+            float PointDifference() =>
+                targetPosition - device.CurrentPosition;
 
             if (!float.IsFinite(targetPosition))
-                throw new Exception("Non finite target position value provided");
-
-
-
-            _deviceInfo[name].MoveStatus = 1;
-            float movementPerInterval = 0 * _deviceInfo[name].CurrentSpeed;
-            float accelerationPerInterval = 0 * targetAccel;
-            float decelerationPerInterval = 0 * targetDecel;
-            bool stopFlag = false;
-
-            while (Math.Abs(pointDifference()) > Math.Abs(movementPerInterval) || Math.Abs(_deviceInfo[name].CurrentSpeed) > decelerationPerInterval)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                // Calculate time elapsed since last update
-                float timeElapsed = (float)stopwatch.Elapsed.TotalSeconds;
-                stopwatch.Restart();
-
-                movementPerInterval = timeElapsed * _deviceInfo[name].CurrentSpeed;
-                accelerationPerInterval = timeElapsed * targetAccel;
-                decelerationPerInterval = timeElapsed * targetDecel;
-
-                float updatedSpeedValue;
-                // check if moving to the target direction || not moving
-                if (directionToTarget() == Math.Sign(_deviceInfo[name].CurrentSpeed) || _deviceInfo[name].CurrentSpeed == 0)
-                {
-                    var kakadistanceToStop = distanceToStop();
-                    var kakadist = Math.Abs(pointDifference());
-
-
-                    // check if we are in the range of stopping
-                    if (Math.Abs(pointDifference()) < distanceToStop() || stopFlag)
-                    {
-                        stopFlag = true;
-                        if (Math.Abs(_deviceInfo[name].CurrentSpeed) < decelerationPerInterval)
-                        {
-                            updatedSpeedValue = 0;
-                            break;
-                        }
-                        // slowing down and approaching the target point.
-                        else
-                            updatedSpeedValue = _deviceInfo[name].CurrentSpeed - decelerationPerInterval * Math.Sign(_deviceInfo[name].CurrentSpeed);
-                    }
-                    // we are good to go, no need to decelerate to a stop.
-                    // moving to the target direction.
-                    // we might still be going too fast though.
-                    else
-                    {
-                        // moving too fast than target speed. 
-                        if (Math.Abs(_deviceInfo[name].CurrentSpeed) > targetSpeed)
-                            updatedSpeedValue = Math.Abs(_deviceInfo[name].CurrentSpeed - decelerationPerInterval * Math.Sign(pointDifference())) < targetSpeed
-                                ? targetSpeed * Math.Sign(pointDifference())
-                                : _deviceInfo[name].CurrentSpeed - decelerationPerInterval * Math.Sign(pointDifference());
-
-                        // moving too slow than target speed.
-                        else
-                            updatedSpeedValue = Math.Abs(_deviceInfo[name].CurrentSpeed + accelerationPerInterval * Math.Sign(pointDifference())) > targetSpeed
-                                ? targetSpeed * Math.Sign(pointDifference())
-                                : _deviceInfo[name].CurrentSpeed + accelerationPerInterval * Math.Sign(pointDifference());
-
-
-
-                    }
-                }
-                else
-                {
-                    updatedSpeedValue = Math.Abs(_deviceInfo[name].CurrentSpeed) - decelerationPerInterval * Math.Sign(_deviceInfo[name].CurrentSpeed) > distanceToTarget()
-                        ? 0
-                        : _deviceInfo[name].CurrentSpeed - decelerationPerInterval * Math.Sign(_deviceInfo[name].CurrentSpeed);
-                }
-                cancellationToken.ThrowIfCancellationRequested();
-
-                _deviceInfo[name].CurrentSpeed = updatedSpeedValue;
-                float updatedPositionValue;
-                if (Math.Sign(pointDifference()) != Math.Sign(movementPerInterval))
-                    updatedPositionValue = _deviceInfo[name].CurrentPosition + movementPerInterval;
-                else if (distanceToTarget() < Math.Abs(movementPerInterval))
-                    updatedPositionValue = targetPosition;
-                else
-                    updatedPositionValue = _deviceInfo[name].CurrentPosition + movementPerInterval;
-
-                _deviceInfo[name].CurrentPosition = float.IsFinite(updatedPositionValue) ? updatedPositionValue : 0;
-
-                await Task.Yield();
+                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Invalid target position for '{deviceName}': {targetPosition}.");
+                throw new ArgumentException("Non-finite target position value provided.", nameof(targetPosition));
             }
 
-            _deviceInfo[name].CurrentPosition = targetPosition;
-            _deviceInfo[name].CurrentSpeed = 0;
-            _deviceInfo[name].MoveStatus = 0;
+            device.MoveStatus = 1; // Indicate movement is in progress
+            bool stopFlag = false;
 
-            OnSyncOut?.Invoke(name);
+            try
+            {
+                while (MathF.Abs(PointDifference()) > 0.01f || MathF.Abs(device.CurrentSpeed) > 0.01f) // Thresholds to prevent infinite loop
+                {
+                    // Frequent cancellation checks
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] UpdateCommandMoveA canceled for '{deviceName}'.");
+                        return; // Exit early without final state updates
+                    }
+
+                    // Calculate time elapsed since last update
+                    float timeElapsed = (float)stopwatch.Elapsed.TotalSeconds;
+                    stopwatch.Restart();
+
+                    // Calculate movement and acceleration/deceleration per interval
+                    float movementPerInterval = timeElapsed * device.CurrentSpeed;
+                    float accelerationPerInterval = timeElapsed * device.Acceleration;
+                    float decelerationPerInterval = timeElapsed * device.Deceleration;
+
+                    float updatedSpeedValue;
+
+                    // Determine direction and speed adjustments
+                    if (DirectionToTarget() == MathF.Sign(device.CurrentSpeed) || device.CurrentSpeed == 0f)
+                    {
+                        float distToStop = DistanceToStop();
+                        float distToTarget = DistanceToTarget();
+
+                        if (distToTarget < distToStop || stopFlag)
+                        {
+                            stopFlag = true;
+                            if (MathF.Abs(device.CurrentSpeed) < decelerationPerInterval)
+                            {
+                                updatedSpeedValue = 0f;
+                                break; // Exit the loop to finalize
+                            }
+                            else
+                            {
+                                // Decelerate
+                                updatedSpeedValue = device.CurrentSpeed - decelerationPerInterval * MathF.Sign(device.CurrentSpeed);
+                            }
+                        }
+                        else
+                        {
+                            if (MathF.Abs(device.CurrentSpeed) > device.Speed)
+                            {
+                                // Decelerate to target speed
+                                float potentialSpeed = device.CurrentSpeed - decelerationPerInterval * MathF.Sign(PointDifference());
+                                updatedSpeedValue = MathF.Abs(potentialSpeed) < device.Speed
+                                    ? device.Speed * MathF.Sign(PointDifference())
+                                    : potentialSpeed;
+                            }
+                            else
+                            {
+                                // Accelerate to target speed
+                                float potentialSpeed = device.CurrentSpeed + accelerationPerInterval * MathF.Sign(PointDifference());
+                                updatedSpeedValue = MathF.Abs(potentialSpeed) > device.Speed
+                                    ? device.Speed * MathF.Sign(PointDifference())
+                                    : potentialSpeed;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Reverse direction
+                        float potentialSpeed = device.CurrentSpeed - decelerationPerInterval * MathF.Sign(device.CurrentSpeed);
+                        updatedSpeedValue = MathF.Abs(potentialSpeed) > DistanceToTarget()
+                            ? 0f
+                            : potentialSpeed;
+                    }
+
+                    // Update speed
+                    device.CurrentSpeed = updatedSpeedValue;
+
+                    // Update position
+                    float updatedPositionValue;
+                    if (MathF.Sign(PointDifference()) != MathF.Sign(movementPerInterval))
+                    {
+                        updatedPositionValue = device.CurrentPosition + movementPerInterval;
+                    }
+                    else if (DistanceToTarget() < MathF.Abs(movementPerInterval))
+                    {
+                        updatedPositionValue = targetPosition;
+                    }
+                    else
+                    {
+                        updatedPositionValue = device.CurrentPosition + movementPerInterval;
+                    }
+
+                    device.CurrentPosition = float.IsFinite(updatedPositionValue) ? updatedPositionValue : 0f;
+
+                    // Update the device's current position
+                    Devices[deviceName].CurrentPosition = device.CurrentPosition;
+
+                    // Optional: Update device speed if needed
+                    Devices[deviceName].CurrentSpeed = device.CurrentSpeed;
+
+                    // Small delay to prevent tight loop; adjust as needed for responsiveness
+                    await Task.Delay(10, cancellationToken).ConfigureAwait(false);
+                }
+
+                // Final state updates only if not canceled
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    device.CurrentPosition = targetPosition;
+                    device.CurrentSpeed = 0f;
+                    device.MoveStatus = 0;
+
+                    OnSyncOut?.Invoke(deviceName);
+                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] UpdateCommandMoveA completed successfully for '{deviceName}'.");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] UpdateCommandMoveA operation canceled for '{deviceName}'.");
+            }
+            catch (Exception ex)
+            {
+                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] UpdateCommandMoveA encountered an error for '{deviceName}': {ex.Message}");
+                throw;
+            }
         }
     }
 }

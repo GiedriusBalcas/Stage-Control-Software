@@ -38,7 +38,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
                 });
             }
         }
-        
+        public override Task ForceStop()
+        {
+            return Task.CompletedTask;
+
+        }
         protected override Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore)
         {
             foreach(var (deviceName, device) in Devices)

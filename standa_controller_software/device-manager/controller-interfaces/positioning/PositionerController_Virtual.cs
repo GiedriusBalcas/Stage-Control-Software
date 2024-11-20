@@ -59,7 +59,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 _deviceInfo.TryAdd(positioningDevice.Name, new DeviceInformation());
             }
         }
-       
+        public override Task ForceStop()
+        {
+            return Task.CompletedTask;
+
+        }
         protected override Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore)
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();

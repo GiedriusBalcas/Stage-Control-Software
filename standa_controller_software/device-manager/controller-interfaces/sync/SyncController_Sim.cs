@@ -45,7 +45,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
             _gotSyncOutFrom.Add(deviceName);
         }
-        
+        public override Task ForceStop()
+        {
+            _buffer.Clear();
+            _allowedToRun = false;
+            _queueState = QueueState.Waiting;
+            return Task.CompletedTask;
+        }
+
         protected override Task Stop(Command command, SemaphoreSlim semaphore)
         {
             _buffer.Clear();
@@ -76,9 +83,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         {
             return Task.CompletedTask;
         }
-        protected override async Task StartQueueExecution(Command command, SemaphoreSlim semaphore)
+        protected override Task StartQueueExecution(Command command, SemaphoreSlim semaphore)
         {
-            _ = ExecuteQueue(semaphore);
+            // Detach ExecuteQueue to run on a separate thread
+            Task.Run(() => ExecuteQueue());
+
+            return Task.CompletedTask;
         }
         protected override async Task<int> GetBufferCount(Command command, SemaphoreSlim semaphore)
         {
@@ -90,107 +100,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             return Task.CompletedTask;
         }
 
-        //private async Task ExecuteQueue(SemaphoreSlim semaphore)
-        //{
-        //    _allowedToRun = true;
-        //    _log.Enqueue("Starting executing on sync executer controller");
-        //    if (_queueState == QueueState.Running)
-        //        return;
 
-        //    _queueState = QueueState.Running;
-
-        //    millis.Restart();
-        //    _log.Enqueue($"execution running with buffer element count: {_buffer.Count}");
-
-        //    while (_buffer.Count > 0)
-        //    {
-        //        var executionInformation = _buffer.Dequeue();
-        //        if (_buffer.Count == 0)
-        //            SendMessage.Invoke("0x03");
-
-        //        // which devices sync out will we be awaiting here?
-
-        //        var waitingForSyncOutsFrom = new List<char>();
-        //        foreach (var device in executionInformation.Devices)
-        //        {
-        //            waitingForSyncOutsFrom.Add(device);
-        //        }
-
-        //        // where to send the sync ins for next command?
-        //        _sendSyncInTo.Clear();
-        //        var shutterDelayOn = 0f;
-        //        var shutterDelayOff = 0f;
-        //        var nextCommandUsesShutter = false;
-        //        if (_buffer.Count > 0)
-        //        {
-        //            var nextBufferItem = _buffer.Peek();
-        //            foreach (var device in nextBufferItem.Devices)
-        //            {
-        //                _sendSyncInTo.Add(device);
-        //            }
-        //            if (nextBufferItem.Shutter)
-        //            {
-        //                nextCommandUsesShutter = true;
-        //                shutterDelayOff = nextBufferItem.Shutter_delay_off;
-        //                shutterDelayOn = nextBufferItem.Shutter_delay_on;
-        //            }
-        //        }
-
-
-        //        _log.Enqueue($"dequed from buffer. On execition sendSyncInTo: {string.Join(' ', _sendSyncInTo.ToArray())}");
-
-        //        // send sync_in to all targetted devices if launch is pending.
-        //        if (executionInformation.Launch)
-        //        {
-        //            _log.Enqueue($"launching: {string.Join(' ', executionInformation.Devices)}");
-        //            SendSyncIn(executionInformation.Devices);
-        //        }
-
-        //        var rethrowPending = true;
-        //        //var shutterOnPending = executionInformation.Shutter;
-        //        //var shutterOffPending = executionInformation.Shutter;
-
-        //        while (_allowedToRun)
-        //        {
-        //            var time = millis.ElapsedMilliseconds;
-        //            // check if we sync outs from devices of curent movement.
-        //            if (waitingForSyncOutsFrom.All(syncOut => _gotSyncOutFrom.Contains(syncOut)))
-        //            {
-        //                _gotSyncOutFrom.Clear();
-        //                if (nextCommandUsesShutter)
-        //                    await SendSyncIn(_sendSyncInTo.ToArray(), shutterDelayOn, shutterDelayOff);
-        //                else
-        //                    SendSyncIn(_sendSyncInTo.ToArray());
-        //                millis.Restart();
-        //                break;
-        //            }
-        //            if(executionInformation.Rethrow != 0 && executionInformation.Rethrow <= time)
-        //            {
-
-        //                _gotSyncOutFrom.Clear();
-        //                if (nextCommandUsesShutter)
-        //                    await SendSyncIn(_sendSyncInTo.ToArray(), shutterDelayOn, shutterDelayOff);
-        //                else
-        //                    SendSyncIn(_sendSyncInTo.ToArray());
-        //                break;
-        //            }
-
-
-        //            await Task.Delay(100);
-        //        }
-
-
-        //        SendMessage.Invoke("0x01");
-
-        //        _log.Enqueue($" finish.");
-        //    }
-        //    _queueState = QueueState.Waiting;
-        //    _log.Enqueue($" Queue is finished.");
-        //    SendMessage.Invoke("0x02");
-
-        //}
-
-        private async Task ExecuteQueue(SemaphoreSlim semaphore)
+        private async Task ExecuteQueue()
         {
             _allowedToRun = true;
             var timer = new Stopwatch();
@@ -216,12 +127,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
                     if (has_next_item)
                     {
-                        SendMessage.Invoke("0x01");
+                        _ = Task.Run(() => SendMessage?.Invoke("0x01"));
                     }
                     else
                     {
                         lastItemTaken = true;
-                        SendMessage.Invoke("0x03");
+                        _ = Task.Run(() => SendMessage?.Invoke("0x03"));
                     }
                     var rethrow_ms = exec_info.Rethrow;
                     var shutter_on = exec_info.Shutter_delay_on;
@@ -281,72 +192,18 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                     lastItemTaken = true;
                 }
             }
-            SendMessage.Invoke("0x02");
+            _ = Task.Run(() => SendMessage?.Invoke("0x02"));
         }
 
         private Task SendPulse(char[] devices)
         {
             foreach (var device in devices)
             {
-                _positionerSyncInMap[device].Invoke();       
+                Task.Run(() => _positionerSyncInMap[device].Invoke());       
             }
             return Task.CompletedTask;
         }
 
-        private async Task SendSyncIn(char[] devices, float delayOn, float delayOff)
-        {
-            var tasks = new List<Task>();
-
-            // Log the SyncIn call
-            _log?.Enqueue($"{DateTime.Now:HH:mm:ss.fff} Sending SyncIns to: {string.Join(' ', devices)}");
-
-            // Create and store tasks for all device calls
-            foreach (var device in devices)
-            {
-                var call = _positionerSyncInMap[device];
-                tasks.Add(Task.Run(() => call.Invoke()));
-            }
-
-            // Add tasks for the shutter state changes
-            tasks.Add(Task.Run(async () =>
-            {
-                if (!float.IsNaN(delayOn))
-                {
-                    await Task.Delay((int)(delayOn * 1000)); // Convert delayOn to milliseconds
-                    _shutterChangeState?.Invoke(true);
-                }
-            }));
-
-            tasks.Add(Task.Run(async () =>
-            {
-                if (!float.IsNaN(delayOff))
-                {
-                    await Task.Delay((int)(delayOff * 1000)); // Convert delayOff to milliseconds
-                    _shutterChangeState?.Invoke(false);
-                }
-            }));
-
-            // Await all tasks to complete
-            await Task.WhenAll(tasks);
-        }
-        private void SendSyncIn(char[] devices)
-        {
-            Action[] calls = new Action[devices.Length];
-            int indexer = 0;
-
-            foreach (var device in devices)
-            {
-                calls[indexer] = _positionerSyncInMap[device];
-                indexer++;
-            }
-            _log?.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")} Sending SyncIns to: {string.Join(' ', devices)}");
-
-
-            foreach (var call in calls)
-            {
-                call.Invoke();
-            }
-        }
 
     }
 }

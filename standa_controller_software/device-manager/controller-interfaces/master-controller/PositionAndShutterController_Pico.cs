@@ -43,7 +43,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
             }
         }
-        
+        public override Task ForceStop()
+        {
+            _processingCompletionSource.TrySetResult(true);
+            _processingLastItemTakenSource.TrySetResult(true);
+            return Task.CompletedTask;
+
+        }
         private void OnSyncControllerExecutionEnd()
         {
             if(_processingCompletionSource is not null)

@@ -33,7 +33,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         {
         }
 
+        public override Task ForceStop()
+        {
+            return Task.CompletedTask;
 
+        }
         protected override async Task InitializeController(Command command, SemaphoreSlim semaphore)
         {
             await base.InitializeController(command, semaphore);

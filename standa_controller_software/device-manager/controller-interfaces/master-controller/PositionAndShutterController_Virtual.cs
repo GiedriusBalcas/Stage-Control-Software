@@ -24,7 +24,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         {
             return Task.CompletedTask;
         }
+        public override Task ForceStop()
+        {
+            return Task.CompletedTask;
 
+        }
         protected override async Task ChangeState(Command[] commands, SemaphoreSlim semaphore)
         {
             foreach (Command command in commands)

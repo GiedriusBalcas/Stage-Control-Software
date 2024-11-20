@@ -105,7 +105,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 var controllerLock = await GatherSemaphoresForController([controllerName]);
                 try
                 {
-                    await controller.ExecuteCommandAsync(command, controllerLock[controllerName]);
+                    if(command.Await)
+                        await controller.ExecuteCommandAsync(command, controllerLock[controllerName]);
+                    else
+                        _ = controller.ExecuteCommandAsync(command, controllerLock[controllerName]);
                 }
                 finally
                 {
