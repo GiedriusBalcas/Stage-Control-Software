@@ -219,12 +219,12 @@ namespace standa_controller_software.custom_functions.definitions
 
 
             float accelerationForArc = trajectorySpeed * trajectorySpeed / radius * 1.1f;
-
+            //accelerationForArc = xDevice.MaxAcceleration;
             if (accelerationForArc > xDevice.MaxAcceleration || accelerationForArc > yDevice.MaxAcceleration)
                 throw new Exception("Max Acceleration value of the device is issuficient for the arc movement.");
 
 
-            float additionalDistanceToStop = accuracy_time * trajectorySpeed + 1 * trajectorySpeed * trajectorySpeed / (2 * accelerationForArc); // [um
+            float additionalDistanceToStop = accuracy_time * trajectorySpeed + 2 * trajectorySpeed * trajectorySpeed / (2 * accelerationForArc); // [um
 
 
             var arcLength = dtheta * radius;
@@ -236,7 +236,7 @@ namespace standa_controller_software.custom_functions.definitions
             var startPosX = (float)(Math.Cos(startAngle) * radius) + centerX;
             var startPosY = (float)(Math.Sin(startAngle) * radius) + centerY;
 
-            double startVelX = isCCW? Math.Abs(-trajectorySpeed * Math.Sin(startAngle)) : Math.Abs(trajectorySpeed * Math.Sin(startAngle));
+            double startVelX = isCCW ? Math.Abs(-trajectorySpeed * Math.Sin(startAngle)) : Math.Abs(trajectorySpeed * Math.Sin(startAngle));
             double startVelY = isCCW ? Math.Abs(trajectorySpeed * Math.Cos(startAngle)) : Math.Abs(-trajectorySpeed * Math.Cos(startAngle));
 
             bool needStartMovement = false;
@@ -249,10 +249,28 @@ namespace standa_controller_software.custom_functions.definitions
             if (needPositionChange | needSpeedChange)
                 needStartMovement = true;
 
+
+            var shutterDevice = _controllerManager.GetDevices<ShutterDevice>().First();
+            // start parameters
+            float distanceToAccelerate = trajectorySpeed * trajectorySpeed / (2 * accelerationForArc); // [um
+            float timeToAccelerate = trajectorySpeed / accelerationForArc;
+
+            // end parameters
+            float additionalDistanceToStop_end = trajectorySpeed * trajectorySpeed / (2 * accelerationForArc); // [um
+            float allocatedTime_guess_end = (arcLength + additionalDistanceToStop_end) / trajectorySpeed;
+            float timeToDecelerate = allocatedTime_guess_end - rethrow;
+            var shutter_off_delay_ms = timeToDecelerate * 1000f + shutterDevice.DelayOff;
+            var elapsed_time_shutter_turn_off_ms = float.NaN;
+            if (shutter_off_delay_ms > allocatedTime_guess_end * 1000)
+            {
+                elapsed_time_shutter_turn_off_ms = (timeToAccelerate + numberOfSegments * rethrow)* 1000 - shutterDevice.DelayOff;
+            }
+            bool wasShutterOffTriggered = false;
+            bool wasShutterOnTriggered = false;
+
             if (true)
             {
-                float distanceToAccelerate = trajectorySpeed * trajectorySpeed / (2 * accelerationForArc); // [um
-                float timeToAccelerate = trajectorySpeed / accelerationForArc;
+                
 
                 CalculateTangentEndpoint(
                     centerX, centerY,
@@ -261,7 +279,7 @@ namespace standa_controller_software.custom_functions.definitions
                     !isCCW,
                     out double x_tang_start, out double y_tang_start);
 
-                _jumpFunction.ExecutionCore([xDevice.Name, yDevice.Name], [(float)x_tang_start, (float)y_tang_start], false, accuracy, null, null, false);
+                _jumpFunction.ExecutionCore([xDevice.Name, yDevice.Name], [(float)x_tang_start, (float)y_tang_start], false, accuracy, null, null, true);
 
 
                 // now go to the start pos + additional distance
@@ -311,10 +329,12 @@ namespace standa_controller_software.custom_functions.definitions
                 waitUntilPos_start[yDevice.Name] = startPosY;
 
                 ShutterInfo shutterInfo = new ShutterInfo();
-                var shutterDevice = _controllerManager.GetDevices<ShutterDevice>().First();
 
-                shutterInfo.DelayOn = Math.Max( timeToAccelerate*1000f - shutterDevice.DelayOn, 0 );
+                shutterInfo.DelayOn = Math.Max(timeToAccelerate * 1000f - shutterDevice.DelayOn, 0);
                 shutterInfo.DelayOff = float.NaN;
+
+                if (timeToAccelerate * 1000 > shutterInfo.DelayOn)
+                    wasShutterOnTriggered = true;
 
                 // Create the movement commands.
                 List<Command> commandsMovement_start = CreateMovementCommands(shutter, groupedDevicesByController, positionerMovementInformation_start, allocatedTime_guess_start, timeToAccelerate, waitUntilPos_start, shutterInfo); //rethrow_guess* multiplier     allocatedTime_guess * multiplier
@@ -323,18 +343,16 @@ namespace standa_controller_software.custom_functions.definitions
                 _commandManager.TryExecuteCommandLine(commandsMovement_start.ToArray()).GetAwaiter().GetResult();
             }
 
-            
-            float Bx, By;
 
-            // loop through the segments until last one.
+            float Bx, By;
 
 
             double prevVelX = isCCW ? Math.Abs(-trajectorySpeed * Math.Sin(startAngle)) : Math.Abs(trajectorySpeed * Math.Sin(startAngle));
             double prevVelY = isCCW ? Math.Abs(trajectorySpeed * Math.Cos(startAngle)) : Math.Abs(-trajectorySpeed * Math.Cos(startAngle));
 
             float allocatedTime_guess = (arcLength + additionalDistanceToStop) / trajectorySpeed;
-
-            for (float theta = startAngle + (isCCW? dtheta: -dtheta); isCCW? theta < endAngle : theta > endAngle; theta += (isCCW ? dtheta : - dtheta))
+            float elapsedTime = trajectorySpeed / accelerationForArc;
+            for (float theta = startAngle + (isCCW ? dtheta : -dtheta); isCCW ? theta < endAngle : theta > endAngle; theta += (isCCW ? dtheta : -dtheta))
             {
                 Bx = (float)(Math.Cos(theta) * radius) + centerX;
                 By = (float)(Math.Sin(theta) * radius) + centerY;
@@ -362,10 +380,19 @@ namespace standa_controller_software.custom_functions.definitions
                 waitUntilPos[xDevice.Name] = Bx;
                 waitUntilPos[yDevice.Name] = By;
 
+                var shutter_delay_on_ms = Math.Max(timeToAccelerate * 1000f - shutterDevice.DelayOn, 0) <= elapsedTime * 1000f && wasShutterOffTriggered == false ? 0f : float.NaN;
+                var shutter_delay_off_ms = float.NaN; 
+                    
+                if(elapsed_time_shutter_turn_off_ms < (elapsedTime + rethrow) * 1000 && wasShutterOffTriggered == false)
+                {
+                    wasShutterOffTriggered = true;
+                    shutter_delay_off_ms = Math.Abs(Math.Abs(rethrow * 1000 + elapsedTime * 1000 - elapsed_time_shutter_turn_off_ms));
+                }
                 var shutterInfo_segments = new ShutterInfo()
                 {
-                    DelayOn = float.NaN,
-                    DelayOff = float.NaN
+                    DelayOn = shutter_delay_on_ms,
+                    DelayOff = float.IsNaN(elapsed_time_shutter_turn_off_ms) ? float.NaN : shutter_delay_off_ms
+
                 };
 
                 // Create the movement commands.
@@ -377,6 +404,7 @@ namespace standa_controller_software.custom_functions.definitions
 
                 prevVelX = velX_avg;
                 prevVelY = velY_avg;
+                elapsedTime += rethrow;
             }
 
 
@@ -388,11 +416,10 @@ namespace standa_controller_software.custom_functions.definitions
             {
                 Bx = (float)(Math.Cos(endAngle) * radius) + centerX;
                 By = (float)(Math.Sin(endAngle) * radius) + centerY;
-                
+
                 float velX_avg_end = (Bx - xDevice.CurrentPosition) / rethrow;
                 float velY_avg_end = (By - yDevice.CurrentPosition) / rethrow;
 
-                float additionalDistanceToStop_end = trajectorySpeed * trajectorySpeed / (2 * accelerationForArc); // [um
 
 
                 // CALCULATE THE TANGENT ENDPOINT
@@ -402,7 +429,7 @@ namespace standa_controller_software.custom_functions.definitions
                     additionalDistanceToStop_end,
                     isCCW,
                     out double x_tang_end, out double y_tang_end);
-                
+
                 // CREATE UPDATE MOVEMENT SETTINGS COMMANDS
                 var positionerMovementInformation_end = GetMovementInformation(xDevice, yDevice, (float)x_tang_end, (float)y_tang_end, trajectorySpeed, (float)velX_avg_end, (float)velY_avg_end, (float)prevVelX, (float)prevVelY, accelerationForArc, out float allocatedTime);
 
@@ -410,15 +437,11 @@ namespace standa_controller_software.custom_functions.definitions
                 waitUntilPos_end[xDevice.Name] = Bx;
                 waitUntilPos_end[yDevice.Name] = By;
 
-                float allocatedTime_guess_end = (arcLength + additionalDistanceToStop_end) / trajectorySpeed;
-
-                float timeToDecelerate = allocatedTime_guess_end - rethrow;
 
                 ShutterInfo shutterInfo = new ShutterInfo();
-                var shutterDevice = _controllerManager.GetDevices<ShutterDevice>().First();
 
                 shutterInfo.DelayOn = float.NaN;
-                shutterInfo.DelayOff = Math.Max(timeToDecelerate*1000f + shutterDevice.DelayOff, 0);
+                shutterInfo.DelayOff = Math.Max(shutter_off_delay_ms, 0);
 
                 // Create the movement commands.
                 List<Command> commandsMovement_end = CreateMovementCommands(shutter, groupedDevicesByController, positionerMovementInformation_end, allocatedTime_guess, rethrow, waitUntilPos_end, shutterInfo); //
@@ -466,7 +489,7 @@ namespace standa_controller_software.custom_functions.definitions
                     Parameters = moveAParameters,
                     TargetController = controllerName,
                     TargetDevices = groupedDeviceNames,
-                    EstimatedTime = waitUntilTime?? positionerMovementInfos.Values.Select(info => info.KinematicParameters.TotalTime).Max()
+                    EstimatedTime = waitUntilTime ?? positionerMovementInfos.Values.Select(info => info.KinematicParameters.TotalTime).Max()
                 });
             }
 
@@ -509,7 +532,7 @@ namespace standa_controller_software.custom_functions.definitions
             CustomFunctionHelper.CalculateKinParametersForMovementInfo(ref movementInfo_x);
             var calculatedTime_x = movementInfo_x.KinematicParameters.TotalTime;
 
-            if (movementInfo_x.TargetMovementParameters.Distance > 0.01 && Math.Abs(movementInfo_x.TargetMovementParameters.TargetSpeed) > 0)
+            if (movementInfo_x.TargetMovementParameters.Distance > 0 && Math.Abs(movementInfo_x.TargetMovementParameters.TargetSpeed) > 0)
                 positionerMovementInfos_jump[deviceX.Name] = movementInfo_x;
 
 
@@ -548,7 +571,7 @@ namespace standa_controller_software.custom_functions.definitions
             CustomFunctionHelper.CalculateKinParametersForMovementInfo(ref movementInfo_y);
             var calculatedTime_y = movementInfo_y.KinematicParameters.TotalTime;
 
-            if (movementInfo_y.TargetMovementParameters.Distance > 0.01 && Math.Abs(movementInfo_y.TargetMovementParameters.TargetSpeed) > 0)
+            if (movementInfo_y.TargetMovementParameters.Distance > 0 && Math.Abs(movementInfo_y.TargetMovementParameters.TargetSpeed) > 0)
                 positionerMovementInfos_jump[deviceY.Name] = movementInfo_y;
 
 
@@ -557,204 +580,6 @@ namespace standa_controller_software.custom_functions.definitions
 
             return positionerMovementInfos_jump;
         }
-
-        //private float CalculateTotalTimeForMovementInfo(PositionerMovementInformation info, out float timeToAccel, out float timeToDecel, out float totalTime)
-        //{
-        //    timeToAccel = 0f;
-        //    timeToDecel = 0f;
-        //    totalTime = 0f;
-
-        //    float x0 = info.StartingPosition;
-        //    float v0 = info.StartingSpeed;
-        //    float vt = info.TargetSpeed;
-        //    float a = info.TargetAcceleration;
-        //    float d = info.TargetDeceleration;
-        //    float x_target = info.TargetPosition;
-
-        //    // Calculate total movement direction
-        //    float deltaX_total = x_target - x0;
-        //    int direction = Math.Sign(deltaX_total); // +1 for positive, -1 for negative
-
-        //    // Adjust initial speed to movement direction
-        //    float v0_dir = v0 * direction;
-
-        //    // Keep accelerations and speeds positive
-        //    a = Math.Abs(a);
-        //    d = Math.Abs(d);
-        //    vt = Math.Abs(vt);
-
-        //    // If initial speed is in the opposite direction, decelerate to zero first
-        //    if (v0_dir < 0)
-        //    {
-        //        // Time to decelerate to zero speed
-        //        float t_stop = Math.Abs(v0_dir) / d;
-        //        // Distance covered during deceleration
-        //        float s_stop = (v0_dir * v0_dir) / (2 * d);
-
-        //        totalTime += t_stop;
-        //        deltaX_total -= s_stop * direction; // Remaining distance after stopping
-
-        //        v0_dir = 0f; // Reset initial speed after stopping
-        //    }
-
-        //    float deltaX_remaining = deltaX_total * direction; // Ensure positive
-
-        //    // Determine whether we need to accelerate or decelerate to reach vt
-        //    bool needsAcceleration = v0_dir < vt;
-
-        //    // Calculate acceleration or deceleration distance and time to reach vt
-        //    float s1 = 0f;
-        //    float t1 = 0f;
-
-        //    if (needsAcceleration)
-        //    {
-        //        // Acceleration phase
-        //        s1 = (vt * vt - v0_dir * v0_dir) / (2 * a);
-        //        t1 = (vt - v0_dir) / a;
-        //    }
-        //    else
-        //    {
-        //        // Deceleration phase
-        //        s1 = (v0_dir * v0_dir - vt * vt) / (2 * d);
-        //        t1 = (v0_dir - vt) / d;
-        //    }
-
-        //    // Deceleration to stop
-        //    float s3 = (vt * vt) / (2 * d);
-        //    float t3 = vt / d;
-
-        //    // Total required distance
-        //    float s_total_required = s1 + s3;
-
-        //    if (s_total_required > deltaX_remaining)
-        //    {
-        //        // Need to adjust vt for triangular profile
-        //        float numerator = 2 * a * d * deltaX_remaining + (needsAcceleration ? d : a) * v0_dir * v0_dir;
-        //        float denominator = a + d;
-
-        //        if (denominator == 0)
-        //        {
-        //            throw new Exception("Denominator in speed calculation is zero.");
-        //        }
-
-        //        float vMaxSquaredCandidate = numerator / denominator;
-        //        vMaxSquaredCandidate = Math.Max(0, vMaxSquaredCandidate);
-        //        float vMax = (float)Math.Sqrt(vMaxSquaredCandidate);
-
-        //        if (needsAcceleration)
-        //        {
-        //            s1 = (vMax * vMax - v0_dir * v0_dir) / (2 * a);
-        //            t1 = (vMax - v0_dir) / a;
-        //        }
-        //        else
-        //        {
-        //            s1 = (v0_dir * v0_dir - vMax * vMax) / (2 * d);
-        //            t1 = (v0_dir - vMax) / d;
-        //        }
-
-        //        s3 = (vMax * vMax) / (2 * d);
-        //        t3 = vMax / d;
-
-        //        totalTime += t1 + t3;
-
-        //        timeToAccel = t1;
-        //        timeToDecel = t3;
-        //    }
-        //    else
-        //    {
-        //        // Trapezoidal profile
-        //        float s2 = deltaX_remaining - s_total_required;
-        //        float t2 = s2 / vt;
-
-        //        totalTime += t1 + t2 + t3;
-
-        //        timeToAccel = t1;
-        //        timeToDecel = t3;
-        //    }
-
-        //    return totalTime;
-        //}
-        //private float CalculateTotalTimeForMovementInfo(PositionerMovementInformation info, out float timeToAccel, out float kaka, out float totalTime)
-        //{
-        //    kaka = 0f;
-        //    timeToAccel = 0f;
-        //    totalTime = 0f;
-
-        //    float x0 = info.StartingPosition;
-        //    float v0 = info.StartingSpeed;
-        //    float vt = info.TargetSpeed;
-        //    float a = info.TargetAcceleration;
-        //    float x_target = info.TargetPosition;
-
-        //    // Calculate total movement direction
-        //    float deltaX_total = x_target - x0;
-        //    int direction = Math.Sign(deltaX_total); // +1 for positive, -1 for negative
-
-        //    // Adjust initial speed to movement direction
-        //    float v0_dir = v0 * direction;
-
-        //    // Keep acceleration and speeds positive
-        //    a = Math.Abs(a);
-        //    vt = Math.Abs(vt);
-
-        //    // If initial speed is in the opposite direction, decelerate to zero first
-        //    if (v0_dir < 0)
-        //    {
-        //        // Time to decelerate to zero speed
-        //        float t_stop = Math.Abs(v0_dir) / a;
-        //        // Distance covered during deceleration
-        //        float s_stop = (v0_dir * v0_dir) / (2 * a);
-
-        //        totalTime += t_stop;
-        //        deltaX_total -= s_stop * direction; // Remaining distance after stopping
-
-        //        v0_dir = 0f; // Reset initial speed after stopping
-        //    }
-
-        //    float deltaX_remaining = deltaX_total * direction; // Ensure positive
-
-        //    // Determine whether we need to accelerate to reach vt
-        //    bool needsAcceleration = v0_dir < vt;
-
-        //    // Calculate acceleration distance and time to reach vt
-        //    float s1 = 0f;
-        //    float t1 = 0f;
-
-        //    if (needsAcceleration)
-        //    {
-        //        // Acceleration phase
-        //        s1 = (vt * vt - v0_dir * v0_dir) / (2 * a);
-        //        t1 = (vt - v0_dir) / a;
-        //    }
-        //    else
-        //    {
-        //        // Deceleration phase (not applicable without deceleration at the end)
-        //        s1 = 0f;
-        //        t1 = 0f;
-        //        vt = v0_dir; // Maintain current speed
-        //    }
-
-        //    // Check if we can reach vt before reaching the target position
-        //    if (s1 >= deltaX_remaining)
-        //    {
-        //        // Cannot reach vt; adjust maximum speed
-        //        float vMaxSquared = v0_dir * v0_dir + 2 * a * deltaX_remaining;
-        //        float vMax = (float)Math.Sqrt(Math.Max(0, vMaxSquared));
-
-        //        s1 = deltaX_remaining;
-        //        t1 = (vMax - v0_dir) / a;
-        //        vt = vMax;
-        //    }
-
-        //    float s2 = deltaX_remaining - s1;
-        //    float t2 = s2 / vt;
-
-        //    totalTime += t1 + t2;
-        //    timeToAccel = t1;
-
-        //    return totalTime;
-        //}
-
 
         private bool TryParseArguments(object?[] arguments, out char[] deviceNames, out float radius, out float[] centerPositions, out float startAngle, out float endAngle, out bool isCCW)
         {

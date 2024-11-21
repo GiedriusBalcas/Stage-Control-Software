@@ -172,7 +172,7 @@
                             <GridView>
                                 <GridViewColumn Header="Property Name"
                                                 DisplayMemberBinding="{Binding PropertyName}"
-                                                Width="auto" />
+                                                Width="300" />
                                 <GridViewColumn Header="Value"
                                                 Width="150">
                                     <GridViewColumn.CellTemplate>

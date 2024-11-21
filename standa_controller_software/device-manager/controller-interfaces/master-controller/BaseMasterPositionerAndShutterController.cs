@@ -141,7 +141,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             {
                 if (command.Parameters is UpdateMovementSettingsParameters parameters)
                 {
-                    return parameters.AccelChangePending || !parameters.Blending;
+                    return parameters.AccelChangePending;
                 }
                 else
                     return false;
@@ -350,15 +350,18 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     var targetDevices = command.TargetDevices;
                     var targetController = command.TargetController;
 
-                    var waitUntilStopCommand = new Command
+                    if (command.Parameters is UpdateMovementSettingsParameters updateParameters && updateParameters.Blending != true)
                     {
-                        Action = CommandDefinitions.WaitForStop,
-                        Await = true,
-                        TargetController = targetController,
-                        TargetDevices = targetDevices,
-                    };
+                        var waitUntilStopCommand = new Command
+                        {
+                            Action = CommandDefinitions.WaitForStop,
+                            Await = true,
+                            TargetController = targetController,
+                            TargetDevices = targetDevices,
+                        };
 
-                    await ExecuteSlaveCommand(waitUntilStopCommand);
+                        await ExecuteSlaveCommand(waitUntilStopCommand);
+                    }
 
                     await ExecuteSlaveCommand(command);
                 }

@@ -19,7 +19,7 @@ namespace standa_control_software_WPF.view_models.system_control.control
         private readonly ControllerManager _controllerManager;
         private float _yaw;
         private float _pitch;
-        private float _distance = 10f;
+        private float _distance;
         private float _fovy;
         private OpenTK.Mathematics.Vector3 _referencePosition;
         // let's try to translate using this?.
@@ -106,7 +106,8 @@ namespace standa_control_software_WPF.view_models.system_control.control
         }
         public float Distance 
         { 
-            get => _distance;
+            get => _distance
+;
             set
             {
                 if(-15 < value && value <= 55)
@@ -131,8 +132,8 @@ namespace standa_control_software_WPF.view_models.system_control.control
                 {
                     _referencePositionXYDifference = value;
                     _painterManager.CommandLayer.Camera.ReferencePosition += 
-                        _painterManager.CommandLayer.Camera.Right * _referencePositionXYDifference.X * 200 
-                        + _painterManager.CommandLayer.Camera.Up * _referencePositionXYDifference.Y * 200;
+                        _painterManager.CommandLayer.Camera.Right * _referencePositionXYDifference.X * _painterManager.CommandLayer.Camera.Distance
+                        + _painterManager.CommandLayer.Camera.Up * _referencePositionXYDifference.Y * _painterManager.CommandLayer.Camera.Distance;
 
                     //_painterManager.OrientationLayer.Camera.ReferencePosition = new Vector3(10f,0,0);
                     //_painterManager.OrientationLayer.Camera.CameraPosition = new Vector3(1f,1f,0);
@@ -168,6 +169,7 @@ namespace standa_control_software_WPF.view_models.system_control.control
         {
             _painterManager = painterManager;
             _controllerManager = controllerManager;
+            _distance = ScaleValueInverse(_painterManager.CommandLayer.Camera.Distance);
 
             IsTrackingTool = false;
             IsOrthographicView = false;

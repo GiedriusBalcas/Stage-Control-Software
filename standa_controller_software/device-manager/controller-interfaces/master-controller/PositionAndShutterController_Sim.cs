@@ -95,6 +95,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
             _processingCompletionSource.TrySetResult(true);
             _processingLastItemTakenSource.TrySetResult(true);
+            _buffer.Clear();
+            _launchPending = true;
             return Task.CompletedTask;
 
         }

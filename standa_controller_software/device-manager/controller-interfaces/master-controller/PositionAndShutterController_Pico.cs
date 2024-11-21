@@ -1,6 +1,7 @@
 ﻿using OpenTK.Graphics.ES11;
 using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
+using standa_controller_software.command_manager.command_parameter_library.Synchronization;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.controller_interfaces.shutter;
 using standa_controller_software.device_manager.controller_interfaces.sync;
@@ -47,6 +48,47 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         {
             _processingCompletionSource?.TrySetResult(true);
             _processingLastItemTakenSource?.TrySetResult(true);
+            _buffer.Clear();
+            _buffer = new ConcurrentQueue<MovementInformation>();
+            _launchPending = true;
+            _processingCompletionSource?.TrySetResult(true);
+            _processingLastItemTakenSource?.TrySetResult(true);
+            //char[] deviceNames = SlaveControllers.Values
+            //    .Where(controller => controller is BasePositionerController)
+            //    .SelectMany(controller => controller.GetDevices())
+            //    .Select(device => device.Name)
+            //    .ToArray();
+
+
+            //var commandAdd = new Command
+            //{
+            //    Action = CommandDefinitions.AddSyncControllerBufferItem,
+            //    TargetController = _syncController.Name,
+            //    TargetDevices = deviceNames,
+            //    Parameters = new AddSyncControllerBufferItemParameters
+            //    {
+            //        Devices = deviceNames,
+            //        Launch = true,
+            //        Rethrow = 1,
+            //        Shutter = false,
+            //    }
+            //};
+
+
+            //for (int i = 0; i < 40; i++)
+            //{
+            //    await ExecuteSlaveCommand(commandAdd);
+            //}
+
+            //_processingCompletionSource = new TaskCompletionSource<bool>();
+            //_processingLastItemTakenSource = new TaskCompletionSource<bool>();
+
+            //await StartExecutionOnSyncController(new SemaphoreSlim(1));
+
+            //await AwaitExecutionEnd();
+
+            //_processingCompletionSource?.TrySetResult(true);
+            //_processingLastItemTakenSource?.TrySetResult(true);
             return Task.CompletedTask;
 
         }
@@ -74,61 +116,17 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         protected override Task Stop(Command command, SemaphoreSlim semaphore)
         {
             _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: stop encountered.");
-            return Task.CompletedTask;
-            //_buffer.Clear();
-            //_launchPending = true;
-            //_processingCompletionSource?.TrySetResult(true);
-            //_processingLastItemTakenSource?.TrySetResult(true);
+            _buffer.Clear();
+            _buffer = new ConcurrentQueue<MovementInformation>();
+            _launchPending = true;
+            _processingCompletionSource?.TrySetResult(true);
+            _processingLastItemTakenSource?.TrySetResult(true);
             //// lets ask the sync controller to just launch 40 times for now.
             //// TODO: do something better here.
 
-            //char[] deviceNames = SlaveControllers.Values
-            //    .Where(controller => controller is BasePositionerController)
-            //    .SelectMany(controller => controller.GetDevices())
-            //    .Select(device => device.Name)
-            //    .ToArray();
 
 
-
-
-            //await _syncController.AddBufferItem(
-            //deviceNames,
-            //true,
-            //1, //   [ms]
-            //false,
-            //0,
-            //0);
-            //for (int i = 0; i < 40; i++)
-            //{
-            //    await _syncController.AddBufferItem(
-            //    deviceNames,
-            //    false,
-            //    1, //   [ms]
-            //    false,
-            //    0,
-            //    0);
-            //}
-
-
-
-            //// Set the flag to indicate processing has started
-            //_processingCompletionSource = new TaskCompletionSource<bool>();
-            //_processingLastItemTakenSource = new TaskCompletionSource<bool>();
-
-            //await _syncController.StartExecution();
-
-            //foreach (var (controllerName, slaveSemaphore) in SlaveControllersLocks)
-            //{
-            //    if (slaveSemaphore.CurrentCount == 0)
-            //        slaveSemaphore.Release();
-            //}
-            //await _processingCompletionSource.Task;
-
-            //_processingCompletionSource?.TrySetResult(true);
-            //_processingLastItemTakenSource?.TrySetResult(true);
-
-
-
+            return Task.CompletedTask;
         }
     }
 }
