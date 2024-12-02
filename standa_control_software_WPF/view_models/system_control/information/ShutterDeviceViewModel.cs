@@ -66,12 +66,12 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 shutter.StateChanged += OnStateChanged; ;
                 IsConnected = shutter.IsConnected;
                 shutter.ConnectionStateChanged += OnConnectionStateChanged;
-                ToggleStateCommand = new RelayCommand(ExecuteToggleShutterState);
+                ToggleStateCommand = new RelayCommand(() => Task.Run(async () => await ExecuteToggleShutterState()));
                 InitializePlotModel();
             }
         }
 
-        private void ExecuteToggleShutterState()
+        private async Task ExecuteToggleShutterState()
         {
             if (_shutter.IsConnected)
             {
@@ -87,7 +87,7 @@ namespace standa_control_software_WPF.view_models.system_control.information
                     }
                 };
 
-                _commandManager.TryExecuteCommand(command).GetAwaiter().GetResult();
+                await _commandManager.TryExecuteCommand(command);
             }
         }
 

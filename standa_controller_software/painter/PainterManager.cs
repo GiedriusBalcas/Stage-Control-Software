@@ -77,6 +77,32 @@ namespace standa_controller_software.painter
 
             return new RenderLayer(vertexShaderSource, fragmentShaderSource, UpdateToolPointLayer);
         }
+        private RenderLayer CreateGridLayer()
+        {
+            var vertexShaderSource = "C:\\Users\\giedr\\OneDrive\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\ConsoleApplication_For_Tests\\Shaders\\LineDrawingLayer\\VertexShader.vert";
+
+            var fragmentShaderSource = "C:\\Users\\giedr\\OneDrive\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\ConsoleApplication_For_Tests\\Shaders\\LineDrawingLayer\\FragmentShader.frag";
+            
+            var gridLayer = new RenderLayer(vertexShaderSource, fragmentShaderSource, UpdateGridLinesIfNeeded);
+            var gridLines = new LineObjectCollection()
+            {
+                lineWidth = 5f,
+            };
+
+
+
+
+            return gridLayer; 
+        }
+
+        private void UpdateGridLinesIfNeeded()
+        {
+            // check if camera Distance has changed.
+            if (true)
+            {
+
+            }
+        }
 
         public List<RenderLayer> GetRenderLayers()
         {

@@ -362,6 +362,9 @@ namespace standa_controller_software.custom_functions.definitions
                 float velX_avg = (Bx - xDevice.CurrentPosition) / rethrow;
                 float velY_avg = (By - yDevice.CurrentPosition) / rethrow;
 
+                velX_avg = (float)(isCCW ? trajectorySpeed / dtheta * (Math.Cos(theta) - Math.Cos(theta-dtheta)) : trajectorySpeed / dtheta * (Math.Cos(theta+dtheta) - Math.Cos(theta)));
+                velY_avg = (float)(isCCW ? trajectorySpeed / dtheta * (Math.Sin(theta) - Math.Sin(theta-dtheta)) : trajectorySpeed / dtheta * (Math.Sin(theta+dtheta) - Math.Sin(theta)));
+
 
                 // CALCULATE THE TANGENT ENDPOINT
                 CalculateTangentEndpoint(
@@ -397,6 +400,33 @@ namespace standa_controller_software.custom_functions.definitions
 
                 // Create the movement commands.
                 List<Command> commandsMovement = CreateMovementCommands(shutter, groupedDevicesByController, positionerMovementInformation, allocatedTime_guess, rethrow, waitUntilPos, shutterInfo_segments); //rethrow     waitUntilPos
+
+
+                //var positionerMovementInfo = new Dictionary<char, PositionerMovementInformation>();
+                //var movementInfo = new PositionerMovementInformation
+                //{
+                //    TargetMovementParameters = new TargetMovementParameters
+                //    {
+                //        Acceleration = (float)Math.Max(accelerationForArc, 10),
+                //        Deceleration = (float)Math.Max(accelerationForArc, 10),
+                //        TargetSpeed = (float)Math.Max(trajectorySpeed, 1),
+                //    }
+                //};
+                //positionerMovementInfo[xName] = movementInfo;
+                //movementInfo = new PositionerMovementInformation
+                //{
+                //    TargetMovementParameters = new TargetMovementParameters
+                //    {
+                //        Acceleration = (float)Math.Max(accelerationForArc, 10),
+                //        Deceleration = (float)Math.Max(accelerationForArc, 10),
+                //        TargetSpeed = (float)Math.Max(trajectorySpeed, 1),
+                //    }
+                //};
+                //positionerMovementInfo[yName] = movementInfo;
+
+                //var commands_update = CreateUpdateCommands(positionerMovementInfo, groupedDevicesByController);
+                //_commandManager.EnqueueCommandLine(commands_update);
+                //_commandManager.TryExecuteCommandLine(commands_update).GetAwaiter().GetResult();
 
                 _commandManager.EnqueueCommandLine(commandsMovement.ToArray());
                 _commandManager.TryExecuteCommandLine(commandsMovement.ToArray()).GetAwaiter().GetResult();
