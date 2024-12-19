@@ -34,7 +34,7 @@
                       DataType="{x:Type vms:PositionerDeviceViewModel}">
             <controls:PositionerGraphControl Visibility="{Binding NeedsToBeTracked, Converter={StaticResource BoolToVisibilityConverter}}" />
         </DataTemplate>
-        
+
         <!-- DataTemplate for Tools Graph -->
         <DataTemplate x:Key="ToolsGraphDataTemplate"
                       DataType="{x:Type vms:ToolViewModel}">
@@ -77,7 +77,7 @@
             </Setter>
         </Style>
 
-        
+
 
     </UserControl.Resources>
 
@@ -109,10 +109,16 @@
         </ScrollViewer>
 
         <!-- Acquisition Controls and Graphs -->
-        <StackPanel Grid.Column="2"
-                    Margin="10">
+        <Grid Grid.Column="2"
+              Grid.Row="0"
+              Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
             <!-- Acquisition Controls -->
-            <StackPanel Orientation="Horizontal"
+            <StackPanel Grid.Row="0"
+                        Orientation="Horizontal"
                         Margin="0,0,0,10">
                 <TextBlock Text="Acquisition Duration (s):"
                            VerticalAlignment="Center" />
@@ -124,23 +130,33 @@
                         Style="{StaticResource customButtonStyle}"
                         Command="{Binding AcquireCommand}"
                         Margin="5,0,0,0" />
-                <TextBlock Margin="30,0,0,0" VerticalAlignment="Center" Text="Continious: " />
-                <CheckBox VerticalAlignment="Center" IsChecked="{Binding IsContiniousAcquisition}"/>
+                <TextBlock Margin="30,0,0,0"
+                           VerticalAlignment="Center"
+                           Text="Continious: " />
+                <CheckBox VerticalAlignment="Center"
+                          IsChecked="{Binding IsContiniousAcquisition}" />
             </StackPanel>
 
+            <ScrollViewer Grid.Row="1"
+                VerticalScrollBarVisibility="Auto">
+                <StackPanel>
 
-            <ContentControl Content="{Binding ToolViewModel}"
-                            ContentTemplate="{StaticResource ToolsGraphDataTemplate}" />
+                    <ContentControl Grid.Row="1"
+                                    Content="{Binding ToolViewModel}"
+                                    ContentTemplate="{StaticResource ToolsGraphDataTemplate}" />
 
-            <!-- Graphs for Devices Needing Tracking -->
-            <ItemsControl ItemsSource="{Binding Devices}"
-                          ItemTemplate="{StaticResource PositionerGraphDataTemplate}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-            </ItemsControl>
-        </StackPanel>
+                    <!-- Graphs for Devices Needing Tracking -->
+
+                    <ItemsControl ItemsSource="{Binding Devices}"
+                                  ItemTemplate="{StaticResource PositionerGraphDataTemplate}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
     </Grid>
 </UserControl>

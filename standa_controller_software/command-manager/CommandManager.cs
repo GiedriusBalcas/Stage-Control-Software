@@ -127,7 +127,7 @@ namespace standa_controller_software.command_manager
 
             foreach (var (controllerName, controller) in _controllerManager.Controllers)
             {
-                if (controller.MasterController is BaseMasterController baseMasterController)
+                if (controller is BaseMasterController baseMasterController)
                 {
                     var stopCommand = new Command
                     {
@@ -139,6 +139,7 @@ namespace standa_controller_software.command_manager
                 }
             }
 
+            CurrentState = CommandManagerState.Waiting;
 
         }
         public async Task ProcessQueue()
@@ -157,8 +158,8 @@ namespace standa_controller_software.command_manager
                    
                 }
             }
-
-            await CheckAndUpdateControllerQueue(String.Empty);
+            if(_allowedToRun)
+                await CheckAndUpdateControllerQueue(String.Empty);
 
             CurrentState = CommandManagerState.Waiting;
             _log.Enqueue("QueueEnd in command manager.");

@@ -1,4 +1,5 @@
 ﻿using OpenTK.Mathematics;
+using opentk_painter_library.common;
 using standa_control_software_WPF.view_models.commands;
 using standa_controller_software.device_manager;
 using standa_controller_software.painter;
@@ -9,13 +10,16 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using System.Windows.Media.Media3D;
 using System.Windows.Navigation;
 
 namespace standa_control_software_WPF.view_models.system_control.control
 {
     public class CameraViewModel : ViewModelBase
     {
-        private readonly PainterManager _painterManager;
+        private OrbitalCamera _camera { get; }
+
+        private readonly PainterManagerViewModel _painterManager;
         private readonly ControllerManager _controllerManager;
         private float _yaw;
         private float _pitch;
@@ -36,7 +40,7 @@ namespace standa_control_software_WPF.view_models.system_control.control
                 if(value != _isTrackingTool)
                 {
                     _isTrackingTool = value;
-                    _painterManager.CommandLayer.Camera.IsTrackingTool = _isTrackingTool;
+                    _camera.IsTrackingTool = _isTrackingTool;
 
                     if (_isTrackingTool)
                     {
@@ -55,7 +59,7 @@ namespace standa_control_software_WPF.view_models.system_control.control
         {
             var toolPos = obj;
             var pos = new OpenTK.Mathematics.Vector3(toolPos.X, toolPos.Z, toolPos.Y);
-            _painterManager.CommandLayer.Camera.ReferencePosition = pos;
+            _camera.ReferencePosition = pos;
         }
 
         public bool IsOrthographicView
@@ -66,7 +70,7 @@ namespace standa_control_software_WPF.view_models.system_control.control
                 if(value != _isOrthographicView)
                 {
                     _isOrthographicView = value;
-                    _painterManager.CommandLayer.Camera.IsOrthographic = _isOrthographicView;
+                    _camera.IsOrthographic = _isOrthographicView;
                     OnPropertyChanged(nameof(IsOrthographicView));
                 }
             }
@@ -80,9 +84,7 @@ namespace standa_control_software_WPF.view_models.system_control.control
                 if (value != _yaw)
                 {
                     _yaw = value;
-                    _painterManager.CommandLayer.Camera.Yaw = _yaw;
-                    _painterManager.OrientationLayer.Camera.Yaw = _yaw;
-
+                    _camera.Yaw = _yaw;
                 }
             } 
         }
@@ -99,8 +101,7 @@ namespace standa_control_software_WPF.view_models.system_control.control
                         _pitch = -90;
                     else
                         _pitch = value;
-                    _painterManager.CommandLayer.Camera.Pitch = _pitch;
-                    _painterManager.OrientationLayer.Camera.Pitch = _pitch;
+                    _camera.Pitch = _pitch;
                 }
             }
         }
@@ -114,7 +115,7 @@ namespace standa_control_software_WPF.view_models.system_control.control
                 {
                     _distance = value;
                     var distanceCalc = ScaleValue((int)_distance);
-                    _painterManager.CommandLayer.Camera.Distance = distanceCalc;
+                    _camera.Distance = distanceCalc;
                 }
             }
         }
@@ -131,9 +132,9 @@ namespace standa_control_software_WPF.view_models.system_control.control
                 if(value != _referencePositionXYDifference)
                 {
                     _referencePositionXYDifference = value;
-                    _painterManager.CommandLayer.Camera.ReferencePosition += 
-                        _painterManager.CommandLayer.Camera.Right * _referencePositionXYDifference.X * _painterManager.CommandLayer.Camera.Distance
-                        + _painterManager.CommandLayer.Camera.Up * _referencePositionXYDifference.Y * _painterManager.CommandLayer.Camera.Distance;
+                    _camera.ReferencePosition +=
+                        _camera.Right * _referencePositionXYDifference.X * Math.Abs(_camera.Distance)
+                        + _camera.Up * _referencePositionXYDifference.Y * Math.Abs(_camera.Distance);
 
                     //_painterManager.OrientationLayer.Camera.ReferencePosition = new Vector3(10f,0,0);
                     //_painterManager.OrientationLayer.Camera.CameraPosition = new Vector3(1f,1f,0);
@@ -150,9 +151,7 @@ namespace standa_control_software_WPF.view_models.system_control.control
                 if (value != _aspectRatio)
                 {
                     _aspectRatio = value;
-                    _painterManager.CommandLayer.Camera.AspectRatio = _aspectRatio;
-                    _painterManager.ToolPointLayer.Camera.AspectRatio = _aspectRatio;
-                    _painterManager.OrientationLayer.Camera.AspectRatio = _aspectRatio;
+                    _camera.AspectRatio = _aspectRatio;
                 }
             } 
         }
@@ -165,11 +164,12 @@ namespace standa_control_software_WPF.view_models.system_control.control
         public ICommand CameraViewXZCommand { get; set; }
         public ICommand CameraViewYZCommand { get; set; }
 
-        public CameraViewModel(PainterManager painterManager, ControllerManager controllerManager)
+        public CameraViewModel(PainterManagerViewModel painterManager, ControllerManager controllerManager, OrbitalCamera camera)
         {
+            _camera = camera;
             _painterManager = painterManager;
             _controllerManager = controllerManager;
-            _distance = ScaleValueInverse(_painterManager.CommandLayer.Camera.Distance);
+            _distance = ScaleValueInverse(_camera.Distance);
 
             IsTrackingTool = false;
             IsOrthographicView = false;
@@ -183,9 +183,9 @@ namespace standa_control_software_WPF.view_models.system_control.control
         {
             var verticesData = _painterManager.CommandLayer.GetCollectionsVerteces();
             var data = verticesData.Select(point => new System.Numerics.Vector3(point.X, point.Y, point.Z)).ToList();
-            _painterManager.CommandLayer.Camera.FitObject(data);
+            _camera.FitObject(data);
 
-            _distance = ScaleValueInverse(_painterManager.CommandLayer.Camera.Distance);
+            _distance = ScaleValueInverse(_camera.Distance);
         }
 
         private void ExecuteCameraViewXYCommand()

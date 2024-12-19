@@ -11,7 +11,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 {
     public partial class PositionAndShutterController_Sim : BaseMasterPositionerAndShutterController
     {
-        
+
         private SyncController_Sim _syncController;
 
         public PositionAndShutterController_Sim(string name, ConcurrentQueue<string> log) : base(name, log)
@@ -30,10 +30,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     {
                         //_ = shutterController.ChangeStatePublic(wantedState);
                         var device = shutterController.GetDevices().FirstOrDefault();
-                        
-                        if(device is BaseShutterDevice shutterDevice)
+
+                        if (device is BaseShutterDevice shutterDevice)
                         {
                             shutterDevice.IsOn = wantedState;
+                            shutterController.ChangeStatePublic(shutterDevice.Name, wantedState);
                         }
                     };
                 }
@@ -46,14 +47,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 foreach (var device in positionerController.GetDevices())
                 {
                     char deviceName = device.Name;
-                    if(_syncController is not null)
+                    if (_syncController is not null)
                     {
                         _syncController._positionerSyncInMap[deviceName] = () => positionerController.InvokeSyncIn(deviceName);
                         positionerController.OnSyncOut += _syncController.GotSyncOut;
                     }
                 }
             }
-            else if(controller is SyncController_Sim syncController)
+            else if (controller is SyncController_Sim syncController)
             {
 
                 SlaveControllers.Add(syncController.Name, syncController);
@@ -61,9 +62,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 _syncController = syncController;
                 _syncController.SendMessage += GotMessageFromSyncExecuter;
 
-                foreach(var (slaveControllerName, slaveController) in SlaveControllers)
+                foreach (var (slaveControllerName, slaveController) in SlaveControllers)
                 {
-                    if(slaveController is PositionerController_Sim slavePositionerController)
+                    if (slaveController is PositionerController_Sim slavePositionerController)
                     {
                         foreach (var device in slavePositionerController.GetDevices())
                         {
@@ -76,7 +77,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                         }
                     }
 
-                    if(slaveController is ShutterController_Sim slaveShutterController)
+                    if (slaveController is ShutterController_Sim slaveShutterController)
                     {
                         _syncController!._shutterChangeState = (bool wantedState) =>
                         {
@@ -84,20 +85,21 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                             if (device is BaseShutterDevice shutterDevice)
                             {
                                 shutterDevice.IsOn = wantedState;
+                                slaveShutterController.ChangeStatePublic(shutterDevice.Name, wantedState);
                             }
                         };
                     }
                 }
             }
         }
-        public override Task ForceStop()
+        public override async Task ForceStop()
         {
-
-            _processingCompletionSource.TrySetResult(true);
-            _processingLastItemTakenSource.TrySetResult(true);
+            await AwaitExecutionEnd();
+            _processingCompletionSource?.TrySetResult(true);
+            _processingLastItemTakenSource?.TrySetResult(true);
             _buffer.Clear();
             _launchPending = true;
-            return Task.CompletedTask;
+            //return Task.CompletedTask;
 
         }
         private void GotMessageFromSyncExecuter(string Message)
@@ -108,7 +110,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             }
             else if (Message == "0x02") // Arduino signaled execution end
             {
-                _processingCompletionSource.TrySetResult(true); 
+                _processingCompletionSource.TrySetResult(true);
                 _processingLastItemTakenSource.TrySetResult(true);
 
                 _log?.Enqueue("Sync controller signaled execution completed");
@@ -123,7 +125,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         protected override async Task Stop(Command command, SemaphoreSlim semaphore)
         {
             _buffer.Clear();
-            
+
             var stopCommand = new Command
             {
                 TargetController = _syncController.Name,
@@ -137,6 +139,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             _processingCompletionSource?.TrySetResult(true);
             _processingLastItemTakenSource?.TrySetResult(true);
 
-            }
+        }
+        
     }
 }

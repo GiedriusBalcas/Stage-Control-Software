@@ -6,28 +6,28 @@
              xmlns:local="clr-namespace:standa_control_software_WPF.views.system_control"
              xmlns:glWpfControl="clr-namespace:OpenTK.Wpf;assembly=GLWpfControl"
              xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit"
-             xmlns:behave ="clr-namespace:standa_control_software_WPF.views.behaviours"
+             xmlns:behave="clr-namespace:standa_control_software_WPF.views.behaviours"
              xmlns:vms="clr-namespace:standa_control_software_WPF.view_models"
              xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
              xmlns:controlVms="clr-namespace:standa_control_software_WPF.view_models.system_control.control"
-             mc:Ignorable="d" 
-             d:DesignHeight="450" 
+             mc:Ignorable="d"
+             d:DesignHeight="450"
              d:DesignWidth="800">
 
     <Grid Background="Transparent">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="20"/>
-            <ColumnDefinition Width="2*"/>
-            <ColumnDefinition Width="3*"/>
+            <ColumnDefinition Width="20" />
+            <ColumnDefinition Width="2*" />
+            <ColumnDefinition Width="3*" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition Height="auto"/>
-            <RowDefinition Height="auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="20"/>
+            <RowDefinition Height="auto" />
+            <RowDefinition Height="auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="20" />
         </Grid.RowDefinitions>
-        
-        
+
+
 
 
         <!--<Border Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="3" Background="{StaticResource MidBackgroundColorBrush}">
@@ -79,51 +79,63 @@
         </Border>-->
 
 
-        <Border  Grid.Row="2" Grid.Column="1"
+        <Border  Grid.Row="2"
+                 Grid.Column="1"
                  Background="{StaticResource MidBackgroundColorBrush}"
                  Margin="0,20,0,0"
                  Padding="0,0,5,5"
                  Style="{StaticResource parentBorder}">
-            <TabControl 
-                        ItemsSource="{Binding Documents}"
+            <TabControl ItemsSource="{Binding Documents}"
                         SelectedItem="{Binding SelectedDocument}"
-                         Background="{StaticResource MidBackgroundColorBrush}"
-                         Foreground="{StaticResource FontColorBrush}"
-                         BorderBrush="Transparent"
-                         >
+                        Background="{StaticResource MidBackgroundColorBrush}"
+                        Foreground="{StaticResource FontColorBrush}"
+                        BorderBrush="Transparent">
 
                 <TabControl.Resources>
                     <Style TargetType="TabItem">
-                        <Setter Property="Background" Value="{StaticResource DarkBackgroundColorBrush}" />
-                        <Setter Property="Foreground" Value="{StaticResource FontColorBrush}" />
-                        <Setter Property="BorderBrush" Value="{StaticResource LightBackgroundColorBrush}" />
-                        <Setter Property="BorderThickness" Value="1,0,1,0"/>
-                        <Setter Property="Padding" Value="10,4" />
+                        <Setter Property="Background"
+                                Value="{StaticResource DarkBackgroundColorBrush}" />
+                        <Setter Property="Foreground"
+                                Value="{StaticResource FontColorBrush}" />
+                        <Setter Property="BorderBrush"
+                                Value="{StaticResource LightBackgroundColorBrush}" />
+                        <Setter Property="BorderThickness"
+                                Value="1,0,1,0" />
+                        <Setter Property="Padding"
+                                Value="10,4" />
                         <Setter Property="Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="TabItem">
                                     <Grid Background="Transparent">
                                         <Border x:Name="border"
-                                            Background="{TemplateBinding Background}"
-                                            BorderBrush="{TemplateBinding BorderBrush}"
-                                            BorderThickness="{TemplateBinding BorderThickness}">
-                                                <ContentPresenter x:Name="contentPresenter"
-                                                          ContentSource="Header"
-                                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                                          Margin="{TemplateBinding Padding}"/>
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}">
+                                            <ContentPresenter x:Name="contentPresenter"
+                                                              ContentSource="Header"
+                                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                              Margin="{TemplateBinding Padding}" />
                                         </Border>
                                     </Grid>
                                     <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                             <!--Adjust color for hover state--> 
-                                            <Setter TargetName="border" Property="Background" Value="{StaticResource                                    MidBackgroundColorBrush}" />        
-                                            <Setter Property="BorderBrush" Value="{StaticResource AccentColorBrush}" />
-                                            <Setter Property="BorderThickness" Value="1,1,1,0" />
+                                        <Trigger Property="IsMouseOver"
+                                                 Value="True">
+                                            <!--Adjust color for hover state-->
+                                            <Setter TargetName="border"
+                                                    Property="Background"
+                                                    Value="{StaticResource                                    MidBackgroundColorBrush}" />
+                                            <Setter Property="BorderBrush"
+                                                    Value="{StaticResource AccentColorBrush}" />
+                                            <Setter Property="BorderThickness"
+                                                    Value="1,1,1,0" />
                                         </Trigger>
-                                        <Trigger Property="IsSelected" Value="True">
-                                             <!--Adjust color for selected state--> 
-                                            <Setter TargetName="border" Property="Background" Value="{StaticResource                                    MidBackgroundColorBrush}" />
+                                        <Trigger Property="IsSelected"
+                                                 Value="True">
+                                            <!--Adjust color for selected state-->
+                                            <Setter TargetName="border"
+                                                    Property="Background"
+                                                    Value="{StaticResource                                    MidBackgroundColorBrush}" />
                                         </Trigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>
@@ -133,162 +145,256 @@
                 </TabControl.Resources>
 
                 <TabControl.ItemTemplate>
-                     <!--This is the header template--> 
+                    <!--This is the header template-->
                     <DataTemplate>
-                        <DockPanel Width="auto" Height="auto">
+                        <DockPanel Width="auto"
+                                   Height="auto">
                             <DockPanel.ContextMenu>
-                                 <!--ContextMenu for right-click on tab--> 
+                                <!--ContextMenu for right-click on tab-->
                                 <ContextMenu Background="{StaticResource MidBackgroundColorBrush}">
-                                    <MenuItem Header="Save" Command="{Binding SaveFileCommand}"/>
-                                    <MenuItem Header="Save As" Command="{Binding SaveAsFileCommand}"/>
+                                    <MenuItem Header="Save"
+                                              Command="{Binding SaveFileCommand}" />
+                                    <MenuItem Header="Save As"
+                                              Command="{Binding SaveAsFileCommand}" />
                                     <MenuItem Header="Close" />
                                     <MenuItem Header="Close All Except This" />
                                 </ContextMenu>
                             </DockPanel.ContextMenu>
-                            <TextBlock Text="{Binding Name}" Margin="0,0" VerticalAlignment="Center" FontSize="12"/>
+                            <TextBlock Text="{Binding Name}"
+                                       Margin="0,0"
+                                       VerticalAlignment="Center"
+                                       FontSize="12" />
                             <Button Command="{Binding CloseDocumentCommand}"
-                                    Content="✖" Background="Transparent" BorderThickness="0,0,0,0" FontSize="5" FontStyle="Normal" Margin="5,0,0,5" FontWeight="SemiBold" VerticalAlignment="Top" BorderBrush="Transparent"/>
+                                    Content="✖"
+                                    Background="Transparent"
+                                    BorderThickness="0,0,0,0"
+                                    FontSize="5"
+                                    FontStyle="Normal"
+                                    Margin="5,0,0,5"
+                                    FontWeight="SemiBold"
+                                    VerticalAlignment="Top"
+                                    BorderBrush="Transparent" />
                         </DockPanel>
                     </DataTemplate>
                 </TabControl.ItemTemplate>
                 <TabControl.ContentTemplate>
                     <DataTemplate>
                         <avalonEdit:TextEditor Grid.Row="0"
-                                    Loaded="avalonEditor_Loaded"
-                                    x:Name="avalonEditor"
-                                    SyntaxHighlighting="C#"
-                                    Margin="5,10,0,5"
-                                    ShowLineNumbers="True"
-                                    WordWrap="True"
-                                    HorizontalScrollBarVisibility="Auto"
-                                    VerticalScrollBarVisibility="Visible"
-                                    controlVms:TextEditorExtensions.Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}"
-                                     Background="{StaticResource MidBackgroundColorBrush}"
-                                     Foreground="{StaticResource FontColorBrush}"
-                                    >
+                                               Loaded="avalonEditor_Loaded"
+                                               x:Name="avalonEditor"
+                                               SyntaxHighlighting="C#"
+                                               Margin="5,10,0,5"
+                                               ShowLineNumbers="True"
+                                               WordWrap="True"
+                                               HorizontalScrollBarVisibility="Auto"
+                                               VerticalScrollBarVisibility="Visible"
+                                               controlVms:TextEditorExtensions.Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}"
+                                               Background="{StaticResource MidBackgroundColorBrush}"
+                                               Foreground="{StaticResource FontColorBrush}">
                             <i:Interaction.Behaviors>
-                                <behave:HighlightLineBehavior/>
-                                <behave:FontSizeAdjustmentBehavior/>
-                                </i:Interaction.Behaviors>
+                                <behave:HighlightLineBehavior />
+                                <behave:FontSizeAdjustmentBehavior />
+                            </i:Interaction.Behaviors>
                         </avalonEdit:TextEditor>
                     </DataTemplate>
                 </TabControl.ContentTemplate>
             </TabControl>
         </Border>
 
-        <GridSplitter Grid.Column="2" Grid.Row="2" Grid.RowSpan="1" 
-              HorizontalAlignment="Left" 
-              VerticalAlignment="Stretch"
-              Background="{StaticResource MidBackgroundColorBrush}" 
-              ShowsPreview="true"
+        <GridSplitter Grid.Column="2"
+                      Grid.Row="2"
+                      Grid.RowSpan="1"
+                      HorizontalAlignment="Left"
+                      VerticalAlignment="Stretch"
+                      Background="{StaticResource MidBackgroundColorBrush}"
+                      ShowsPreview="true"
                       Margin="0,20,0,0"
-              Width="3"/>
+                      Width="3" />
 
 
 
-        <Grid Grid.Row="2" Grid.Column="2">
+        <Grid Grid.Row="2"
+              Grid.Column="2">
             <Grid.RowDefinitions>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="125"/>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="125" />
             </Grid.RowDefinitions>
-            
-            <!--//HEREHH-->
-            <Grid Grid.Row="0" Margin="5,0,0,10">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="auto"/>
-                </Grid.ColumnDefinitions>
-                
-                <glWpfControl:GLWpfControl Grid.Column="0" Grid.ColumnSpan="2"
-                           x:Name="glControl" 
-                           Margin="10,10,10,0"
-                           />
 
-                <Border Grid.Column="1"
-                        Background="{StaticResource MidBackgroundColorBrush}" 
-                        VerticalAlignment="Top"
-                        Margin="0,10,10,0"
-                        Padding="5,10,5,10"
-                        Style="{StaticResource parentBorder}"
-                        DataContext="{Binding CameraViewModel}">
-                    <StackPanel Orientation="Vertical"
-                                Margin="0">
-                        <Button Content="xy"
-                                Command="{Binding CameraViewXYCommand}" 
-                                VerticalAlignment="Top"
-                                Style="{StaticResource customButtonStyle}"/>
-                        
-                        <Button Content="xz" 
-                                Command="{Binding CameraViewXZCommand}" 
-                                VerticalAlignment="Top"
-                                Style="{StaticResource customButtonStyle}"/>
-                        <Button Content="yz" 
-                                Command="{Binding CameraViewYZCommand}" 
-                                VerticalAlignment="Top"
-                                Style="{StaticResource customButtonStyle}"/>
-                        <Button Content="Fit" 
-                                Command="{Binding CameraFitObjectCommand}" 
-                                VerticalAlignment="Top"
-                                Style="{StaticResource customButtonStyle}"/>
-                        <ToggleButton 
-                            Content="Track"
+            <!--//HEREHH-->
+            <Grid Grid.Row="0"
+                  Margin="5,0,0,10">
+                
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="auto" />
+                </Grid.ColumnDefinitions>
+
+                <glWpfControl:GLWpfControl Grid.Column="0"
+                                           Grid.ColumnSpan="2"
+                                           x:Name="glControl"
+                                           Margin="10,10,10,0"
+                                            />
+
+
+                <Grid Grid.Column="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="auto" />
+                    </Grid.RowDefinitions>
+
+
+                    <Border Grid.Row="0"
+                            Background="#AA111111"
+                            VerticalAlignment="Top"
+                            Opacity="0.8"
+                            Margin="0,10,10,0"
+                            Padding="5,5,5,5"
+                            Style="{StaticResource parentBorder}"
+                            HorizontalAlignment="Right"
+                            DataContext="{Binding PainterManager.CameraViewModel}">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Fit"
+                                    Command="{Binding CameraFitObjectCommand}"
+                                    VerticalAlignment="Top"
+                                    Style="{StaticResource customButtonStyle}" />
+                            <ToggleButton Content="Track"
+                                          VerticalAlignment="Bottom"
+                                          IsChecked="{Binding IsTrackingTool}"
+                                          Style="{StaticResource customToggleButtonStyle}" />
+                            <ToggleButton Content="Orth."
+                                          VerticalAlignment="Bottom"
+                                          IsChecked="{Binding IsOrthographicView}"
+                                          Style="{StaticResource customToggleButtonStyle}" />
+                        </StackPanel>
+
+                    </Border>
+
+
+
+
+                    <Border Grid.Row="2"
+                            Background="#AA111111"
+                            VerticalAlignment="Top"
+                            Opacity="0.8"
+                            Margin="0,10,10,0"
+                            Padding="5,5,5,5"
+                            Style="{StaticResource parentBorder}"
+                            DataContext="{Binding PainterManager.CameraViewModel}"
+                            HorizontalAlignment="Right">
+                        <StackPanel Orientation="Vertical">
+                            <Button Content="xy"
+                                    Command="{Binding CameraViewXYCommand}"
+                                    VerticalAlignment="Top"
+                                    Style="{StaticResource customButtonStyle}" />
+
+                            <Button Content="xz"
+                                    Command="{Binding CameraViewXZCommand}"
+                                    VerticalAlignment="Top"
+                                    Style="{StaticResource customButtonStyle}" />
+                            <Button Content="yz"
+                                    Command="{Binding CameraViewYZCommand}"
+                                    VerticalAlignment="Top"
+                                    Style="{StaticResource customButtonStyle}" />
+
+                        </StackPanel>
+
+                    </Border>
+
+                    <Border Grid.Row="4"
+                            Background="#AA111111"
+                            Opacity="0.8"
                             VerticalAlignment="Bottom"
-                            IsChecked="{Binding IsTrackingTool}"
-                            Style="{StaticResource customToggleButtonStyle}"/>
-                        <ToggleButton 
-                            Content="Orth." 
-                            VerticalAlignment="Bottom"
-                            IsChecked="{Binding IsOrthographicView}"
-                            Style="{StaticResource customToggleButtonStyle}"/>
-                    </StackPanel>
-                </Border>
-                    
+                            Margin="0,10,10,0"
+                            Padding="5,5,5,2"
+                            Style="{StaticResource parentBorder}"
+                            DataContext="{Binding PainterManager.GridLayer}"
+                            HorizontalAlignment="Right">
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="{Binding GridSpacing, StringFormat={}{0:0.0} um}" 
+                                       HorizontalAlignment="Center"/>
+                            <Canvas Width="40"
+                                    Height="5"
+                                    HorizontalAlignment="Center"
+                                    Margin="0,0,0,5">
+                                <!-- Left Vertical Line -->
+                                <Line X1="0"
+                                      Y1="0"
+                                      X2="0"
+                                      Y2="5"
+                                      Stroke="White"
+                                      StrokeThickness="1" />
+
+                                <!-- Horizontal Line -->
+                                <Line X1="0"
+                                      Y1="2.5"
+                                      X2="40"
+                                      Y2="2.5"
+                                      Stroke="White"
+                                      StrokeThickness="1" />
+
+                                <!-- Right Vertical Line -->
+                                <Line X1="40"
+                                      Y1="0"
+                                      X2="40"
+                                      Y2="5"
+                                      Stroke="White"
+                                      StrokeThickness="1" />
+                            </Canvas>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+                
+
             </Grid>
 
-            <GridSplitter Grid.Row="0" Grid.ColumnSpan="5"
-                        HorizontalAlignment="Stretch" 
-                        VerticalAlignment="Bottom"
-                        Background="{StaticResource MidBackgroundColorBrush}" 
-                        ShowsPreview="true"
-                        Height="5"
-                          Margin="15,0,10,0"/>
+            <GridSplitter Grid.Row="0"
+                          Grid.ColumnSpan="5"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Bottom"
+                          Background="{StaticResource MidBackgroundColorBrush}"
+                          ShowsPreview="true"
+                          Height="5"
+                          Margin="15,0,10,0" />
 
 
-            <Border Grid.Row="1" 
+            <Border Grid.Row="1"
                     Margin="15,0,10,0"
                     Background="{StaticResource MidBackgroundColorBrush}"
                     Style="{StaticResource parentBorder}">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="auto"/>
+                        <RowDefinition Height="auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <Border Grid.Row="0" 
+                    <Border Grid.Row="0"
                             Margin="10,0,10,0"
                             BorderBrush="{StaticResource AccentColorBrush}"
                             BorderThickness="0,0,0,1">
                         <StackPanel Orientation="Horizontal">
-                            <Label Content="Output console"/>
-                            <Button Content="Clear" 
-                                    VerticalAlignment="Center" 
+                            <Label Content="Output console" />
+                            <Button Content="Clear"
+                                    VerticalAlignment="Center"
                                     HorizontalAlignment="Right"
                                     Command="{Binding ClearOutputMessageCommand}"
-                                    Style="{StaticResource customButtonStyle}"/>
+                                    Style="{StaticResource customButtonStyle}" />
                         </StackPanel>
                     </Border>
 
-                        <ScrollViewer Grid.Row="1" Margin="10,5,0,5"
-                                    VerticalScrollBarVisibility="Auto"
-                                    HorizontalScrollBarVisibility="Auto"
-                                    >
-                            <TextBlock Text="{Binding OutputMessage}"
-                                    TextWrapping="Wrap" 
-                            Background="Transparent"
-                            Foreground="{StaticResource FontColorBrush}"/>
-                        </ScrollViewer>
-                    
-                
+                    <ScrollViewer Grid.Row="1"
+                                  Margin="10,5,0,5"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Auto">
+                        <TextBlock Text="{Binding OutputMessage}"
+                                   TextWrapping="Wrap"
+                                   Background="Transparent"
+                                   Foreground="{StaticResource FontColorBrush}" />
+                    </ScrollViewer>
+
+
                 </Grid>
             </Border>
         </Grid>

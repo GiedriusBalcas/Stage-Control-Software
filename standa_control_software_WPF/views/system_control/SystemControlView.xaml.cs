@@ -28,10 +28,8 @@ namespace standa_control_software_WPF.views.system_control
     public partial class SystemControlView : UserControl
     {
        
-        private SystemControlViewModel _viewModel;
-        private List<RenderLayer> _renderLayers;
+        private PainterManagerViewModel? _viewModel;
         private CameraViewModel _cameraViewModel;
-        private OrbitalCamera _camera => _renderLayers[0].Camera;
         private System.Windows.Point _lastPos;
         private LineBackgroundTransformer _highlighter;
         private DispatcherTimer _updateTimer;
@@ -63,17 +61,13 @@ namespace standa_control_software_WPF.views.system_control
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            
-
-            _viewModel = DataContext as SystemControlViewModel;
-
+            _viewModel = (DataContext as SystemControlViewModel)?.PainterManager;
+            //_viewModel = glControl.DataContext as PainterManagerViewModel;
             if (_viewModel is not null)
             {
-                _renderLayers = _viewModel.GetRenderLayers();
                 _cameraViewModel = _viewModel.CameraViewModel;
+                _viewModel.InitializeLayers();
 
-                _renderLayers.ForEach(layer => layer.IsGLInitialized = true);
-            
                 _cameraViewModel.WindowWidth = (float)glControl.ActualWidth;
                 _cameraViewModel.WindowHeight = (float)glControl.ActualHeight;
 
@@ -82,13 +76,6 @@ namespace standa_control_software_WPF.views.system_control
                 glControl.MouseMove += glControl_MouseMove;
                 glControl.MouseWheel += glControl_MouseWheel;
                 glControl.Unloaded += glControl_Unload;
-
-                foreach (var layer in _renderLayers)
-                {
-                    layer.InitializeCollections();
-                    layer.InitializeShaders();
-                }
-
             }
 
             if (Application.Current.Resources["DarkBackgroundColorBrush"] is SolidColorBrush darkBrush)
@@ -101,12 +88,9 @@ namespace standa_control_software_WPF.views.system_control
 
         private void glControl_Unload(object sender, RoutedEventArgs e)
         {
-            foreach (var layer in _renderLayers)
-            {
-                layer.DisposeBuffers();
-                layer.DisposeShaderProgram();
-            }
-            _renderLayers.ForEach(layer => layer.IsGLInitialized = false);
+            if(_viewModel is not null)
+                _viewModel.DeinitializeLayers();
+
             glControl.Dispose();
             glControl.SizeChanged -= GlControl_SizeChanged;
             glControl.Render -= glControl_Render;
@@ -118,14 +102,14 @@ namespace standa_control_software_WPF.views.system_control
         private void glControl_Render(TimeSpan delta)
         {
             GL.ClearColor(_backgroundColor);
+            // Enable blending
+            GL.Enable(EnableCap.Blend);
+            GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
-            foreach (var layer in _renderLayers)
-            {
-                layer.UpdateUniforms();
-                layer.DrawLayer();
-            }
+            if(_viewModel is not null)
+                _viewModel.DrawFrame();
         }
 
         
@@ -211,5 +195,6 @@ namespace standa_control_software_WPF.views.system_control
 
 
         }
+
     }
 }

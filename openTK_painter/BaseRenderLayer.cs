@@ -6,33 +6,28 @@ using opentk_painter_library.render_objects;
 
 namespace opentk_painter_library
 {
-    public class RenderLayer
+    public abstract class BaseRenderLayer
     {
-        private Shader _shader;
-        private UniformMatrix4 _viewUniform;
-        private UniformMatrix4 _projectionUniform;
-        private readonly Action _updateUniforms;
-        private Action _preDrawAction;
-        private readonly Action _onInitialization;
+        protected Shader _shader;
         public List<IRenderCollection> RenderCollections;
+        protected string _fragmentShaderSource;
+        protected string _vertexShaderSource;
+        protected List<IUniform> _uniforms;
+        private List<IRenderCollection> InitializedRenderCollections;
+
         public bool IsGLInitialized { get; set; } = false;
-        public RenderLayer(string vertexShaderSource, string fragmentShaderSource, List<IUniform> uniforms, OrbitalCamera camera, Action updateUniforms = null, Action preDrawAction = null, Action OnInitialization = null)
+        public BaseRenderLayer()
         {
             RenderCollections = new List<IRenderCollection>();
-            _shader = new Shader(uniforms, vertexShaderSource, fragmentShaderSource);
-            _updateUniforms = updateUniforms;
-            _preDrawAction = preDrawAction;
-            _onInitialization = OnInitialization;
+            InitializedRenderCollections = new List<IRenderCollection>();
+            _uniforms = new List<IUniform>();
         }
 
-        public void InitializeLayer()
+        public virtual void InitializeLayer()
         {
-            _onInitialization?.Invoke();
         }
-        public void UpdateUniforms()
-        {
-            _updateUniforms?.Invoke();
-        }
+        public abstract void UpdateUniforms();
+        public abstract void OnRenderFrameStart();
 
         public List<Vector3> GetCollectionsVerteces()
         {
@@ -55,7 +50,7 @@ namespace opentk_painter_library
             RenderCollections.Clear();
         }
 
-        public void InitializeShaders()
+        public void InitializeShader()
         {
             _shader.CreateShaderProgram();
         }
@@ -70,13 +65,15 @@ namespace opentk_painter_library
         public void InitializeCollections()
         {
             DisposeBuffers();
-            RenderCollections = RenderCollections
-                        .Where(collection => collection.GetVertexCount() >= 1)
-                        .ToList();
+            InitializedRenderCollections.Clear();
 
             foreach (var collection in RenderCollections)
             {
-                collection.InitializeBuffers();
+                if (collection.GetVertexCount() >= 1)
+                {
+                    collection.InitializeBuffers();
+                    InitializedRenderCollections.Add(collection);
+                }
             }
         }
 
@@ -84,15 +81,14 @@ namespace opentk_painter_library
         {
             if (IsGLInitialized)
             {
-                _preDrawAction?.Invoke();
-
                 GL.Enable(EnableCap.DepthTest);
+                OnRenderFrameStart();
+
                 _shader.Use();
                 _shader.UpdateUniformValues();
 
-                InitializeCollections();
 
-                foreach (var collection in RenderCollections)
+                foreach (var collection in InitializedRenderCollections)
                 {
                     collection.InitializeDraw();
 
@@ -120,7 +116,12 @@ namespace opentk_painter_library
                     GL.DeleteBuffer(collection.EBO);
                     GL.BindVertexArray(0);
                     GL.DeleteVertexArray(collection.VAO);
+                    
+                    collection.VBO = 0;
+                    collection.EBO = 0;
+                    collection.VAO = 0;
                 }
+                InitializedRenderCollections.Clear();
             }
         }
     }

@@ -21,14 +21,12 @@ namespace standa_control_software_WPF.view_models.system_control
         private readonly ControllerManager _controllerManager;
         private readonly FunctionManager _functionDefinitionLibrary;
         private readonly TextInterpreterWrapper _textInterpreter;
-        private readonly PainterManager _painterManager;
         private string _inputText = "";
         private string _outputMessage;
         private readonly ConcurrentQueue<string> _log;
         private DocumentViewModel _selectedDocument;
         
-
-        public CameraViewModel CameraViewModel { get; set; }
+        public PainterManagerViewModel PainterManager { get; private set; }
         public string InputText
         {
             get { return _inputText; }
@@ -52,7 +50,20 @@ namespace standa_control_software_WPF.view_models.system_control
             }
         }
 
-        public ObservableCollection<DocumentViewModel> Documents { get; } = new ObservableCollection<DocumentViewModel>();
+        private float _gridScale = 100;
+        public float GridScale
+        {
+            get
+            {
+                return _gridScale;
+            }
+            set
+            {
+                _gridScale = value;
+                OnPropertyChanged(nameof(GridScale));
+            }
+        }
+public ObservableCollection<DocumentViewModel> Documents { get; } = new ObservableCollection<DocumentViewModel>();
 
         public DocumentViewModel SelectedDocument
         {
@@ -95,8 +106,7 @@ namespace standa_control_software_WPF.view_models.system_control
 
             _functionDefinitionLibrary = new FunctionManager(_controllerManager, _commandManager);
             _textInterpreter = new TextInterpreterWrapper() { DefinitionLibrary = _functionDefinitionLibrary.Definitions };
-            _painterManager = new PainterManager(_commandManager, _controllerManager, _log);
-            CameraViewModel = new CameraViewModel(_painterManager, _controllerManager);
+            PainterManager = new PainterManagerViewModel(_controllerManager, _commandManager, _log);
 
             AddNewDocumentCommand = new RelayCommand(() => AddNewDocument());
             OpenDocumentCommand = new RelayCommand(() => OpenDocument());
@@ -243,7 +253,7 @@ namespace standa_control_software_WPF.view_models.system_control
                 var commandList = _functionDefinitionLibrary.ExtractCommands();
                 var allocatedTime_s = commandList.Sum(cmdLine => cmdLine.Max(cmd => cmd.EstimatedTime));
                 TimeSpan allocatedTime_timeSpan = TimeSpan.FromSeconds(allocatedTime_s);
-                _painterManager.PaintCommandQueue(commandList);
+                PainterManager.PaintCommandQueue(commandList);
 
                 OutputMessage += $"\nParsed. Estimated time: {allocatedTime_timeSpan.ToString("hh':'mm':'ss")}\n";
 
@@ -329,10 +339,6 @@ namespace standa_control_software_WPF.view_models.system_control
             }
         }
 
-        public List<opentk_painter_library.RenderLayer> GetRenderLayers()
-        {
-            return _painterManager.GetRenderLayers();
-        }
 
     }
 }

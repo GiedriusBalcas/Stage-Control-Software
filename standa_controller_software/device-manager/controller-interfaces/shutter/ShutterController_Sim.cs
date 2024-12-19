@@ -21,7 +21,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             public int _delayOff = 100;
         }
         private ConcurrentDictionary<char, DeviceInformation> _deviceInfo = new ConcurrentDictionary<char, DeviceInformation>();
-
+        
         public ShutterController_Sim(string name, ConcurrentQueue<string> log) : base(name, log)
         {
 
@@ -41,7 +41,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         public override Task ForceStop()
         {
             return Task.CompletedTask;
-
+        }
+        public void ChangeStatePublic(char deviceName, bool wantedState)
+        {
+            _deviceInfo[deviceName]._isOn = wantedState;
+            Devices[deviceName].IsOn = wantedState;
         }
         protected override Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore)
         {

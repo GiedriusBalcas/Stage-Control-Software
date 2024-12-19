@@ -64,17 +64,37 @@ namespace opentk_painter_library.common
         }
     }
 
+    //public readonly struct VertexPositionTexture
+    //{
+    //    public readonly Vector3 Position;
+    //    public readonly Vector3 TexCoord;
+
+    //    public static readonly VertexInfo VertexInfo = new VertexInfo(
+    //        typeof(VertexPositionTexture),
+    //        new VertexAttribute("Position", 0, 3, 0),
+    //        new VertexAttribute("TexCoord", 1, 3, 3 * sizeof(float))
+    //        );
+    //    public VertexPositionTexture(Vector3 position, Vector3 texCoord)
+    //    {
+    //        Position = position;
+    //        TexCoord = texCoord;
+    //    }
+    //}
+
     public readonly struct VertexPositionTexture
     {
+        // Field order sensitive code!
+
         public readonly Vector3 Position;
-        public readonly Vector3 TexCoord;
+        public readonly Vector2 TexCoord;
 
         public static readonly VertexInfo VertexInfo = new VertexInfo(
             typeof(VertexPositionTexture),
             new VertexAttribute("Position", 0, 3, 0),
-            new VertexAttribute("TexCoord", 1, 3, 3 * sizeof(float))
-            );
-        public VertexPositionTexture(Vector3 position, Vector3 texCoord)
+            new VertexAttribute("TexCoord", 1, 2, 3 * sizeof(float))
+        );
+
+        public VertexPositionTexture(Vector3 position, Vector2 texCoord)
         {
             Position = position;
             TexCoord = texCoord;

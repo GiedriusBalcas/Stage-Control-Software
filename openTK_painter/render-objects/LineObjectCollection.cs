@@ -66,7 +66,7 @@ namespace opentk_painter_library.render_objects
         public void InitializeBuffers()
         {
             _bufferHelper = new BufferHelper();
-            
+
             VAO = _bufferHelper.VAO;
             VBO = _bufferHelper.VBO;
             EBO = _bufferHelper.EBO;
