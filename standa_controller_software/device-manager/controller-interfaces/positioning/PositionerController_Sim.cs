@@ -641,7 +641,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         /// </summary>
         private async Task UpdateCommandMoveA(char deviceName, float targetPosition, CancellationToken cancellationToken)
         {
-            if (!_deviceInfo.TryGetValue(deviceName, out var device))
+            if (!_deviceInfo.TryGetValue(deviceName, out var deviceInfo))
             {
                 _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] UpdateCommandMoveA called for unknown device '{deviceName}'.");
                 return;
@@ -653,16 +653,16 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
             // Helper functions
             float DistanceToStop() =>
-                0.5f * device.Deceleration * MathF.Pow(device.CurrentSpeed / device.Deceleration, 2);
+                0.5f * deviceInfo.Deceleration * MathF.Pow(deviceInfo.CurrentSpeed / deviceInfo.Deceleration, 2);
 
             float DirectionToTarget() =>
-                MathF.Sign(targetPosition - device.CurrentPosition);
+                MathF.Sign(targetPosition - deviceInfo.CurrentPosition);
 
             float DistanceToTarget() =>
-                MathF.Abs(targetPosition - device.CurrentPosition);
+                MathF.Abs(targetPosition - deviceInfo.CurrentPosition);
 
             float PointDifference() =>
-                targetPosition - device.CurrentPosition;
+                targetPosition - deviceInfo.CurrentPosition;
 
             if (!float.IsFinite(targetPosition))
             {
@@ -670,12 +670,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 throw new ArgumentException("Non-finite target position value provided.", nameof(targetPosition));
             }
 
-            device.MoveStatus = 1; // Indicate movement is in progress
+            deviceInfo.MoveStatus = 1; // Indicate movement is in progress
             bool stopFlag = false;
 
             try
             {
-                while (MathF.Abs(PointDifference()) > 0.01f || MathF.Abs(device.CurrentSpeed) > 0.01f) // Thresholds to prevent infinite loop
+                while (MathF.Abs(PointDifference()) > 0 || MathF.Abs(deviceInfo.CurrentSpeed) > 0) // Thresholds to prevent infinite loop
                 {
                     // Frequent cancellation checks
                     if (cancellationToken.IsCancellationRequested)
@@ -689,22 +689,23 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     stopwatch.Restart();
 
                     // Calculate movement and acceleration/deceleration per interval
-                    float movementPerInterval = timeElapsed * device.CurrentSpeed;
-                    float accelerationPerInterval = timeElapsed * device.Acceleration;
-                    float decelerationPerInterval = timeElapsed * device.Deceleration;
+                    float movementPerInterval = timeElapsed * deviceInfo.CurrentSpeed;
+                    float accelerationPerInterval = timeElapsed * deviceInfo.Acceleration;
+                    float decelerationPerInterval = timeElapsed * deviceInfo.Deceleration;
 
                     float updatedSpeedValue;
 
                     // Determine direction and speed adjustments
-                    if (DirectionToTarget() == MathF.Sign(device.CurrentSpeed) || device.CurrentSpeed == 0f)
+                    if (DirectionToTarget() == MathF.Sign(deviceInfo.CurrentSpeed) || deviceInfo.CurrentSpeed == 0f)
                     {
                         float distToStop = DistanceToStop();
                         float distToTarget = DistanceToTarget();
 
+                        // check if we are in the range of stopping
                         if (distToTarget < distToStop || stopFlag)
                         {
                             stopFlag = true;
-                            if (MathF.Abs(device.CurrentSpeed) < decelerationPerInterval)
+                            if (MathF.Abs(deviceInfo.CurrentSpeed) < decelerationPerInterval)
                             {
                                 updatedSpeedValue = 0f;
                                 break; // Exit the loop to finalize
@@ -712,25 +713,29 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                             else
                             {
                                 // Decelerate
-                                updatedSpeedValue = device.CurrentSpeed - decelerationPerInterval * MathF.Sign(device.CurrentSpeed);
+                                updatedSpeedValue = deviceInfo.CurrentSpeed - decelerationPerInterval * MathF.Sign(deviceInfo.CurrentSpeed);
                             }
                         }
+                        // we are good to go, no need to decelerate to a stop.
+                        // moving to the target direction.
+                        // we might still be going too fast though.
                         else
                         {
-                            if (MathF.Abs(device.CurrentSpeed) > device.Speed)
+                            // moving too faster target speed. 
+                            if (MathF.Abs(deviceInfo.CurrentSpeed) > deviceInfo.Speed)
                             {
                                 // Decelerate to target speed
-                                float potentialSpeed = device.CurrentSpeed - decelerationPerInterval * MathF.Sign(PointDifference());
-                                updatedSpeedValue = MathF.Abs(potentialSpeed) < device.Speed
-                                    ? device.Speed * MathF.Sign(PointDifference())
+                                float potentialSpeed = deviceInfo.CurrentSpeed - decelerationPerInterval * MathF.Sign(PointDifference());
+                                updatedSpeedValue = MathF.Abs(potentialSpeed) < deviceInfo.Speed
+                                    ? deviceInfo.Speed * MathF.Sign(PointDifference())
                                     : potentialSpeed;
                             }
                             else
                             {
-                                // Accelerate to target speed
-                                float potentialSpeed = device.CurrentSpeed + accelerationPerInterval * MathF.Sign(PointDifference());
-                                updatedSpeedValue = MathF.Abs(potentialSpeed) > device.Speed
-                                    ? device.Speed * MathF.Sign(PointDifference())
+                                // moving slower than target speed.
+                                float potentialSpeed = deviceInfo.CurrentSpeed + accelerationPerInterval * MathF.Sign(PointDifference());
+                                updatedSpeedValue = MathF.Abs(potentialSpeed) > deviceInfo.Speed
+                                    ? deviceInfo.Speed * MathF.Sign(PointDifference())
                                     : potentialSpeed;
                             }
                         }
@@ -738,37 +743,38 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     else
                     {
                         // Reverse direction
-                        float potentialSpeed = device.CurrentSpeed - decelerationPerInterval * MathF.Sign(device.CurrentSpeed);
+                        float potentialSpeed = deviceInfo.CurrentSpeed - decelerationPerInterval * MathF.Sign(deviceInfo.CurrentSpeed);
                         updatedSpeedValue = MathF.Abs(potentialSpeed) > DistanceToTarget()
                             ? 0f
                             : potentialSpeed;
                     }
 
                     // Update speed
-                    device.CurrentSpeed = updatedSpeedValue;
+                    deviceInfo.CurrentSpeed = updatedSpeedValue;
 
                     // Update position
                     float updatedPositionValue;
                     if (MathF.Sign(PointDifference()) != MathF.Sign(movementPerInterval))
                     {
-                        updatedPositionValue = device.CurrentPosition + movementPerInterval;
+                        updatedPositionValue = deviceInfo.CurrentPosition + movementPerInterval;
                     }
-                    else if (DistanceToTarget() < MathF.Abs(movementPerInterval))
+                    else if (DistanceToTarget() < MathF.Abs(movementPerInterval) && decelerationPerInterval > updatedSpeedValue)
                     {
                         updatedPositionValue = targetPosition;
+                        break;
                     }
                     else
                     {
-                        updatedPositionValue = device.CurrentPosition + movementPerInterval;
+                        updatedPositionValue = deviceInfo.CurrentPosition + movementPerInterval;
                     }
 
-                    device.CurrentPosition = float.IsFinite(updatedPositionValue) ? updatedPositionValue : 0f;
+                    deviceInfo.CurrentPosition = float.IsFinite(updatedPositionValue) ? updatedPositionValue : 0f;
 
                     // Update the device's current position
-                    Devices[deviceName].CurrentPosition = device.CurrentPosition;
+                    Devices[deviceName].CurrentPosition = deviceInfo.CurrentPosition;
 
                     // Optional: Update device speed if needed
-                    Devices[deviceName].CurrentSpeed = device.CurrentSpeed;
+                    Devices[deviceName].CurrentSpeed = deviceInfo.CurrentSpeed;
 
                     // Small delay to prevent tight loop; adjust as needed for responsiveness
                     await Task.Delay(10, cancellationToken).ConfigureAwait(false);
@@ -777,9 +783,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 // Final state updates only if not canceled
                 if (!cancellationToken.IsCancellationRequested)
                 {
-                    device.CurrentPosition = targetPosition;
-                    device.CurrentSpeed = 0f;
-                    device.MoveStatus = 0;
+                    deviceInfo.CurrentPosition = targetPosition;
+                    deviceInfo.CurrentSpeed = 0f;
+                    deviceInfo.MoveStatus = 0;
 
                     OnSyncOut?.Invoke(deviceName);
                     _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] UpdateCommandMoveA completed successfully for '{deviceName}'.");
