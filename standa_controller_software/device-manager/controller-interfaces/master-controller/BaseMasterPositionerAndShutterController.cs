@@ -44,7 +44,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         protected ConcurrentQueue<MovementInformation> _buffer;
         protected Command[]? _updateMoveSettingsCommands = null;
         protected bool _launchPending = true;
-        protected bool _updateLaunchPending;
         protected TaskCompletionSource<bool> _processingCompletionSource;
         protected TaskCompletionSource<bool> _processingLastItemTakenSource;
 
@@ -82,7 +81,19 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             await ProcessQueue(semaphore);
             await AwaitExecutionEnd();
         }
+        public override async Task ForceStop()
+        {
+            _processingCompletionSource?.TrySetResult(true);
+            _processingLastItemTakenSource?.TrySetResult(true);
+            _buffer = new ConcurrentQueue<MovementInformation>();
 
+            await AwaitExecutionEnd();
+
+            _updateMoveSettingsCommands = null;
+            _launchPending = true;
+            _processingCompletionSource?.TrySetResult(true);
+            _processingLastItemTakenSource?.TrySetResult(true);
+        }
         protected virtual Task MoveAbsolute(Command[] commands, SemaphoreSlim semaphore)
         {
             Dictionary<string, PositionerSyncItemInfo> posInfoGroups = new Dictionary<string, PositionerSyncItemInfo>();
@@ -338,15 +349,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         {
             await AwaitExecutionEnd();
             
-            // Theres a problem with XIMC, forced to wait, maybe for their Jerk implementation?. (I think). 
-            //await Task.Delay(30);
-
-
             if (_updateMoveSettingsCommands != null)
             {
                 foreach (Command command in _updateMoveSettingsCommands)
                 {
-                    // first, let's await until the device is stationary.
+                    // first, let's await until the device is stationary unless its a blended movement.
                     var targetDevices = command.TargetDevices;
                     var targetController = command.TargetController;
 

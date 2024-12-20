@@ -92,16 +92,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 }
             }
         }
-        public override async Task ForceStop()
-        {
-            await AwaitExecutionEnd();
-            _processingCompletionSource?.TrySetResult(true);
-            _processingLastItemTakenSource?.TrySetResult(true);
-            _buffer.Clear();
-            _launchPending = true;
-            //return Task.CompletedTask;
-
-        }
+        
         private void GotMessageFromSyncExecuter(string Message)
         {
             if (Message == "0x01") // Arduino signaled buffer space is available

@@ -53,42 +53,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             _launchPending = true;
             _processingCompletionSource?.TrySetResult(true);
             _processingLastItemTakenSource?.TrySetResult(true);
-            //char[] deviceNames = SlaveControllers.Values
-            //    .Where(controller => controller is BasePositionerController)
-            //    .SelectMany(controller => controller.GetDevices())
-            //    .Select(device => device.Name)
-            //    .ToArray();
-
-
-            //var commandAdd = new Command
-            //{
-            //    Action = CommandDefinitions.AddSyncControllerBufferItem,
-            //    TargetController = _syncController.Name,
-            //    TargetDevices = deviceNames,
-            //    Parameters = new AddSyncControllerBufferItemParameters
-            //    {
-            //        Devices = deviceNames,
-            //        Launch = true,
-            //        Rethrow = 1,
-            //        Shutter = false,
-            //    }
-            //};
-
-
-            //for (int i = 0; i < 40; i++)
-            //{
-            //    await ExecuteSlaveCommand(commandAdd);
-            //}
-
-            //_processingCompletionSource = new TaskCompletionSource<bool>();
-            //_processingLastItemTakenSource = new TaskCompletionSource<bool>();
-
-            //await StartExecutionOnSyncController(new SemaphoreSlim(1));
-
-            //await AwaitExecutionEnd();
-
-            //_processingCompletionSource?.TrySetResult(true);
-            //_processingLastItemTakenSource?.TrySetResult(true);
+           
             return Task.CompletedTask;
 
         }

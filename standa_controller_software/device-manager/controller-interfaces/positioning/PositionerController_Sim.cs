@@ -230,9 +230,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] ForceStop initiated.");
 
             // Cancel all cancellation tokens
-            foreach (var cts in _deviceCancellationTokens.Values)
+            foreach (var (deviceName, cts) in _deviceCancellationTokens)
             {
                 cts.Cancel();
+                _deviceInfo[deviceName].MoveStatus = 0;
+                _deviceInfo[deviceName].CurrentSpeed = 0;
             }
 
             // Await all running movement tasks
@@ -348,12 +350,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         /// <summary>
         /// Checks if a device is stationary.
         /// </summary>
-        protected override Task<bool> IsDeviceStationary(BasePositionerDevice device)
+        protected override async Task<bool> IsDeviceStationary(BasePositionerDevice device)
         {
             char deviceName = device.Name; // Assuming Name is a single char
             bool isStationary = _deviceInfo[deviceName].MoveStatus == 0;
             device.CurrentPosition = _deviceInfo[deviceName].CurrentPosition;
-            return Task.FromResult(isStationary);
+            await Task.Delay(1);
+
+            return isStationary;
         }
 
         /// <summary>
