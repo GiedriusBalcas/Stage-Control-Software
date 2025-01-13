@@ -10,8 +10,8 @@ namespace opentk_painter_library
     {
         protected Shader _shader;
         public List<IRenderCollection> RenderCollections;
-        protected string _fragmentShaderSource;
-        protected string _vertexShaderSource;
+        protected string _fragmentShader;
+        protected string _vertexShader;
         protected List<IUniform> _uniforms;
         private List<IRenderCollection> InitializedRenderCollections;
 

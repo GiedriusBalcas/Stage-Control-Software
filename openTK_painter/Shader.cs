@@ -7,20 +7,20 @@ namespace opentk_painter_library
     {
         public int ShaderHandle { get; set; }
         public List<IUniform> Uniforms;
-        private readonly string _vertexShaderSource;
-        private readonly string _fragmentShaderSource;
+        private readonly string _vertexShader;
+        private readonly string _fragmentShader;
 
-        public Shader(List<IUniform> uniforms, string vertexSource, string fragmentSource)
+        public Shader(List<IUniform> uniforms, string vertexShader, string fragmentShader)
         {
             Uniforms = uniforms;
-            _vertexShaderSource = vertexSource;
-            _fragmentShaderSource = fragmentSource;
+            _vertexShader = vertexShader;
+            _fragmentShader = fragmentShader;
         }
 
         public void CreateShaderProgram()
         {
-            int vertexShader = CompileShader(ShaderType.VertexShader, _vertexShaderSource);
-            int fragmentShader = CompileShader(ShaderType.FragmentShader, _fragmentShaderSource);
+            int vertexShader = CompileShader(ShaderType.VertexShader, _vertexShader);
+            int fragmentShader = CompileShader(ShaderType.FragmentShader, _fragmentShader);
 
             int program = GL.CreateProgram();
 
@@ -43,9 +43,9 @@ namespace opentk_painter_library
             ShaderHandle = program;
         }
 
-        private int CompileShader(ShaderType type, string sourcePath)
+        private int CompileShader(ShaderType type, string sourceText)
         {
-            var source = File.ReadAllText(sourcePath);
+            var source = sourceText;
             int shader = GL.CreateShader(type);
             GL.ShaderSource(shader, source);
             GL.CompileShader(shader);

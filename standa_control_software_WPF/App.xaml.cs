@@ -41,34 +41,50 @@ namespace standa_control_software_WPF
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            _navigationStore.CurrentViewModel = _configCreationViewModel;
-
-            MainWindow = new MainView()
+            try
             {
-                DataContext = new MainViewModel(_navigationStore)
-            };
-            MainWindow.Show();
+                _navigationStore.CurrentViewModel = _configCreationViewModel;
 
-            base.OnStartup(e);
+                MainWindow = new MainView()
+                {
+                    DataContext = new MainViewModel(_navigationStore)
+                };
+                MainWindow.Show();
+
+                base.OnStartup(e);
+            }
+            catch (Exception ex)
+            {
+                _log.Enqueue("Fatal error encountered in System Configuration Window.");
+                _log.Enqueue(ex.Message);
+            }
         }
 
         private void OnInitializationComplete(ControllerManager controllerManager)
         {
-            _controllerManager = controllerManager;
-            _controllerStateUpdater = new ControllerStateUpdater(_controllerManager, _log);
-            _commandManager = new CommandManager(_controllerManager, _log);
+            try
+            {
+                _controllerManager = controllerManager;
+                _controllerStateUpdater = new ControllerStateUpdater(_controllerManager, _log);
+                _commandManager = new CommandManager(_controllerManager, _log);
 
-            _systemPropertiesViewModel = new SystemPropertiesViewModel(_controllerManager, _commandManager);
-            _systemControlViewModel = new SystemControlViewModel(_controllerManager,_commandManager, _log);
-            _systemInformationViewModel = new SystemInformtaionViewModel(_controllerManager, _commandManager);
+                _systemPropertiesViewModel = new SystemPropertiesViewModel(_controllerManager, _commandManager);
+                _systemControlViewModel = new SystemControlViewModel(_controllerManager,_commandManager, _log);
+                _systemInformationViewModel = new SystemInformtaionViewModel(_controllerManager, _commandManager);
 
 
-            _lscNavigationStore.CurrentViewModel = _systemPropertiesViewModel;
-            _systemControlMainViewModel = new SystemControlMainViewModel(_commandManager, _lscNavigationStore, GetSystemConfigurationsViewModel, GetSystemInformtaionViewModel, GetSystemCompilerViewModel);
+                _lscNavigationStore.CurrentViewModel = _systemPropertiesViewModel;
+                _systemControlMainViewModel = new SystemControlMainViewModel(_commandManager, _lscNavigationStore, GetSystemConfigurationsViewModel, GetSystemInformtaionViewModel, GetSystemCompilerViewModel);
 
-            _navigationStore.CurrentViewModel = _systemControlMainViewModel;
+                _navigationStore.CurrentViewModel = _systemControlMainViewModel;
 
-            _ = _controllerStateUpdater.UpdateStatesAsync();
+                _ = _controllerStateUpdater.UpdateStatesAsync();
+            }
+            catch(Exception ex)
+            {
+                _log.Enqueue("Fatal error encountered in System Control Window");
+                _log.Enqueue(ex.Message);
+            }
         }
 
 

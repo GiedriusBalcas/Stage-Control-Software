@@ -13,6 +13,7 @@ using standa_control_software_WPF.view_models.config_creation;
 using standa_controller_software.device_manager.devices.shutter;
 using standa_controller_software.device_manager.controller_interfaces.master_controller;
 using System.Collections.Concurrent;
+using System.Windows.Markup;
 
 namespace standa_control_software_WPF.view_models
 {
@@ -171,7 +172,7 @@ namespace standa_control_software_WPF.view_models
                 var shutterDevice = controllerMangerInstance.GetDevices<BaseShutterDevice>().FirstOrDefault() ?? new ShutterDevice('s', "undefined");
                 var positionerDevices = controllerMangerInstance.GetDevices<BasePositionerDevice>();
                 var positionerNames = positionerDevices.Select(dev => dev.Name).ToList();
-                var calculator = new ToolPositionCalculator();
+                var calculator = new ToolPositionCalculator(_log);
 
                 calculator.CreateFunction(Configuration.XToolDependancy, positionerDevices.Select(dev => dev.Name).ToList());
                 var funcDelegX = calculator.GetFunction();
@@ -179,6 +180,9 @@ namespace standa_control_software_WPF.view_models
                 var funcDelegY = calculator.GetFunction();
                 calculator.CreateFunction(Configuration.ZToolDependancy, positionerDevices.Select(dev => dev.Name).ToList());
                 var funcDelegZ = calculator.GetFunction();
+
+                if (funcDelegX is null || funcDelegY is null || funcDelegZ is null)
+                    throw new ArgumentNullException("Tool position is not defined.");
 
                 Func<Dictionary<char, float>, System.Numerics.Vector3> toolPosFunction = (positions) =>
                 {
@@ -202,6 +206,7 @@ namespace standa_control_software_WPF.view_models
             }
             catch (Exception ex)
             {
+                _log.Enqueue(ex.Message);
                 MessageBox.Show(ex.Message);
             }
         }

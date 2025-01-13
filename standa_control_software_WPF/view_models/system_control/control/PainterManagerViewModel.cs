@@ -1,13 +1,9 @@
 ﻿using opentk_painter_library;
 using opentk_painter_library.common;
-using opentk_painter_library.render_objects;
 using standa_control_software_WPF.view_models.system_control.control.render;
 using standa_controller_software.command_manager;
 using standa_controller_software.device_manager;
-using standa_controller_software.device_manager.controller_interfaces.master_controller;
-using standa_controller_software.painter;
 using System.Collections.Concurrent;
-using System.Windows.Media.Media3D;
 
 
 namespace standa_control_software_WPF.view_models.system_control.control

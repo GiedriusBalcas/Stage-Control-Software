@@ -1,12 +1,17 @@
 ﻿using Antlr4.Runtime;
+using System.Collections.Concurrent;
 
 namespace ToolDependancyBuilder
 {
     public class ToolPositionCalculator
     {
         private Func<Dictionary<char, float>, float> _CoordinateFunc;
+        private readonly ConcurrentQueue<string> _log;
 
-
+        public ToolPositionCalculator(ConcurrentQueue<string> log)
+        {
+            _log = log;
+        }
         public void CreateFunction(string xExprStr, List<char> deviceNames)
         {
             var _deviceNames = deviceNames;
@@ -31,18 +36,14 @@ namespace ToolDependancyBuilder
             }
             catch (Exception ex)
             {
-                errorListener.Errors.Add(ex.Message + "\n");
+                _log.Enqueue(ex.Message);
             }
             if (errorListener.Errors.Any())
             {
                 foreach (var error in errorListener.Errors)
                 {
-                    Console.WriteLine(error);
+                    _log.Enqueue(error);
                 }
-            }
-            else
-            {
-                Console.WriteLine("No syntax errors found.");
             }
         }
 

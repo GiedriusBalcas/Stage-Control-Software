@@ -27,14 +27,14 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
             _camera = camera;
             _lineCollection = new LineObjectCollection(); 
             
-            _vertexShaderSource = "C:\\Users\\giedr\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\openTK_painter\\default-shaders\\VertexShader.vert";
-            _fragmentShaderSource = "C:\\Users\\giedr\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\openTK_painter\\default-shaders\\FragmentShader.frag";
+            _vertexShader = "#version 330 core\r\nlayout (location = 0) in vec3 aPosition;\r\nlayout (location = 1) in vec4 aColor;\r\n\r\nout vec4 vertexColor;\r\n\r\nuniform mat4 view;\r\nuniform mat4 projection;\r\n\r\nvoid main()\r\n{\r\n    gl_Position = projection * view * vec4(aPosition, 1.0);\r\n    vertexColor = aColor;\r\n}";
+            _fragmentShader = "#version 330 core\r\nin vec4 vertexColor;\r\n\r\nout vec4 FragColor;\r\n\r\nvoid main()\r\n{\r\n    FragColor = vertexColor;\r\n}";
 
             _viewUniform = new UniformMatrix4("view", _camera.GetViewMatrix());
             _projectionUniform = new UniformMatrix4("projection", _camera.GetProjectionMatrix());
 
             _uniforms = [_viewUniform, _projectionUniform];
-            _shader = new Shader(_uniforms, _vertexShaderSource, _fragmentShaderSource);
+            _shader = new Shader(_uniforms, _vertexShader, _fragmentShader);
 
             this.AddObjectCollection(_lineCollection);
         }

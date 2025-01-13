@@ -2,16 +2,7 @@
 using opentk_painter_library.common;
 using standa_control_software_WPF.view_models.commands;
 using standa_controller_software.device_manager;
-using standa_controller_software.painter;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Input;
-using System.Windows.Media.Media3D;
-using System.Windows.Navigation;
 
 namespace standa_control_software_WPF.view_models.system_control.control
 {

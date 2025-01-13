@@ -1,22 +1,22 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
-  <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{D008FA46-78DB-4F5D-BB71-40BCE2BAF997}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>ximcWrapperProject</RootNamespace>
-    <AssemblyName>ximcWrapperProject</AssemblyName>
-    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <Deterministic>true</Deterministic>
-    <TargetFrameworkProfile />
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-  </PropertyGroup>
+	<Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+	<PropertyGroup>
+		<Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+		<Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+		<ProjectGuid>{D008FA46-78DB-4F5D-BB71-40BCE2BAF997}</ProjectGuid>
+		<OutputType>Library</OutputType>
+		<AppDesignerFolder>Properties</AppDesignerFolder>
+		<RootNamespace>ximcWrapperProject</RootNamespace>
+		<AssemblyName>ximcWrapperProject</AssemblyName>
+		<TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+		<FileAlignment>512</FileAlignment>
+		<Deterministic>true</Deterministic>
+		<TargetFrameworkProfile />
+	</PropertyGroup>
+	<PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+		<PlatformTarget>AnyCPU</PlatformTarget>
+	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
 		<DebugSymbols>true</DebugSymbols>
 		<OutputPath>bin\x64\Debug\</OutputPath>
@@ -29,58 +29,75 @@
 		<PlatformTarget>x86</PlatformTarget>
 		<LangVersion>7.3</LangVersion>
 	</PropertyGroup>
-  <ItemGroup Condition="'$(Platform)' == 'x86'">
-    <None Include="external\x86\bindy.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>bindy.dll</Link>
-    </None>
-	  <None Include="external\x86\libximc.dll">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		  <Link>libximc.dll</Link>
-	  </None>
-	  <None Include="external\x86\xiwrapper.dll">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		  <Link>xiwrapper.dll</Link>
-	  </None>
-  </ItemGroup>
-  <ItemGroup Condition="'$(Platform)' == 'x64'">
-    <None Include="external\x64\bindy.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>bindy.dll</Link>
-    </None>
-	  <None Include="external\x64\libximc.dll">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		  <Link>libximc.dll</Link>
-	  </None>
-	  <None Include="external\x64\xiwrapper.dll">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		  <Link>xiwrapper.dll</Link>
-	  </None>
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Xml" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ximcnet.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="keyfile.sqlite">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="external\x64\bindy.dll" />
-    <Content Include="external\x64\libjximc.dll" />
-    <Content Include="external\x64\libximc.dll" />
-    <Content Include="external\x64\xiwrapper.dll" />
-    <Content Include="external\x86\bindy.dll" />
-    <Content Include="external\x86\libjximc.dll" />
-    <Content Include="external\x86\libximc.dll" />
-    <Content Include="external\x86\xiwrapper.dll" />
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+	<PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+		<PlatformTarget>AnyCPU</PlatformTarget>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+		<DebugSymbols>true</DebugSymbols>
+		<OutputPath>bin\x64\Release\</OutputPath>
+		<PlatformTarget>x64</PlatformTarget>
+		<LangVersion>7.3</LangVersion>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
+		<DebugSymbols>true</DebugSymbols>
+		<OutputPath>bin\x86\Release\</OutputPath>
+		<PlatformTarget>x86</PlatformTarget>
+		<LangVersion>7.3</LangVersion>
+	</PropertyGroup>
+
+
+	<ItemGroup Condition="'$(Platform)' == 'x86'">
+		<None Include="external\x86\bindy.dll">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<Link>bindy.dll</Link>
+		</None>
+		<None Include="external\x86\libximc.dll">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<Link>libximc.dll</Link>
+		</None>
+		<None Include="external\x86\xiwrapper.dll">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<Link>xiwrapper.dll</Link>
+		</None>
+	</ItemGroup>
+	<ItemGroup Condition="'$(Platform)' == 'x64'">
+		<None Include="external\x64\bindy.dll">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<Link>bindy.dll</Link>
+		</None>
+		<None Include="external\x64\libximc.dll">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<Link>libximc.dll</Link>
+		</None>
+		<None Include="external\x64\xiwrapper.dll">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<Link>xiwrapper.dll</Link>
+		</None>
+	</ItemGroup>
+	<ItemGroup>
+		<Reference Include="System" />
+		<Reference Include="System.Data" />
+		<Reference Include="System.Xml" />
+	</ItemGroup>
+	<ItemGroup>
+		<Compile Include="Properties\AssemblyInfo.cs" />
+		<Compile Include="ximcnet.cs" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="keyfile.sqlite">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</None>
+		<None Include="packages.config" />
+	</ItemGroup>
+	<ItemGroup>
+		<Content Include="external\x64\bindy.dll" />
+		<Content Include="external\x64\libjximc.dll" />
+		<Content Include="external\x64\libximc.dll" />
+		<Content Include="external\x64\xiwrapper.dll" />
+		<Content Include="external\x86\bindy.dll" />
+		<Content Include="external\x86\libjximc.dll" />
+		<Content Include="external\x86\libximc.dll" />
+		<Content Include="external\x86\xiwrapper.dll" />
+	</ItemGroup>
+	<Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

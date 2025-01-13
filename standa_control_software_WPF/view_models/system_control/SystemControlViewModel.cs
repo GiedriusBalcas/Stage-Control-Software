@@ -3,15 +3,11 @@ using standa_control_software_WPF.view_models.system_control.control;
 using standa_controller_software.command_manager;
 using standa_controller_software.custom_functions;
 using standa_controller_software.device_manager;
-using standa_controller_software.painter;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
-using System.Drawing;
 using System.IO;
 using System.Windows.Input;
-using System.Windows.Media.Animation;
 using text_parser_library;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
 
 namespace standa_control_software_WPF.view_models.system_control
 {

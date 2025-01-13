@@ -32,13 +32,13 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
 
             _lineCollection = new LineObjectCollection() { lineWidth = 3 };
 
-            _vertexShaderSource = "C:\\Users\\giedr\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\openTK_painter\\grid-shaders\\VertexShader.vert";
-            _fragmentShaderSource = "C:\\Users\\giedr\\Desktop\\importsnt\\Csharp\\Standa Stage Control Environment\\standa_controller_software\\openTK_painter\\grid-shaders\\FragmentShader.frag";
+            _vertexShader = "#version 330 core\r\n\r\nlayout(location = 0) in vec3 aPosition;\r\nlayout(location = 1) in vec4 aColor;\r\n\r\nout vec4 vertexColor;\r\nout vec4 clipSpacePos; // Pass clip space position to fragment shader\r\n\r\nuniform mat4 projection;\r\nuniform mat4 view;\r\n\r\nvoid main()\r\n{\r\n    // Calculate world position (assuming model matrix is identity)\r\n    vec4 worldPosition = vec4(aPosition, 1.0);\r\n\r\n    // Calculate clip space position without the view matrix\r\n    clipSpacePos = projection * view * worldPosition;\r\n\r\n    // Compute final position with view matrix for correct rendering\r\n    gl_Position = projection * view * worldPosition;\r\n\r\n    // Pass the vertex color\r\n    vertexColor = aColor;\r\n}\r\n";
+            _fragmentShader = "#version 330 core\r\n\r\nin vec4 vertexColor;\r\nin vec4 clipSpacePos; // Received from vertex shader\r\n\r\nout vec4 FragColor;\r\n\r\nvoid main()\r\n{\r\n    // Perform perspective division to get NDC coordinates\r\n    vec3 ndc = clipSpacePos.xyz / clipSpacePos.w;\r\n\r\n    // Calculate the distance from the fragment to the closest edge in NDC\r\n    float distX = 1.0 - abs(ndc.x);\r\n    float distY = 1.0 - abs(ndc.y);\r\n    float edgeDist = min(distX, distY);\r\n\r\n    // Define the width of the fade effect in NDC space (0.0 to 1.0)\r\n    float fadeWidth = 0.2;\r\n\r\n    // Compute the alpha value based on edge distance\r\n    float alpha = clamp(edgeDist / fadeWidth * vertexColor.a, 0.0, 1);\r\n\r\n    // Set the fragment color with the computed alpha\r\n    FragColor = vec4(vertexColor.rgb, alpha);\r\n}\r\n";
 
             _viewUniform = new UniformMatrix4("view", _camera.GetViewMatrix());
             _projectionUniform = new UniformMatrix4("projection", _camera.GetProjectionMatrix());
             _uniforms = [_viewUniform, _projectionUniform];
-            _shader = new Shader(_uniforms, _vertexShaderSource, _fragmentShaderSource);
+            _shader = new Shader(_uniforms, _vertexShader, _fragmentShader);
 
             this.AddObjectCollection(_lineCollection);
 
