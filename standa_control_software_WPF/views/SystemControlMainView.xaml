@@ -90,7 +90,7 @@
                 </ListBox>-->
 
 
-                <Button Command="{Binding CreateCommandQueueFromInputCommand}"
+                <Button Command="{Binding CreateCommandQueueFromInput}"
                         Style="{StaticResource customButtonStyleForBar}">
                     <StackPanel Orientation="Horizontal">
                         <Path Width="20" Height="15" Fill="{StaticResource FontColorBrush}" Data="{StaticResource parseIconPath}" Stretch="Uniform"/>

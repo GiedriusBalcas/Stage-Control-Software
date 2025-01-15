@@ -14,6 +14,7 @@ using standa_controller_software.device_manager.devices.shutter;
 using standa_controller_software.device_manager.controller_interfaces.master_controller;
 using System.Collections.Concurrent;
 using System.Windows.Markup;
+using System.Text;
 
 namespace standa_control_software_WPF.view_models
 {
@@ -81,8 +82,18 @@ namespace standa_control_software_WPF.view_models
             LoadConfigurationsCommand = new RelayCommand(LoadConfigurations);
             SaveConfigurationsCommand = new RelayCommand(SaveConfigurationsExecute);
             SaveAsConfigurationsCommand = new RelayCommand(SaveAsConfigurationsExecute);
-            CreateConfigInstanceCommand = new RelayCommand(ExecuteCreateConfigsInstance);
+            CreateConfigInstanceCommand = new RelayCommand(ExecuteCreateConfigsInstance, CanCreateConfigurationInstance);
 
+        }
+
+        private bool CanCreateConfigurationInstance()
+        {
+            if (Configuration.Controllers.Count < 1)
+                return false;
+            if (Configuration.XToolDependancy == string.Empty || Configuration.YToolDependancy == string.Empty || Configuration.ZToolDependancy == string.Empty)
+                return false;
+
+            return true;
         }
 
         private void SaveConfigurationsExecute()

@@ -64,7 +64,7 @@
 
     <Grid Background="Transparent">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="30" />
+            <ColumnDefinition Width="5" />
             <ColumnDefinition Width="auto" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
@@ -73,15 +73,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Label Grid.Row="0"
-               Grid.Column="1"
-               Grid.ColumnSpan="2"
-               Padding="20"
-               Content="Device Properties"
-               FontSize="25"
-               FontWeight="Thin"
-               VerticalAlignment="Center"
-               Foreground="{StaticResource FontColorBrush}" />
+        
 
         <StackPanel Grid.Column="1"
                     Grid.Row="1"

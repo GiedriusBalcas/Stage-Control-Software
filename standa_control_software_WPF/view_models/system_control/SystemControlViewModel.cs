@@ -21,7 +21,7 @@ namespace standa_control_software_WPF.view_models.system_control
         private string _outputMessage;
         private readonly ConcurrentQueue<string> _log;
         private DocumentViewModel _selectedDocument;
-        
+
         public PainterManagerViewModel PainterManager { get; private set; }
         public string InputText
         {
@@ -59,7 +59,7 @@ namespace standa_control_software_WPF.view_models.system_control
                 OnPropertyChanged(nameof(GridScale));
             }
         }
-public ObservableCollection<DocumentViewModel> Documents { get; } = new ObservableCollection<DocumentViewModel>();
+        public ObservableCollection<DocumentViewModel> Documents { get; } = new ObservableCollection<DocumentViewModel>();
 
         public DocumentViewModel SelectedDocument
         {
@@ -75,13 +75,38 @@ public ObservableCollection<DocumentViewModel> Documents { get; } = new Observab
         public ICommand OpenDocumentCommand { get; set; }
         public event Action OnExecutionStart;
 
-        
 
-        public ICommand CreateCommandQueueFromInputCommand { get; set; }
+
+        public ICommand CreateCommandQueueFromInput { get; set; }
+        public ICommand CancelCommandQueueParsing { get; set; }
         public ICommand ExecuteCommandQueueCommand { get; set; }
         public ICommand ForceStopCommand { get; set; }
         public ICommand ClearOutputMessageCommand { get; set; }
 
+
+        private bool _isParsing;
+        public bool IsParsing
+        {
+            get => _isParsing;
+            set
+            {
+                _isParsing = value;
+                OnPropertyChanged(nameof(IsParsing));
+            }
+        }
+
+        private string _parsingStatusMessage = string.Empty;
+        public string ParsingStatusMessage
+        {
+            get => _parsingStatusMessage;
+            set
+            {
+                _parsingStatusMessage = value;
+                OnPropertyChanged(nameof(ParsingStatusMessage));
+            }
+        }
+
+        private CancellationTokenSource _parsingCts;
 
         private int? _highlightedLineNumber;// _debugger.CurrentLine
         public int? HighlightedLineNumber
@@ -107,11 +132,52 @@ public ObservableCollection<DocumentViewModel> Documents { get; } = new Observab
             AddNewDocumentCommand = new RelayCommand(() => AddNewDocument());
             OpenDocumentCommand = new RelayCommand(() => OpenDocument());
 
-            CreateCommandQueueFromInputCommand = new RelayCommand(CreateCommandQueueFromInputAsync);
-            ExecuteCommandQueueCommand = new RelayCommand(ExecuteCommandsQueueAsync);
+            CreateCommandQueueFromInput = new RelayCommand(
+                async () => await CreateCommandQueueFromInputAsync(),
+                CanParseText
+            );
+            CancelCommandQueueParsing = new RelayCommand(ExecuteCancelCommandParsing);
+
+            ExecuteCommandQueueCommand = new RelayCommand(async () => await ExecuteCommandsQueueAsync(), CanExecuteCommandQueue);
             ForceStopCommand = new RelayCommand(ForceStop);
 
             ClearOutputMessageCommand = new RelayCommand(() => OutputMessage = "");
+        }
+
+        private void ExecuteCancelCommandParsing()
+        {
+            _parsingCts?.Cancel();
+            _functionDefinitionLibrary.ClearCommandQueue();
+        }
+
+        private bool CanExecuteCommandQueue()
+        {
+            if (IsParsing)
+                return false;
+
+            if (_commandManager.CurrentState != CommandManagerState.Waiting)
+                return false;
+
+            if(_functionDefinitionLibrary.ExtractCommands().Count() <= 0)
+                return false;
+
+            return true;
+        }
+
+        private bool CanParseText()
+        {
+            if (SelectedDocument is null)
+                return false;
+
+            var input = SelectedDocument.InputText;
+
+            if (input is null || input == string.Empty)
+                return false;
+
+            if (_commandManager.CurrentState != CommandManagerState.Waiting)
+                return false;
+
+            return true;
         }
 
         private async void UpdateDeviceStates(bool isProbing)
@@ -139,18 +205,19 @@ public ObservableCollection<DocumentViewModel> Documents { get; } = new Observab
         {
             try
             {
-                var content = string.Join("\n", _commandManager.GetLog());
+                //var content = string.Join("\n", );
                 // The name of the file where the content will be saved
                 string fileName = "log.txt";
 
                 // Path to save the file in the same project directory
                 string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
 
-                File.WriteAllText(filePath, content);
+                //File.WriteAllText(filePath, content);
+                File.AppendAllLines(filePath, _commandManager.GetLog());
             }
             catch (Exception ex)
             {
-                OutputMessage += $"\n{ex.Message}.";
+                OutputMessage += $"Exception thrown when trying to save a log. \n{ex.Message}.";
             }
 
         }
@@ -167,10 +234,10 @@ public ObservableCollection<DocumentViewModel> Documents { get; } = new Observab
 
         }
 
-        private async void ExecuteCommandsQueueAsync()
+        private async Task ExecuteCommandsQueueAsync()
         {
 
-            if(_commandManager.CurrentState != CommandManagerState.Processing)
+            if (_commandManager.CurrentState != CommandManagerState.Processing)
             {
                 ClearLog();
                 //ForceStop();
@@ -235,34 +302,58 @@ public ObservableCollection<DocumentViewModel> Documents { get; } = new Observab
             File.WriteAllText(filePath, content);
         }
 
-        private async void CreateCommandQueueFromInputAsync()
+        private async Task CreateCommandQueueFromInputAsync()
         {
             try
             {
+                // Prepare for parse
+                _parsingCts = new CancellationTokenSource();
+                IsParsing = true;
+                ParsingStatusMessage = "Starting parse...";
+
                 var inputText = SelectedDocument.InputText;
+                var fileName = SelectedDocument.Name;
+                // Clear any prior state
                 HighlightedLineNumber = null;
                 _functionDefinitionLibrary.ClearCommandQueue();
                 _functionDefinitionLibrary.InitializeDefinitions();
-                
                 _textInterpreter.DefinitionLibrary = _functionDefinitionLibrary.Definitions;
-                _textInterpreter.ReadInput(inputText);
+
+                // Actually do the parse on background thread
+                await Task.Run(() =>
+                {
+                    // Provide a callback for status updates
+                    _textInterpreter.ReadInput(
+                        inputText, fileName,
+                        _parsingCts.Token,
+                        statusUpdate => { ParsingStatusMessage = statusUpdate; }
+                    );
+                });
+
+                // If parse succeeds, do next steps (extract commands, etc.)
                 var commandList = _functionDefinitionLibrary.ExtractCommands();
                 var allocatedTime_s = commandList.Sum(cmdLine => cmdLine.Max(cmd => cmd.EstimatedTime));
                 TimeSpan allocatedTime_timeSpan = TimeSpan.FromSeconds(allocatedTime_s);
                 PainterManager.PaintCommandQueue(commandList);
 
-                OutputMessage += $"\nParsed. Estimated time: {allocatedTime_timeSpan.ToString("hh':'mm':'ss")}\n";
-
+                OutputMessage += $"\nParsed successfully. Estimated time: {allocatedTime_timeSpan.ToString("hh':'mm':'ss")}\n";
+            }
+            catch (OperationCanceledException)
+            {
+                OutputMessage += "\nParsing was canceled.";
             }
             catch (Exception ex)
             {
                 OutputMessage += $"\n{ex.Message}";
-                if(_textInterpreter.State.CurrentState == ParserState.States.Error)
+                if (_textInterpreter.State.CurrentState == ParserState.States.Error)
                 {
                     OutputMessage += $"\n{_textInterpreter.State.Message}";
                     HighlightedLineNumber = _textInterpreter.State.LineNumber;
                 }
-                // update the highlighted line number in red.
+            }
+            finally
+            {
+                IsParsing = false;
             }
         }
 

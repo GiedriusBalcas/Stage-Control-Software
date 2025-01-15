@@ -13,14 +13,16 @@ namespace text_parser_library
         private readonly List<string> _variableList;
         private ParserState _state;
         private Definitions _definitionsLibrary;
+        private string _commandName;
 
-        public UserCommand(List<string> parameters, GrammarSyntaxParser.BlockContext body, List<string> variableList, ParserState state, Definitions definitionsLibrary)
+        public UserCommand(List<string> parameters, GrammarSyntaxParser.BlockContext body, List<string> variableList, ParserState state, Definitions definitionsLibrary, string functionName)
         {
             _parameters = parameters;
             _body = body;
             _variableList = variableList;
             _state = state;
             _definitionsLibrary = definitionsLibrary;
+            _commandName = functionName;
         }
 
         public override object? Execute(params object[] args)
@@ -30,7 +32,7 @@ namespace text_parser_library
                 _definitionsLibrary.AddVariable(_variableList[i], args[i]);
             }
 
-            var visitor = new InputVisitor(_state, _definitionsLibrary);
+            var visitor = new InputVisitor(_state, _definitionsLibrary, _commandName);
             try
             {
                 visitor.Visit(_body);

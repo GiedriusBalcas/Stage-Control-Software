@@ -7,11 +7,13 @@ namespace text_parser_library
     public class InputVisitor : GrammarSyntaxBaseVisitor<object?>
     {
         private Definitions _definitionsLibrary;
+        private string _currentFileName;
         public ParserState State { get;}
-
-        public InputVisitor(ParserState state, Definitions definitionsLibrary)
+        public event Action<int, string> LineVisited;
+        public InputVisitor(ParserState state, Definitions definitionsLibrary, string fileName)
         {
             _definitionsLibrary = definitionsLibrary;
+            _currentFileName = fileName;
             State = state;
         }
 
@@ -34,6 +36,7 @@ namespace text_parser_library
                 State.SetState(ParserState.States.Error);
                 throw new Exception();
             }
+            string fileName = Path.GetFileName(filePath);
             string content;
             using (StreamReader sr = new StreamReader(filePath))
             {
@@ -45,7 +48,7 @@ namespace text_parser_library
             var tokenStream = new CommonTokenStream(lexer);
             var parser = new GrammarSyntaxParser(tokenStream);
             var _tree = parser.program();
-            var visitor = new InputVisitor(State, _definitionsLibrary);
+            var visitor = new InputVisitor(State, _definitionsLibrary, fileName);
             visitor.Visit(_tree);
             _definitionsLibrary = visitor.GetCurrentLibrary();
 
@@ -61,6 +64,9 @@ namespace text_parser_library
         {
             var lineNum = context.start.Line;
             State.UpdateLineNumber(lineNum);
+
+            // Fire the event
+            LineVisited?.Invoke(lineNum, _currentFileName);
 
             return base.VisitLine(context);
         }
@@ -329,7 +335,7 @@ namespace text_parser_library
             var block = context.block();
             var parameters = new List<string>();
 
-            var userFunction = new UserCommand(parameters, block,argNames,State, _definitionsLibrary);
+            var userFunction = new UserCommand(parameters, block,argNames,State, _definitionsLibrary, functionName);
             _definitionsLibrary.AddFunction(functionName, userFunction);
             
 
