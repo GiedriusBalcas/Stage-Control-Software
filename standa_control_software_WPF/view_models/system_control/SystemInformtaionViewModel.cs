@@ -1,5 +1,6 @@
 ﻿
 
+using Microsoft.Extensions.Logging;
 using standa_control_software_WPF.view_models.commands;
 using standa_control_software_WPF.view_models.system_control.information;
 using standa_control_software_WPF.view_models.system_control.information;
@@ -15,6 +16,7 @@ namespace standa_control_software_WPF.view_models.system_control
 {
     public class SystemInformtaionViewModel : ViewModelBase
     {
+        private readonly ILoggerFactory _loggerFactory;
         private readonly ControllerManager _controllerManager;
         private readonly standa_controller_software.command_manager.CommandManager _commandManager;
         private double _acquisitionDuration;
@@ -58,8 +60,9 @@ namespace standa_control_software_WPF.view_models.system_control
 
         public ObservableCollection<DeviceViewModel> Devices { get; set; }
         public ToolViewModel ToolViewModel { get; set; }
-        public SystemInformtaionViewModel(ControllerManager controllerManager, standa_controller_software.command_manager.CommandManager commandManager)
+        public SystemInformtaionViewModel(ControllerManager controllerManager, standa_controller_software.command_manager.CommandManager commandManager, ILoggerFactory loggerFactory)
         {
+            _loggerFactory = loggerFactory;
             _controllerManager = controllerManager;
             _commandManager = commandManager;
             Devices = new ObservableCollection<DeviceViewModel>();
@@ -131,7 +134,7 @@ namespace standa_control_software_WPF.view_models.system_control
         {
             if (device is BasePositionerDevice positionerDevice)
             {
-                return new PositionerDeviceViewModel(positionerDevice, _commandManager,_controllerManager);
+                return new PositionerDeviceViewModel(positionerDevice, _commandManager,_controllerManager, _loggerFactory);
             }
             else if (device is BaseShutterDevice shutterDevice)
             {

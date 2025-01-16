@@ -1,4 +1,5 @@
-﻿using standa_controller_software.command_manager;
+﻿using Microsoft.Extensions.Logging;
+using standa_controller_software.command_manager;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.devices;
 using System;
@@ -35,13 +36,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             Waiting
         }
 
-        public SyncController_Sim(string name, ConcurrentQueue<string> log) : base(name, log)
+        public SyncController_Sim(string name, ILoggerFactory loggerFactory) : base(name, loggerFactory)
         {
+            _logger = _loggerFactory.CreateLogger<SyncController_Sim>();
         }
 
         public void GotSyncOut(char deviceName)
         {
-            //_log?.Enqueue($"Got SyncOut from: {deviceName}");
+            //_logger.LogDebug($"Got SyncOut from: {deviceName}");
 
             _gotSyncOutFrom.Add(deviceName);
         }
@@ -73,7 +75,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             };
 
             if (_buffer.Count >= _maxBufferSize)
-                _log?.Enqueue($"===============================dafuk======================================================");
+                _logger.LogError($"Buffered item count surpasses maximum allowed item size.");
 
             _buffer.Enqueue(executionInformation);
 

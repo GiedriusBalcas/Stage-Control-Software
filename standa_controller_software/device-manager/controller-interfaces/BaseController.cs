@@ -1,4 +1,5 @@
-﻿using OpenTK.Audio.OpenAL;
+﻿using Microsoft.Extensions.Logging;
+using OpenTK.Audio.OpenAL;
 using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library.Common;
 using standa_controller_software.device_manager.attributes;
@@ -16,7 +17,8 @@ namespace standa_controller_software.device_manager.controller_interfaces
     public abstract class BaseController
     {
         protected Dictionary<CommandDefinitions, IMethodInformation> _methodMap = new Dictionary<CommandDefinitions, IMethodInformation>();
-        protected ConcurrentQueue<string> _log;
+        protected ILogger _logger;
+        protected ILoggerFactory _loggerFactory;
 
         [DisplayPropertyAttribute]
         public BaseController? MasterController { get; set; } = null;
@@ -26,10 +28,11 @@ namespace standa_controller_software.device_manager.controller_interfaces
 
         [DisplayPropertyAttribute]
         public string ID { get; set; }
-        protected BaseController(string name, ConcurrentQueue<string> log)
+        protected BaseController(string name, ILoggerFactory loggerFactory)
         {
             Name = name;
-            _log = log;
+            _logger = loggerFactory.CreateLogger<BaseController>();
+            _loggerFactory = loggerFactory;
 
             _methodMap[CommandDefinitions.UpdateState] = new MethodInformation()
             {

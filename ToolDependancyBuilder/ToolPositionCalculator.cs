@@ -1,4 +1,5 @@
 ﻿using Antlr4.Runtime;
+using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 
 namespace ToolDependancyBuilder
@@ -6,11 +7,11 @@ namespace ToolDependancyBuilder
     public class ToolPositionCalculator
     {
         private Func<Dictionary<char, float>, float> _CoordinateFunc;
-        private readonly ConcurrentQueue<string> _log;
+        private readonly ILogger<ToolPositionCalculator> _logger;
 
-        public ToolPositionCalculator(ConcurrentQueue<string> log)
+        public ToolPositionCalculator(ILogger<ToolPositionCalculator> logger)
         {
-            _log = log;
+            _logger = logger;
         }
         public void CreateFunction(string xExprStr, List<char> deviceNames)
         {
@@ -36,13 +37,13 @@ namespace ToolDependancyBuilder
             }
             catch (Exception ex)
             {
-                _log.Enqueue(ex.Message);
+                _logger.LogDebug(ex.Message);
             }
             if (errorListener.Errors.Any())
             {
                 foreach (var error in errorListener.Errors)
                 {
-                    _log.Enqueue(error);
+                    _logger.LogDebug(error);
                 }
             }
         }

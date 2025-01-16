@@ -14,6 +14,7 @@ using standa_controller_software.device_manager.controller_interfaces.positionin
 using standa_controller_software.custom_functions;
 using standa_controller_software.custom_functions.definitions;
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Logging;
 
 namespace standa_control_software_WPF.view_models.system_control.information
 {
@@ -59,6 +60,7 @@ namespace standa_control_software_WPF.view_models.system_control.information
         private PlotModel _plotModel;
         private float _targetMoveAbsoluteValue;
         private float _targetMoveRelativeValue;
+        private ILoggerFactory _loggerFactory;
 
         public PlotModel PlotModel
         {
@@ -101,8 +103,9 @@ namespace standa_control_software_WPF.view_models.system_control.information
         public ICommand MoveCommand { get; }
         public ICommand ShiftCommand { get; }
 
-        public PositionerDeviceViewModel(BaseDevice device, standa_controller_software.command_manager.CommandManager commandManager, ControllerManager controllerManager) : base(device, commandManager, controllerManager)
+        public PositionerDeviceViewModel(BaseDevice device, standa_controller_software.command_manager.CommandManager commandManager, ControllerManager controllerManager, ILoggerFactory loggerFactory) : base(device, commandManager, controllerManager)
         {
+            _loggerFactory = loggerFactory;
             if (device is BasePositionerDevice positioner)
             {
                 _positioner = positioner;
@@ -240,7 +243,7 @@ namespace standa_control_software_WPF.view_models.system_control.information
         {
             if (_positioner.IsConnected)
             {
-                var functionDefinitionLibrary = new FunctionManager(_controllerManager, _commandManager);
+                var functionDefinitionLibrary = new FunctionManager(_controllerManager, _commandManager, _loggerFactory);
                 functionDefinitionLibrary.ClearCommandQueue();
                 functionDefinitionLibrary.InitializeDefinitions();
 
@@ -259,7 +262,7 @@ namespace standa_control_software_WPF.view_models.system_control.information
         {
             if (_positioner.IsConnected)
             {
-                var functionDefinitionLibrary = new FunctionManager(_controllerManager, _commandManager);
+                var functionDefinitionLibrary = new FunctionManager(_controllerManager, _commandManager, _loggerFactory);
                 functionDefinitionLibrary.ClearCommandQueue();
                 functionDefinitionLibrary.InitializeDefinitions();
 

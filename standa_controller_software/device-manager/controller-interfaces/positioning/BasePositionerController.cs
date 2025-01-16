@@ -1,4 +1,5 @@
-﻿using standa_controller_software.command_manager;
+﻿using Microsoft.Extensions.Logging;
+using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library.Common;
 using standa_controller_software.device_manager.attributes;
 using standa_controller_software.device_manager.devices;
@@ -18,8 +19,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         protected Dictionary<char, BasePositionerDevice> Devices { get; }
 
 
-        public BasePositionerController(string name, ConcurrentQueue<string> log) : base(name, log)
+        public BasePositionerController(string name, ILoggerFactory loggerFactory) : base(name, loggerFactory)
         {
+            _logger = loggerFactory.CreateLogger<BasePositionerController>();
+
             _methodMap[CommandDefinitions.MoveAbsolute] = new MethodInformation()
             {
                 MethodHandle = MoveAbsolute,
@@ -65,7 +68,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         }
         public override BaseController GetVirtualCopy()
         {
-            var virtualController = new PositionerController_Virtual(Name, _log)
+            var virtualController = new PositionerController_Virtual(Name, _loggerFactory)
             {
                 MasterController = this.MasterController,
             };

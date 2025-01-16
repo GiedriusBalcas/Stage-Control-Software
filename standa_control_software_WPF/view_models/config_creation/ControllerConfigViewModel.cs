@@ -1,4 +1,5 @@
 ﻿
+using Microsoft.Extensions.Logging;
 using Microsoft.VisualBasic.Logging;
 using standa_control_software_WPF.view_models.commands;
 using standa_controller_software.device_manager;
@@ -19,8 +20,8 @@ namespace standa_control_software_WPF.view_models.config_creation
         private string _selectedMasterControllerName = string.Empty;
         private bool _isEnabled = true;
         private string _name;
-        private readonly ConcurrentQueue<string> _log;
-
+        private readonly ILogger<ControllerConfigViewModel> _logger;
+        private readonly ILoggerFactory _loggerFactory;
 
         public string Name
         {
@@ -102,9 +103,10 @@ namespace standa_control_software_WPF.view_models.config_creation
         public ICommand AddDeviceCommand { get; private set; }
         public ICommand RemoveControllerCommand { get; private set; }
 
-        public ControllerConfigViewModel(ConfigurationViewModel config, ConcurrentQueue<string> log)
+        public ControllerConfigViewModel(ConfigurationViewModel config, ILoggerFactory loggerFactory)
         {
-            _log = log;
+            _logger = loggerFactory.CreateLogger<ControllerConfigViewModel>();
+            _loggerFactory = loggerFactory;
             _config = config;
             foreach(string controllerName in _config.Controllers.Select(controller => controller.Name))
                 ConfigurationControllerNames.Add(controllerName);
@@ -132,13 +134,13 @@ namespace standa_control_software_WPF.view_models.config_creation
 
 
             // Create the controller instance using reflection with parameters
-            var constructorInfo = ControllerType.GetConstructor(new Type[] { typeof(string), typeof(ConcurrentQueue<string>) });
+            var constructorInfo = ControllerType.GetConstructor(new Type[] { typeof(string), typeof(ILoggerFactory) });
             if (constructorInfo == null)
             {
                 throw new InvalidOperationException("Suitable constructor not found.");
             }
 
-            var controllerInstance = constructorInfo.Invoke(new object[] { name, _log }) as BaseController;
+            var controllerInstance = constructorInfo.Invoke(new object[] { name, _loggerFactory }) as BaseController;
 
             //var controllerInstance = Activator.CreateInstance(ControllerType) as BaseController;
 

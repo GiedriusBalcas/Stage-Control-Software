@@ -1,0 +1,6 @@
+
+moveA.Speed = 100.0;
+moveA("xy",100,-100);
+moveA("xy",100,0);
+
+arcA();

@@ -1,0 +1,11 @@
+
+
+moveA.Speed = 100.01;
+moveA.Line = true;
+
+for(i=0; i<2; i++)
+{
+	moveA("y", 200);
+	moveA("y", 0);
+}
+

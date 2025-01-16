@@ -1,4 +1,5 @@
-﻿using standa_controller_software.command_manager;
+﻿using Microsoft.Extensions.Logging;
+using standa_controller_software.command_manager;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.controller_interfaces.shutter;
 using standa_controller_software.device_manager.controller_interfaces.sync;
@@ -15,9 +16,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
     public class PositionAndShutterController_Virtual : BaseMasterPositionerAndShutterController
     {
         
-        public PositionAndShutterController_Virtual(string name, ConcurrentQueue<string> log) : base(name, log)
+        public PositionAndShutterController_Virtual(string name, ILoggerFactory loggerFactory) : base(name, loggerFactory)
         {
-            
+            _logger = _loggerFactory.CreateLogger<PositionAndShutterController_Virtual>();
         }
 
         public override Task AwaitQueuedItems(SemaphoreSlim semaphore)

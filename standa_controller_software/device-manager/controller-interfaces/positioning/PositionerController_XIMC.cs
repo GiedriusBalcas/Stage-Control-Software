@@ -1,4 +1,5 @@
-﻿using OpenTK.Audio.OpenAL;
+﻿using Microsoft.Extensions.Logging;
+using OpenTK.Audio.OpenAL;
 using OpenTK.Compute.OpenCL;
 using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
@@ -59,11 +60,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         private static API.LoggingCallback callback;
         private void MyLog(API.LogLevel loglevel, string message, IntPtr user_data)
         {
-            _log?.Enqueue(message);
+            _logger.LogDebug(message);
         }
         
-        public PositionerController_XIMC(string name, ConcurrentQueue<string> log) : base(name, log)
+        public PositionerController_XIMC(string name, ILoggerFactory loggerFactory) : base(name, loggerFactory)
         {
+            _logger = _loggerFactory.CreateLogger<PositionerController_XIMC>();
+
             _methodMap[CommandDefinitions.AddSyncInAction] = new MethodInformation()
             {
                 MethodHandle = AddSyncInAction,
@@ -199,11 +202,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 if(accelValue != 0 && decelValue != 0 && speedValue != 0)
                 {
                     CallResponse = API.set_move_settings_calb(_deviceInfo[device.Name].id, ref _deviceInfo[device.Name].moveSettings_t, ref _deviceInfo[device.Name].calibration_t);
-                    _log.Enqueue($"ximc: updated move settings on {device.Name}. Speed: {_deviceInfo[device.Name].moveSettings_t.Speed};   Accel: {_deviceInfo[device.Name].moveSettings_t.Accel};  Decel: {_deviceInfo[device.Name].moveSettings_t.Decel}");
+                    _logger.LogDebug($"ximc: updated move settings on {device.Name}. Speed: {_deviceInfo[device.Name].moveSettings_t.Speed};   Accel: {_deviceInfo[device.Name].moveSettings_t.Accel};  Decel: {_deviceInfo[device.Name].moveSettings_t.Decel}");
                 }
                 else
                 {
-                    _log.Enqueue($"ximc: ---------FAILED TO UPDATE move settings on {device.Name}. Speed: {_deviceInfo[device.Name].moveSettings_t.Speed};   Accel: {_deviceInfo[device.Name].moveSettings_t.Accel};  Decel: {_deviceInfo[device.Name].moveSettings_t.Decel}");
+                    _logger.LogDebug($"ximc: ---------FAILED TO UPDATE move settings on {device.Name}. Speed: {_deviceInfo[device.Name].moveSettings_t.Speed};   Accel: {_deviceInfo[device.Name].moveSettings_t.Accel};  Decel: {_deviceInfo[device.Name].moveSettings_t.Decel}");
 
                 }
             }
@@ -345,7 +348,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     positioner.Value.CurrentPosition = deviceInfo.statusCalibrated_t.CurPosition;
                     positioner.Value.CurrentSpeed = deviceInfo.statusCalibrated_t.CurSpeed;
 
-                    _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
+                    _logger.LogDebug($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Updated state for device {positioner.Value.Name}, CurrentPos: {positioner.Value.CurrentPosition} CurrentSpeed: {positioner.Value.CurrentSpeed} Accel: {positioner.Value.Acceleration} Decel: {positioner.Value.Deceleration} Speed: {positioner.Value.Speed}  ");
                 }
             }
             return Task.CompletedTask;
@@ -370,7 +373,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     };
 
                     CallResponse = API.command_add_sync_in_action_calb(_deviceInfo[deviceName].id, ref syncInAction, ref _deviceInfo[deviceName].calibration_t);
-                    _log.Enqueue($"ximc: added ASIA to {deviceName} . Position: {syncInAction.Position};   Speed: {velocity}    Time: {allocatedTime}.");
+                    _logger.LogDebug($"ximc: added ASIA to {deviceName} . Position: {syncInAction.Position};   Speed: {velocity}    Time: {allocatedTime}.");
                 }
             }
             return Task.CompletedTask;

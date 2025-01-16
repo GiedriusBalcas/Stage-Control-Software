@@ -1,4 +1,5 @@
-﻿using standa_controller_software.command_manager;
+﻿using Microsoft.Extensions.Logging;
+using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.command_manager.command_parameter_library.Positioners;
 using standa_controller_software.command_manager.command_parameter_library.Synchronization;
@@ -52,8 +53,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         protected TaskCompletionSource<bool> _processingLastItemTakenSource;
 
 
-        public BaseMasterPositionerAndShutterController(string name, ConcurrentQueue<string> log) : base(name, log)
+        public BaseMasterPositionerAndShutterController(string name, ILoggerFactory loggerFactory) : base(name, loggerFactory)
         {
+            _loggerFactory.CreateLogger<BaseMasterPositionerAndShutterController>();
+
             _multiControllerMethodMap[CommandDefinitions.ChangeShutterState] = new MultiControllerMethodInformation()
             {
                 MethodHandle = ChangeState,
@@ -72,7 +75,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
         public override BaseController GetVirtualCopy()
         {
-            var virtualCopy = new PositionAndShutterController_Virtual(Name, _log)
+            var virtualCopy = new PositionAndShutterController_Virtual(Name, _loggerFactory)
             {
                 ID = this.ID,
                 MasterController = this.MasterController,
@@ -169,7 +172,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 await ProcessQueue(semaphore);
 
                 if (_updateMoveSettingsCommands != null)
-                    _log.Enqueue("Last move settings update missed.");
+                    _logger.LogError("Last move settings update missed.");
 
                 _updateMoveSettingsCommands = commands;
                 _launchPending = true;
@@ -325,11 +328,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         }
         protected async Task FillControllerBuffers(SemaphoreSlim semaphore)
         {
-            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: trying to fill slave buffers");
+            _logger.LogDebug($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: trying to fill slave buffers");
 
             int minFreeItemCount = await GetMinFreeBufferItemCount();
             if(minFreeItemCount < 2)
-                _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: available buffer spave is slaves is less than 2.");
+                _logger.LogDebug($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: available buffer spave is slaves is less than 2.");
 
 
             int bufferCount = _buffer.Count;
@@ -383,10 +386,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             //await AwaitExecutionEnd();
 
             await FillControllerBuffers(semaphore);
-            _log.Enqueue("master: filled slaves to the brim");
+            _logger.LogDebug("master: filled slaves to the brim");
 
             await StartExecutionOnSyncController(semaphore);
-            _log.Enqueue("master: sent Sync Controller to execute its buffer");
+            _logger.LogDebug("master: sent Sync Controller to execute its buffer");
 
             _launchPending = true;
             await AwaitExecutionEnd();
@@ -400,11 +403,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 if (!_processingCompletionSource.Task.IsCompleted)
                 {
                     await _processingCompletionSource.Task;
-                    _log.Enqueue("master: awaited the exec_end");
+                    _logger.LogDebug("master: awaited the exec_end");
                 }
                 else
                 {
-                    _log.Enqueue("master: exec_end was allready complete.");
+                    _logger.LogDebug("master: exec_end was allready complete.");
 
                 }
             }

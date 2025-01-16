@@ -1,0 +1,36 @@
+set("s","DelayOn",0);
+set("s","DelayOff",0);
+
+radius = 600.5;
+speed = 502.0;
+centerX = 0;
+centerY = 0;
+startAngle = 0;
+endAngle = (PI/2) *4 *1 ;
+
+arcA.Speed = speed;
+arcA.Accuracy =0.1;
+arcA.TimeAccuracy = 0.01;
+arcA.LeadIn = false;
+arcA.LeadOut = false;
+arcA.Shutter = true;
+
+set("xy","DefaultSpeed",2000);
+jumpA.Blending = false;
+
+//jumpA("xy",radius,0);
+//jumpA("xy",radius,200,radius, -50);
+isCCW = true;
+for(index = 1; index<3;index++)
+{
+	
+	if(isCCW)
+	{
+		direction = 1;
+	}
+	else{ direction = -1;}
+
+	arcA("xy",radius*index, centerX, centerY, startAngle, direction * endAngle, isCCW);
+	
+	isCCW = !isCCW
+}

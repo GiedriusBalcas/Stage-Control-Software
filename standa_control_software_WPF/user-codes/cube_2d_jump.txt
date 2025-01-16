@@ -1,0 +1,30 @@
+width = 500;
+length = 150;
+height = 100;
+
+kiekx = 10;
+
+
+for( i=0; i<kiekx; i++)
+{
+	direction = (-1)^i;
+	
+	xas = i*width/kiekx - width/2;
+	yas = direction*length/2;
+	
+	if(direction == 1)
+	{
+		//moveA.Shutter(true);
+		//shutter("s",true);
+		xas += 100;
+	}
+	else
+	{
+		//moveA.Shutter(false);
+		//shutter("s",false);
+	}
+
+	jumpA("xy", xas, yas);
+	
+}
+

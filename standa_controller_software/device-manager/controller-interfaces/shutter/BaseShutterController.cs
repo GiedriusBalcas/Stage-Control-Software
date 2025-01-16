@@ -1,7 +1,9 @@
-﻿using standa_controller_software.command_manager;
+﻿using Microsoft.Extensions.Logging;
+using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.command_manager.command_parameter_library.Common;
 using standa_controller_software.device_manager.controller_interfaces;
+using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
@@ -17,8 +19,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         private ConcurrentDictionary<char, CancellationTokenSource> _deviceCancellationTokens = new ConcurrentDictionary<char, CancellationTokenSource>();
         protected Dictionary<char, BaseShutterDevice> Devices { get; }
 
-        protected BaseShutterController(string name, ConcurrentQueue<string> log) : base(name, log)
+        protected BaseShutterController(string name, ILoggerFactory loggerFactory) : base(name, loggerFactory)
         {
+            _logger = _loggerFactory.CreateLogger<BaseShutterController>();
+
             _methodMap[CommandDefinitions.ChangeShutterState] = new MethodInformation
             {
                 MethodHandle = ChangeState,
@@ -41,7 +45,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         }
         public override BaseController GetVirtualCopy()
         {
-            var virtualCopy = new ShutterController_Virtual(Name, _log) 
+            var virtualCopy = new ShutterController_Virtual(Name, _loggerFactory) 
             {
                 MasterController = this.MasterController,
             };

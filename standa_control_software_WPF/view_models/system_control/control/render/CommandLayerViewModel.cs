@@ -6,13 +6,16 @@ using standa_controller_software.device_manager;
 using opentk_painter_library.common;
 using System.Collections.Concurrent;
 using opentk_painter_library.render_objects;
+using Microsoft.Extensions.Logging;
+using standa_control_software_WPF.view_models.logging;
 
 namespace standa_control_software_WPF.view_models.system_control.control.render
 {
     public class CommandLayerViewModel : BaseRenderLayer
     {
         private readonly ControllerManager _controllerManager;
-        private readonly ConcurrentQueue<string> _log;
+        private readonly ILogger<CommandLayerViewModel> _logger;
+        private readonly ILoggerFactory _loggerFactory;
         private readonly OrbitalCamera _camera;
         
         private UniformMatrix4 _viewUniform;
@@ -20,10 +23,11 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
         
         private LineObjectCollection _lineCollection;
 
-        public CommandLayerViewModel(ControllerManager controllerManager, ConcurrentQueue<string> log, OrbitalCamera camera)
+        public CommandLayerViewModel(ControllerManager controllerManager, ILogger<CommandLayerViewModel> logger, ILoggerFactory loggerFactory, OrbitalCamera camera)
         {
             _controllerManager = controllerManager;
-            _log = log;
+            _logger = logger;
+            _loggerFactory = loggerFactory;
             _camera = camera;
             _lineCollection = new LineObjectCollection(); 
             
@@ -60,7 +64,7 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
 
             var controllerManager_virtual = _controllerManager.CreateAVirtualCopy();
 
-            var masterPainterController = new PositionAndShutterController_Painter("painter", _log, _lineCollection, controllerManager_virtual.ToolInformation);
+            var masterPainterController = new PositionAndShutterController_Painter("painter", _loggerFactory, _lineCollection, controllerManager_virtual.ToolInformation);
             controllerManager_virtual.AddController(masterPainterController);
             foreach (var (controllerName, controller) in controllerManager_virtual.Controllers)
             {
@@ -71,7 +75,7 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
                 }
             }
 
-            var commandManager_virtual = new CommandManager(controllerManager_virtual, new ConcurrentQueue<string>());
+            var commandManager_virtual = new CommandManager(controllerManager_virtual, _loggerFactory.CreateLogger<CommandManager>());
 
             _lineCollection.ClearCollection();
 

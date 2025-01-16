@@ -1,0 +1,34 @@
+
+speed = 200.01;
+accel = 10000.0;
+moveA.Speed = speed;
+
+distanceToStop = (speed^2) / (2 * accel);
+
+moveA.Line = false;
+
+dl = distanceToStop *2;
+radiusStart = dl;
+radiusEnd = 100;
+
+kiek2pi = 3;
+maxAngle  = 2*PI*kiek2pi;
+minAngle = 2;
+
+theta = minAngle;
+
+moveA("x", (1) * radiusStart)
+moveA("xy", (1) * radiusStart,0)
+
+while(theta <= maxAngle)
+{
+	radius = radiusStart + (radiusEnd-radiusStart) / maxAngle * theta;
+	
+	dtheta = asin(dl/radius);
+	
+	xas = sin(theta)*radius;
+	yas = cos(theta)*radius;
+	moveA("xy", xas, yas);	
+	
+	theta += dtheta;
+}

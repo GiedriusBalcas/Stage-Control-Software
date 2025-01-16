@@ -8,18 +8,23 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows.Input;
 using text_parser_library;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using standa_control_software_WPF.view_models.logging;
 
 namespace standa_control_software_WPF.view_models.system_control
 {
     public class SystemControlViewModel : ViewModelBase
     {
+        private readonly ILogger<SystemControlViewModel> _logger;
+        private readonly ILoggerFactory _loggerFactory;
         private readonly standa_controller_software.command_manager.CommandManager _commandManager;
         private readonly ControllerManager _controllerManager;
         private readonly FunctionManager _functionDefinitionLibrary;
         private readonly TextInterpreterWrapper _textInterpreter;
         private string _inputText = "";
         private string _outputMessage;
-        private readonly ConcurrentQueue<string> _log;
         private DocumentViewModel _selectedDocument;
 
         public PainterManagerViewModel PainterManager { get; private set; }
@@ -116,18 +121,17 @@ namespace standa_control_software_WPF.view_models.system_control
         }
 
 
-        public SystemControlViewModel(ControllerManager controllerManager, standa_controller_software.command_manager.CommandManager commandManager, ConcurrentQueue<string> log)
+        public SystemControlViewModel(ControllerManager controllerManager, standa_controller_software.command_manager.CommandManager commandManager, ILogger<SystemControlViewModel> logger, ILoggerFactory loggerFactory)
         {
-            _log = log;
+            _logger = logger;
+            _loggerFactory = loggerFactory;
             _commandManager = commandManager;
             _controllerManager = controllerManager;
 
-            bool isProbing = true;
-            UpdateDeviceStates(isProbing);
 
-            _functionDefinitionLibrary = new FunctionManager(_controllerManager, _commandManager);
+            _functionDefinitionLibrary = new FunctionManager(_controllerManager, _commandManager, _loggerFactory);
             _textInterpreter = new TextInterpreterWrapper() { DefinitionLibrary = _functionDefinitionLibrary.Definitions };
-            PainterManager = new PainterManagerViewModel(_controllerManager, _commandManager, _log);
+            PainterManager = new PainterManagerViewModel(_controllerManager, _commandManager, _loggerFactory);
 
             AddNewDocumentCommand = new RelayCommand(() => AddNewDocument());
             OpenDocumentCommand = new RelayCommand(() => OpenDocument());
@@ -180,18 +184,7 @@ namespace standa_control_software_WPF.view_models.system_control
             return true;
         }
 
-        private async void UpdateDeviceStates(bool isProbing)
-        {
-            //_ = Task.Run(() => _commandManager.UpdateStatesAsync());
-            _ = Task.Run(async () =>
-            {
-                while (true)
-                {
-                    SaveLog();
-                    await Task.Delay(10000);
-                }
-            });
-        }
+        
 
         private async void ForceStop()
         {
@@ -201,26 +194,7 @@ namespace standa_control_software_WPF.view_models.system_control
             OutputMessage += $"\ndone Stop.";
         }
 
-        private void SaveLog()
-        {
-            try
-            {
-                //var content = string.Join("\n", );
-                // The name of the file where the content will be saved
-                string fileName = "log.txt";
-
-                // Path to save the file in the same project directory
-                string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
-
-                //File.WriteAllText(filePath, content);
-                File.AppendAllLines(filePath, _commandManager.GetLog());
-            }
-            catch (Exception ex)
-            {
-                OutputMessage += $"Exception thrown when trying to save a log. \n{ex.Message}.";
-            }
-
-        }
+       
         private void SaveCommandLog()
         {
             var content = string.Join("\n", _commandManager.GetCommandQueueAsString());
@@ -291,15 +265,15 @@ namespace standa_control_software_WPF.view_models.system_control
 
         private void ClearLog()
         {
-            _commandManager.ClearLog();
+            //_commandManager.ClearLog();
 
-            var content = string.Join("\n", _commandManager.GetLog());
-            // The name of the file where the content will be saved
-            string fileName = "log.txt";
+            //var content = string.Join("\n", _commandManager.GetLog());
+            //// The name of the file where the content will be saved
+            //string fileName = "log.txt";
 
-            // Path to save the file in the same project directory
-            string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
-            File.WriteAllText(filePath, content);
+            //// Path to save the file in the same project directory
+            //string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
+            //File.WriteAllText(filePath, content);
         }
 
         private async Task CreateCommandQueueFromInputAsync()
@@ -346,6 +320,7 @@ namespace standa_control_software_WPF.view_models.system_control
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex.Message);
                 OutputMessage += $"\n{ex.Message}";
                 if (_textInterpreter.State.CurrentState == ParserState.States.Error)
                 {

@@ -10,6 +10,7 @@ using System.Runtime.ExceptionServices;
 using System.Xml.Linq;
 using OpenTK.Platform.Windows;
 using OpenTK.Graphics.OpenGL;
+using Microsoft.Extensions.Logging;
 
 namespace standa_controller_software.command_manager
 {
@@ -22,15 +23,15 @@ namespace standa_controller_software.command_manager
     public class CommandManager
     {
         private readonly ControllerManager _controllerManager;
+        private readonly ILogger<CommandManager> _logger;
         private ConcurrentQueue<Command[]> _commandQueue = new ConcurrentQueue<Command[]>();
-        private ConcurrentQueue<string> _log;
         private CommandManagerState _currentState = CommandManagerState.Waiting;
         private string _currentQueueController = string.Empty;
         private bool _allowedToRun = true;
-        public CommandManager(ControllerManager manager, ConcurrentQueue<string> log)
+        public CommandManager(ControllerManager controllerManager, ILogger<CommandManager> logger)
         {
-            this._controllerManager = manager;
-            _log = log;
+            this._controllerManager = controllerManager;
+            _logger = logger;
 
             foreach (var (controllerName, controller) in _controllerManager.Controllers)
             {
@@ -53,21 +54,7 @@ namespace standa_controller_software.command_manager
                 //_// log.Enqueue($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}: State changed to {_currentState}");
             }
         }
-        public void ClearLog()
-        {
-            _log.Clear();
-        }
-        public void PrintLog()
-        {
-            while (_log.TryDequeue(out string logEntry))
-            {
-                Console.WriteLine(logEntry);
-            }
-        }
-        public IEnumerable<string> GetLog()
-        {
-            return _log;
-        }
+        
         public IEnumerable<Command[]> GetCommandQueueList()
         {
             return [.. _commandQueue];
@@ -145,7 +132,7 @@ namespace standa_controller_software.command_manager
         public async Task ProcessQueue()
         {
             _allowedToRun = true;
-            _log.Enqueue("ProcessingQueue.");
+            _logger.LogDebug("ProcessingQueue.");
             CurrentState = CommandManagerState.Processing;
             while (_commandQueue.Count > 0 && _allowedToRun)
             {
@@ -162,7 +149,7 @@ namespace standa_controller_software.command_manager
                 await CheckAndUpdateControllerQueue(String.Empty);
 
             CurrentState = CommandManagerState.Waiting;
-            _log.Enqueue("QueueEnd in command manager.");
+            _logger.LogDebug("QueueEnd in command manager.");
 
         }
         public void EnqueueCommandLine(Command[] commands)
@@ -324,7 +311,7 @@ namespace standa_controller_software.command_manager
                 }
                 catch (Exception ex)
                 {
-                    _log.Enqueue($"{DateTime.Now}: Error executing command on controller {controllerName}: {ex.Message}");
+                    _logger.LogError($"{DateTime.Now}: Error executing command on controller {controllerName}: {ex.Message}");
                     throw;
                 }
             }
@@ -338,7 +325,7 @@ namespace standa_controller_software.command_manager
                     }
                     catch (Exception ex)
                     {
-                        _log.Enqueue($"{DateTime.Now}: Error executing command on controller {controllerName}: {ex.Message}");
+                        _logger.LogError($"{DateTime.Now}: Error executing command on controller {controllerName}: {ex.Message}");
                         throw;
                     }
                 }
@@ -358,7 +345,10 @@ namespace standa_controller_software.command_manager
                         await queuedMasterController.AwaitQueuedItems(semaphore);
                     }
                     else
+                    {
+                        _logger.LogError($"Unexpected queued controller statement.");
                         throw new Exception("Unexpected queued controller statement.");
+                    }
                 }
                 finally
                 {

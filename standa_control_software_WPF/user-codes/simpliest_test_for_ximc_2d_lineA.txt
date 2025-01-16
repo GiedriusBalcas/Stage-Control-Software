@@ -1,0 +1,22 @@
+set("s","DelayOn",-10);
+set("s","DelayOff",10);
+set("xy","DefaultSpeed",2000);
+//jumpA("xy",0,0);
+
+lineA.Speed = 500.01;
+lineA.LeadIn = true;
+lineA.LeadOut = true;
+lineA.Shutter = true;
+
+for(i=0; i<1; i++)
+{
+	//lineA("xy", 50,50,200,100);
+	
+	//lineA("x", -50,-100);
+	
+	lineA("xy", 200,100,50,100);
+	lineA("xy", 150,150,0,0);
+}
+
+set("xy","Speed",100);
+//jumpA("xy",0,0);

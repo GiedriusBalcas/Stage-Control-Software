@@ -1,4 +1,5 @@
-﻿using standa_controller_software.device_manager.controller_interfaces;
+﻿using Microsoft.Extensions.Logging;
+using standa_controller_software.device_manager.controller_interfaces;
 using standa_controller_software.device_manager.controller_interfaces.master_controller;
 using standa_controller_software.device_manager.devices;
 using standa_controller_software.device_manager.devices.shutter;
@@ -13,15 +14,18 @@ namespace standa_controller_software.device_manager
 {
     public class ControllerManager
     {
-        private readonly ConcurrentQueue<string> _log;
+        private ILogger<ControllerManager> _logger;
+        private ILoggerFactory _loggerFactory;
+
         public ToolInformation ToolInformation { get; set; }
         public Dictionary<string, BaseController> Controllers { get; private set; } = new Dictionary<string, BaseController>();
         public Dictionary<string, SemaphoreSlim> ControllerLocks { get; private set; } = new Dictionary<string, SemaphoreSlim>();
 
         public string Name { get; set; }
-        public ControllerManager(ConcurrentQueue<string> log)
+        public ControllerManager(ILogger<ControllerManager> logger, ILoggerFactory loggerFactory)
         {
-            _log = log;
+            _logger = logger;
+            _loggerFactory = loggerFactory;
         }
 
         public async void AddController(BaseController controller)
@@ -81,7 +85,7 @@ namespace standa_controller_software.device_manager
 
         public ControllerManager CreateAVirtualCopy()
         {
-            var controllerManager_copy = new ControllerManager(_log);
+            var controllerManager_copy = new ControllerManager(_loggerFactory.CreateLogger<ControllerManager>(), _loggerFactory);
 
             foreach (var controllerEntry in Controllers)
             {

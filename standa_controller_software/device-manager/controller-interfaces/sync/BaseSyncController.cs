@@ -1,6 +1,8 @@
-﻿using standa_controller_software.command_manager;
+﻿using Microsoft.Extensions.Logging;
+using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library.Common;
 using standa_controller_software.command_manager.command_parameter_library.Synchronization;
+using standa_controller_software.device_manager.controller_interfaces.shutter;
 using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
@@ -23,8 +25,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             public float Shutter_delay_on;
             public float Shutter_delay_off;
         }
-        public BaseSyncController(string name, ConcurrentQueue<string> log) : base(name, log)
+        public BaseSyncController(string name, ILoggerFactory loggerFactory) : base(name, loggerFactory)
         {
+            _logger = _loggerFactory.CreateLogger<BaseSyncController>();
+            
             _methodMap[CommandDefinitions.AddSyncControllerBufferItem] = new MethodInformation()
             {
                 MethodHandle = AddSyncBufferItem,
@@ -41,7 +45,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
         public override BaseController GetVirtualCopy()
         {
-            var virtualCopy = new SyncController_Virtual(Name, _log)
+            var virtualCopy = new SyncController_Virtual(Name, _loggerFactory)
             {
                 ID  = this.ID,
                 MasterController = this.MasterController,

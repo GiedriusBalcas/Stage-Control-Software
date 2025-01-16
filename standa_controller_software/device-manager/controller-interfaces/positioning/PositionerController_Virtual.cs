@@ -1,4 +1,5 @@
-﻿using standa_controller_software.command_manager;
+﻿using Microsoft.Extensions.Logging;
+using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.device_manager.devices;
 using System;
@@ -46,10 +47,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
         //---------------------------------------------------
 
-        public PositionerController_Virtual(string name, ConcurrentQueue<string> log) : base(name, log) 
+        public PositionerController_Virtual(string name, ILoggerFactory loggerFactory) : base(name, loggerFactory)
         {
+            _logger = _loggerFactory.CreateLogger<PositionerController_Virtual>();
+
         }
-        
+
         public override void AddDevice(BaseDevice device)
         {
             base.AddDevice(device);

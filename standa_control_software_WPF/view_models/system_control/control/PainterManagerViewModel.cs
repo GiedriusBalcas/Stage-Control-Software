@@ -1,4 +1,5 @@
-﻿using opentk_painter_library;
+﻿using Microsoft.Extensions.Logging;
+using opentk_painter_library;
 using opentk_painter_library.common;
 using standa_control_software_WPF.view_models.system_control.control.render;
 using standa_controller_software.command_manager;
@@ -11,7 +12,8 @@ namespace standa_control_software_WPF.view_models.system_control.control
     public class PainterManagerViewModel : ViewModelBase
     {
         private readonly ControllerManager _controllerManager;
-        private readonly ConcurrentQueue<string> _log;
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly ILogger<PainterManagerViewModel> _logger;
         
         private readonly OrbitalCamera _camera;
         
@@ -28,11 +30,12 @@ namespace standa_control_software_WPF.view_models.system_control.control
         public GridLayerViewModel GridLayer { get; private set; }
         public OrientationArrowsLayerViewModel OrientationLayer { get; private set; }
 
-        public PainterManagerViewModel(ControllerManager controllerManager, CommandManager commandManager, ConcurrentQueue<string> log)
+        public PainterManagerViewModel(ControllerManager controllerManager, CommandManager commandManager, ILoggerFactory loggerFactory)
         {
             //CameraViewModel = new CameraViewModel(_painterManager, _controllerManager);
             _controllerManager = controllerManager;
-            _log = log;
+            _loggerFactory = loggerFactory;
+            _logger = loggerFactory.CreateLogger<PainterManagerViewModel>();
 
             //_painterManager = new PainterManager(commandManager, _controllerManager, _log);
 
@@ -44,7 +47,7 @@ namespace standa_control_software_WPF.view_models.system_control.control
 
         private void CreateRenderLayers()
         {
-            CommandLayer = new CommandLayerViewModel(_controllerManager, _log, _camera);
+            CommandLayer = new CommandLayerViewModel(_controllerManager, _loggerFactory.CreateLogger<CommandLayerViewModel>(), _loggerFactory, _camera);
             RenderLayers.Add(CommandLayer);
 
             var toolPointLayer = new ToolPointLayerViewModel(_camera, _controllerManager.ToolInformation);

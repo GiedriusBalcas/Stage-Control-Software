@@ -1,4 +1,5 @@
-﻿using OpenTK.Graphics.ES11;
+﻿using Microsoft.Extensions.Logging;
+using OpenTK.Graphics.ES11;
 using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.command_manager.command_parameter_library.Synchronization;
@@ -15,7 +16,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
     {
         
         private SyncController_Pico _syncController;
-        public PositionAndShutterController_Pico(string name, ConcurrentQueue<string> log)  : base(name, log)
+        public PositionAndShutterController_Pico(string name, ILoggerFactory loggerFactory)  : base(name, loggerFactory)
         {
             
         }
@@ -64,23 +65,23 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             if (_processingLastItemTakenSource is not null)
                 _processingLastItemTakenSource.TrySetResult(true);
 
-            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled that execution finalized.");
+            _logger.LogDebug($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled that execution finalized.");
         }
         private void OnSyncControllerLastBufferItemTaken()
         {
             if(_processingLastItemTakenSource is not null)
                 _processingLastItemTakenSource.TrySetResult(true);
 
-            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled that last item was taken.");
+            _logger.LogDebug($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled that last item was taken.");
         }
         private async Task OnSyncControllerBufferSpaceAvailable()
         {
-           _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled buffer has free slot");
+           _logger.LogDebug($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled buffer has free slot");
             await SendCommandIfAvailable();
         }
         protected override Task Stop(Command command, SemaphoreSlim semaphore)
         {
-            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: stop encountered.");
+            _logger.LogDebug($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: stop encountered.");
             _buffer.Clear();
             _buffer = new ConcurrentQueue<MovementInformation>();
             _launchPending = true;

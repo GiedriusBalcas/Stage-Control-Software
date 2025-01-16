@@ -1,0 +1,20 @@
+
+kiekx = 3;
+set("xy","DefaultSpeed", 100);
+for(i=0; i<kiekx; i++)
+{
+jumpA.Blending = false;
+	xas = 0 + i * 50;
+	jumpA("x",xas);
+	jumpA.WaitUntilTime = 0.2;
+jumpA.Blending = true;
+	
+	jumpA.Shutter= true;
+	jumpA("y",100);
+	jumpA.Shutter= false;
+	jumpA.WaitUntilTime = null;
+	
+	jumpA("y",0);
+	
+}
+

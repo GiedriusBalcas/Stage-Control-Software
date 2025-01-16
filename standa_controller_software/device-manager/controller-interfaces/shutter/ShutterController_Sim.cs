@@ -1,4 +1,5 @@
-﻿using standa_controller_software.command_manager;
+﻿using Microsoft.Extensions.Logging;
+using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.device_manager.devices;
 using System;
@@ -22,8 +23,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         }
         private ConcurrentDictionary<char, DeviceInformation> _deviceInfo = new ConcurrentDictionary<char, DeviceInformation>();
         
-        public ShutterController_Sim(string name, ConcurrentQueue<string> log) : base(name, log)
+        public ShutterController_Sim(string name, ILoggerFactory loggerFactory) : base(name, loggerFactory)
         {
+            _logger = _loggerFactory.CreateLogger<ShutterController_Sim>();
 
         }
         public override void AddDevice(BaseDevice device)

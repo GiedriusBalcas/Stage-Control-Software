@@ -1,4 +1,5 @@
-﻿using standa_controller_software.command_manager;
+﻿using Microsoft.Extensions.Logging;
+using standa_controller_software.command_manager;
 using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
@@ -29,8 +30,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         private SerialPort serialPort;
 
         
-        public ShutterController_Arduino(string name, ConcurrentQueue<string> log) : base(name, log)
+        public ShutterController_Arduino(string name, ILoggerFactory loggerFactory) : base(name, loggerFactory)
         {
+            _logger = _loggerFactory.CreateLogger<ShutterController_Arduino>();
         }
 
         public override Task ForceStop()
@@ -78,7 +80,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
 
             var processedResponse = ProcessResponse(response);
             if (processedResponse == false)
-                _log.Enqueue("Arduino_shutter: error response received.");
+                _logger.LogDebug("Arduino_shutter: error response received.");
         }
         protected override async Task ChangeStateOnInterval_implementation(BaseShutterDevice device, float duration)
         {
@@ -96,7 +98,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
 
             var processedResponse = ProcessResponse(response);
             if (processedResponse == false)
-                _log.Enqueue("Arduino_shutter: error response received.");
+                _logger.LogDebug("Arduino_shutter: error response received.");
 
             await Task.Delay((int)(duration * 1000));
 
@@ -217,7 +219,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             }
             else
             {
-                _log.Enqueue($"Arduino Shutter Controller: Unexpected response code: {response.ResponseCode}");
+                _logger.LogDebug($"Arduino Shutter Controller: Unexpected response code: {response.ResponseCode}");
                 return false;
             }
         }

@@ -1,4 +1,5 @@
-﻿using standa_controller_software.command_manager;
+﻿using Microsoft.Extensions.Logging;
+using standa_controller_software.command_manager;
 using standa_controller_software.custom_functions.definitions;
 using standa_controller_software.device_manager;
 using standa_controller_software.device_manager.controller_interfaces.master_controller;
@@ -11,14 +12,16 @@ namespace standa_controller_software.custom_functions
 {
     public class FunctionManager
     {
+        private readonly ILoggerFactory _loggerFactory;
         private readonly ControllerManager _controllerManager;
         private readonly CommandManager _commandManager;
         private ControllerManager _controllerManager_virtual;
         private CommandManager _commandManager_virtual;
         private float _allocatedTime;
         public Definitions Definitions {  get; private set; }
-        public FunctionManager(ControllerManager controllerManager, CommandManager commandManager)
+        public FunctionManager(ControllerManager controllerManager, CommandManager commandManager, ILoggerFactory loggerFactory)
         {
+            _loggerFactory = loggerFactory;
             _controllerManager = controllerManager;
             _commandManager = commandManager;
 
@@ -28,7 +31,7 @@ namespace standa_controller_software.custom_functions
         public void InitializeDefinitions()
         {
             _controllerManager_virtual = _controllerManager.CreateAVirtualCopy();
-            _commandManager_virtual = new CommandManager(_controllerManager_virtual, new System.Collections.Concurrent.ConcurrentQueue<string>());
+            _commandManager_virtual = new CommandManager(_controllerManager_virtual, _loggerFactory.CreateLogger<CommandManager>());
             _commandManager_virtual.ClearQueue();
             
             Definitions = new Definitions();

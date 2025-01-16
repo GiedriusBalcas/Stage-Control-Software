@@ -1,4 +1,5 @@
-﻿using standa_controller_software.command_manager;
+﻿using Microsoft.Extensions.Logging;
+using standa_controller_software.command_manager;
 using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
@@ -16,14 +17,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
         protected Dictionary<CommandDefinitions, MultiControllerMethodInformation> _multiControllerMethodMap = new Dictionary<CommandDefinitions, MultiControllerMethodInformation>();
 
-        protected BaseMasterController(string name, ConcurrentQueue<string> log) : base(name, log) 
+        protected BaseMasterController(string name, ILoggerFactory loggerFactory) : base(name, loggerFactory) 
         {
+            _logger = loggerFactory.CreateLogger<BaseMasterController>();
         }
         
         public virtual async Task ExecuteSlaveCommandsAsync(Command[] commands, SemaphoreSlim semaphore) 
         {
-            _log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {string.Join(' ', commands.Select(command => command.Action).ToArray())} command on device {string.Join(' ', commands.SelectMany(command => command.TargetDevices).ToArray())}");
-
+            _logger.LogDebug($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {string.Join(' ', commands.Select(command => command.Action).ToArray())} command on device {string.Join(' ', commands.SelectMany(command => command.TargetDevices).ToArray())}");
             var groupedCommands = commands
                 .GroupBy(command => command.Action)
                 .ToDictionary(

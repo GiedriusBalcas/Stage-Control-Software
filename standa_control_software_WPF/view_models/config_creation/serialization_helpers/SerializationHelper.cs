@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,11 +10,13 @@ namespace standa_control_software_WPF.view_models.config_creation.serialization_
 {
     public class SerializationHelper
     {
-        private readonly ConcurrentQueue<string> _log;
+        private readonly ILogger<SerializationHelper> _logger;
+        private readonly ILoggerFactory _loggerFactory;
 
-        public SerializationHelper(ConcurrentQueue<string> log)
+        public SerializationHelper(ILogger<SerializationHelper> logger, ILoggerFactory loggerFactory)
         {
-            _log = log;
+            _logger = logger;
+            _loggerFactory = loggerFactory;
         }
 
         public ConfigurationSer CreateSeriazableObject(ConfigurationViewModel Configuration)
@@ -70,7 +73,7 @@ namespace standa_control_software_WPF.view_models.config_creation.serialization_
 
         public ConfigurationViewModel DeserializeObject(ConfigurationSer configSer, ConfigurationCreationViewModel Configuration)
         {
-            var config = new ConfigurationViewModel(Configuration, _log)
+            var config = new ConfigurationViewModel(Configuration, _loggerFactory.CreateLogger<ConfigurationViewModel>(), _loggerFactory)
             {
                 Name = configSer.Name,
                 XToolDependancy = configSer.XToolPositionDependancy,
@@ -80,7 +83,7 @@ namespace standa_control_software_WPF.view_models.config_creation.serialization_
 
             foreach (var controllerSer in configSer.Controllers)
             {
-                var controller = new ControllerConfigViewModel(config, _log)
+                var controller = new ControllerConfigViewModel(config, _loggerFactory)
                 {
                     Name = controllerSer.Name,
                     SelectedControllerType = controllerSer.SelectedControllerType,

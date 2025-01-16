@@ -1,4 +1,5 @@
-﻿using standa_controller_software.command_manager;
+﻿using Microsoft.Extensions.Logging;
+using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.controller_interfaces.shutter;
@@ -14,8 +15,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
         private SyncController_Sim _syncController;
 
-        public PositionAndShutterController_Sim(string name, ConcurrentQueue<string> log) : base(name, log)
+        public PositionAndShutterController_Sim(string name, ILoggerFactory loggerFactory) : base(name, loggerFactory)
         {
+            _logger = _loggerFactory.CreateLogger<PositionAndShutterController_Sim>();
         }
 
         public override void AddSlaveController(BaseController controller, SemaphoreSlim controllerLock)
@@ -104,13 +106,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 _processingCompletionSource.TrySetResult(true);
                 _processingLastItemTakenSource.TrySetResult(true);
 
-                _log?.Enqueue("Sync controller signaled execution completed");
+                _logger.LogDebug("Sync controller signaled execution completed");
             }
             else if (Message == "0x03") // Arduino signaled buffer is empty
             {
                 _processingLastItemTakenSource.TrySetResult(true);
 
-                _log?.Enqueue("Sync controller signaled las item taken");
+                _logger.LogDebug("Sync controller signaled las item taken");
             }
         }
         protected override async Task Stop(Command command, SemaphoreSlim semaphore)

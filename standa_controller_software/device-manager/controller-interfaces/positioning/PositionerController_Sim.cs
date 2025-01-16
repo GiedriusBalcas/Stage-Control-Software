@@ -1,4 +1,5 @@
-﻿using standa_controller_software.command_manager;
+﻿using Microsoft.Extensions.Logging;
+using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.command_manager.command_parameter_library.Common;
 using standa_controller_software.device_manager.attributes;
@@ -75,8 +76,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         public event Func<char, Task> OnSyncIn;
 
         // Constructor
-        public PositionerController_Sim(string name, ConcurrentQueue<string> log) : base(name, log)
+        public PositionerController_Sim(string name, ILoggerFactory loggerFactory) : base(name, loggerFactory)
         {
+            _logger = _loggerFactory.CreateLogger<PositionerController_Sim>();
             // Subscribe to OnSyncIn event with asynchronous handler
             OnSyncIn += async (char deviceName) => await OnSyncInAction(deviceName);
         }
@@ -96,7 +98,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 // Check if there are any buffered SyncInAction commands
                 if (!_buffer.ContainsKey(deviceName) || _buffer[deviceName].IsEmpty)
                 {
-                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Received SyncIn signal for '{deviceName}', but no buffered commands exist.");
+                    _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Received SyncIn signal for '{deviceName}', but no buffered commands exist.");
                     return;
                 }
 
@@ -112,7 +114,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     _deviceInfo[deviceName].Speed = recalculatedTargetSpeed;
                     float targetPosition = syncInAction.TargetPosition;
 
-                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Processing SyncInAction for '{deviceName}': TargetPosition={targetPosition}, AllocatedTime={syncInAction.AllocatedTime}");
+                    _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Processing SyncInAction for '{deviceName}': TargetPosition={targetPosition}, AllocatedTime={syncInAction.AllocatedTime}");
 
                     // Manage cancellation tokens
                     if (_deviceCancellationTokens.TryGetValue(deviceName, out var existingCts))
@@ -129,11 +131,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                             }
                             catch (OperationCanceledException)
                             {
-                                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Existing movement task for '{deviceName}' was canceled.");
+                                _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Existing movement task for '{deviceName}' was canceled.");
                             }
                             catch (Exception ex)
                             {
-                                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Error in existing movement task for '{deviceName}': {ex.Message}");
+                                _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Error in existing movement task for '{deviceName}': {ex.Message}");
                             }
                         }
 
@@ -194,11 +196,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
                 if (_deviceInfo.TryAdd(deviceName, deviceInfo))
                 {
-                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Added device '{deviceName}' with initial settings.");
+                    _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Added device '{deviceName}' with initial settings.");
                 }
                 else
                 {
-                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Device '{deviceName}' already exists.");
+                    _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Device '{deviceName}' already exists.");
                 }
             }
         }
@@ -208,7 +210,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         /// </summary>
         public void InvokeSyncIn(char deviceName)
         {
-            _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] InvokeSyncIn called for '{deviceName}'.");
+            _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] InvokeSyncIn called for '{deviceName}'.");
 
             // Fire and forget asynchronous event handlers
             var handlers = OnSyncIn?.GetInvocationList().Cast<Func<char, Task>>().ToList();
@@ -227,7 +229,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         /// </summary>
         public override async Task ForceStop()
         {
-            _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] ForceStop initiated.");
+            _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] ForceStop initiated.");
 
             // Cancel all cancellation tokens
             foreach (var (deviceName, cts) in _deviceCancellationTokens)
@@ -250,14 +252,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 }
                 catch (Exception ex)
                 {
-                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Error in ForceStop for '{kvp.Key}': {ex.Message}");
+                    _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Error in ForceStop for '{kvp.Key}': {ex.Message}");
                 }
             }
 
             // Clear all buffers
             _buffer.Clear();
 
-            _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] ForceStop completed.");
+            _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] ForceStop completed.");
         }
 
         /// <summary>
@@ -265,7 +267,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         /// </summary>
         protected override async Task MoveAbsolute(Command command, SemaphoreSlim semaphore)
         {
-            _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] MoveAbsolute initiated.");
+            _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] MoveAbsolute initiated.");
 
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
             var movementParameters = command.Parameters as MoveAbsoluteParameters;
@@ -296,11 +298,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                             }
                             catch (OperationCanceledException)
                             {
-                                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Existing movement task for '{deviceName}' was canceled.");
+                                _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Existing movement task for '{deviceName}' was canceled.");
                             }
                             catch (Exception ex)
                             {
-                                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Error in existing movement task for '{deviceName}': {ex.Message}");
+                                _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Error in existing movement task for '{deviceName}': {ex.Message}");
                             }
                         }
 
@@ -318,7 +320,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     float targetPosition = movementParameters.PositionerInfo[deviceName].TargetPosition;
 
                     _deviceInfo[deviceName].MoveStatus = 1;
-                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] MoveAbsolute called on '{deviceName}' with TargetPosition={targetPosition}.");
+                    _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] MoveAbsolute called on '{deviceName}' with TargetPosition={targetPosition}.");
 
                     // Start the UpdateCommandMoveA task and track it
                     var moveTask = UpdateCommandMoveA(deviceName, targetPosition, _deviceCancellationTokens[deviceName].Token);
@@ -344,7 +346,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             // Wait until all devices have stopped moving
             await WaitUntilStopAsync(waitUntilPositions, directions, semaphore);
 
-            _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] MoveAbsolute completed.");
+            _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] MoveAbsolute completed.");
         }
 
         /// <summary>
@@ -365,7 +367,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         /// </summary>
         protected override async Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore)
         {
-            _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] UpdateMoveSettings initiated.");
+            _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] UpdateMoveSettings initiated.");
 
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
             var movementParams = command.Parameters as UpdateMovementSettingsParameters;
@@ -380,10 +382,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
                 await UpdateMovementSettings(deviceName, speedValue, accelValue, decelValue);
 
-                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Updated movement settings for '{deviceName}': Speed={speedValue}, Acceleration={accelValue}, Deceleration={decelValue}.");
+                _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Updated movement settings for '{deviceName}': Speed={speedValue}, Acceleration={accelValue}, Deceleration={decelValue}.");
             }
 
-            _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] UpdateMoveSettings completed.");
+            _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] UpdateMoveSettings completed.");
         }
 
         /// <summary>
@@ -402,7 +404,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 positioner.Value.Deceleration = deviceInfo.Deceleration;
                 positioner.Value.Speed = deviceInfo.Speed;
 
-                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Updated state for device '{deviceName}': " +
+                _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Updated state for device '{deviceName}': " +
                             $"CurrentPos={positioner.Value.CurrentPosition}, " +
                             $"CurrentSpeed={positioner.Value.CurrentSpeed}, " +
                             $"Accel={positioner.Value.Acceleration}, " +
@@ -418,7 +420,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         /// </summary>
         protected override async Task Stop(Command command, SemaphoreSlim semaphore)
         {
-            _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Stop initiated.");
+            _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Stop initiated.");
 
             // Clear the buffer
             _buffer = new ConcurrentDictionary<char, ConcurrentQueue<SyncInAction>>();
@@ -442,11 +444,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 }
                 catch (Exception ex)
                 {
-                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Error in Stop for '{kvp.Key}': {ex.Message}");
+                    _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Error in Stop for '{kvp.Key}': {ex.Message}");
                 }
             }
 
-            _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Stop completed.");
+            _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Stop completed.");
         }
 
         /// <summary>
@@ -469,7 +471,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     deviceInfo.Acceleration = Math.Min(positioningDevice.Acceleration, positioningDevice.MaxAcceleration);
                     deviceInfo.Deceleration = Math.Min(positioningDevice.Deceleration, positioningDevice.MaxDeceleration);
 
-                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Connected device '{deviceName}' with settings: " +
+                    _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Connected device '{deviceName}' with settings: " +
                                 $"Speed={deviceInfo.Speed}, " +
                                 $"Acceleration={deviceInfo.Acceleration}, " +
                                 $"Deceleration={deviceInfo.Deceleration}, " +
@@ -477,7 +479,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 }
                 else
                 {
-                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Attempted to connect device '{deviceName}', but it does not exist in _deviceInfo.");
+                    _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Attempted to connect device '{deviceName}', but it does not exist in _deviceInfo.");
                 }
             }
         }
@@ -504,7 +506,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     }
                 }
 
-                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Buffer free space: {freeSpace}.");
+                _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Buffer free space: {freeSpace}.");
                 return freeSpace;
             });
         }
@@ -535,11 +537,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 if (queue.Count < maxBufferSizePerDevice)
                 {
                     queue.Enqueue(syncInAction);
-                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Added SyncInAction for '{deviceName}': TargetPosition={targetPosition}, AllocatedTime={allocatedTime}.");
+                    _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Added SyncInAction for '{deviceName}': TargetPosition={targetPosition}, AllocatedTime={allocatedTime}.");
                 }
                 else
                 {
-                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Buffer full for '{deviceName}'. SyncInAction discarded.");
+                    _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Buffer full for '{deviceName}'. SyncInAction discarded.");
                 }
             }
 
@@ -584,11 +586,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 deviceInfo.Acceleration = Math.Min(accelValue, deviceInfo.Acceleration);
                 deviceInfo.Deceleration = Math.Min(decelValue, deviceInfo.Deceleration);
 
-                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Updated movement settings for '{deviceName}': Speed={speedValue}, Acceleration={accelValue}, Deceleration={decelValue}.");
+                _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Updated movement settings for '{deviceName}': Speed={speedValue}, Acceleration={accelValue}, Deceleration={decelValue}.");
             }
             else
             {
-                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Attempted to update settings for unknown device '{deviceName}'.");
+                _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Attempted to update settings for unknown device '{deviceName}'.");
             }
 
             return Task.CompletedTask;
@@ -630,11 +632,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             try
             {
                 await Task.WhenAll(waitTasks);
-                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] All devices have stopped moving as per WaitUntilStopAsync.");
+                _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] All devices have stopped moving as per WaitUntilStopAsync.");
             }
             catch (Exception ex)
             {
-                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Error in WaitUntilStopAsync: {ex.Message}");
+                _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Error in WaitUntilStopAsync: {ex.Message}");
                 throw new Exception("An error occurred while waiting for devices to stop moving.", ex);
             }
         }
@@ -647,11 +649,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         {
             if (!_deviceInfo.TryGetValue(deviceName, out var deviceInfo))
             {
-                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] UpdateCommandMoveA called for unknown device '{deviceName}'.");
+                _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] UpdateCommandMoveA called for unknown device '{deviceName}'.");
                 return;
             }
 
-            _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] UpdateCommandMoveA started for '{deviceName}' towards Position={targetPosition}.");
+            _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] UpdateCommandMoveA started for '{deviceName}' towards Position={targetPosition}.");
 
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
@@ -670,7 +672,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
             if (!float.IsFinite(targetPosition))
             {
-                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] Invalid target position for '{deviceName}': {targetPosition}.");
+                _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Invalid target position for '{deviceName}': {targetPosition}.");
                 throw new ArgumentException("Non-finite target position value provided.", nameof(targetPosition));
             }
 
@@ -684,7 +686,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     // Frequent cancellation checks
                     if (cancellationToken.IsCancellationRequested)
                     {
-                        _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] UpdateCommandMoveA canceled for '{deviceName}'.");
+                        _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] UpdateCommandMoveA canceled for '{deviceName}'.");
                         return; // Exit early without final state updates
                     }
 
@@ -792,16 +794,16 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                     deviceInfo.MoveStatus = 0;
 
                     OnSyncOut?.Invoke(deviceName);
-                    _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] UpdateCommandMoveA completed successfully for '{deviceName}'.");
+                    _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] UpdateCommandMoveA completed successfully for '{deviceName}'.");
                 }
             }
             catch (OperationCanceledException)
             {
-                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] UpdateCommandMoveA operation canceled for '{deviceName}'.");
+                _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] UpdateCommandMoveA operation canceled for '{deviceName}'.");
             }
             catch (Exception ex)
             {
-                _log.Enqueue($"[{DateTime.Now:HH:mm:ss.fff}] UpdateCommandMoveA encountered an error for '{deviceName}': {ex.Message}");
+                _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] UpdateCommandMoveA encountered an error for '{deviceName}': {ex.Message}");
                 throw;
             }
         }

@@ -1,5 +1,4 @@
-﻿
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows.Input;
 using Newtonsoft.Json;
@@ -13,33 +12,37 @@ using standa_control_software_WPF.view_models.config_creation;
 using standa_controller_software.device_manager.devices.shutter;
 using standa_controller_software.device_manager.controller_interfaces.master_controller;
 using System.Collections.Concurrent;
-using System.Windows.Markup;
+using System.Linq;
 using System.Text;
+using standa_controller_software.command_manager;
+using standa_control_software_WPF.view_models.stores;
+using Microsoft.Extensions.Logging;
 
 namespace standa_control_software_WPF.view_models
 {
     public class ConfigurationCreationViewModel : ViewModelBase
     {
-        private readonly Action _onInitializationComple;
         private ConfigurationData _configurationData;
         private ViewModelBase _currentViewModel;
         private object _selectedItem;
-        private readonly Action<ControllerManager> _onInitializationComplete;
+
         private readonly SerializationHelper _serializationHelper;
-        private readonly ConcurrentQueue<string> _log;
+        private readonly ControllerManager _controllerManager;
+        private readonly ILogger<ConfigurationCreationViewModel> _logger;
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly NavigationStore _navigationStore;
+
+        // This is our new no-arg callback for when the wizard finishes
+        private readonly Action _onWizardComplete;
 
         public ObservableCollection<ConfigurationViewModel> Configurations { get; set; }
+
         public ConfigurationViewModel Configuration
         {
-            get
-            {
-                return Configurations.FirstOrDefault();
-            }
-            set
-            {
-                Configurations[0] = value;
-            }
+            get => Configurations.FirstOrDefault();
+            set => Configurations[0] = value;
         }
+
         public ViewModelBase CurrentViewModel
         {
             get => _currentViewModel;
@@ -49,6 +52,7 @@ namespace standa_control_software_WPF.view_models
                 OnPropertyChanged(nameof(CurrentViewModel));
             }
         }
+
         public object SelectedItem
         {
             get => _selectedItem;
@@ -62,58 +66,157 @@ namespace standa_control_software_WPF.view_models
             }
         }
 
-        public ICommand CreateConfigInstanceCommand { get; set; }
-        public ICommand SaveConfigurationsCommand { get; set; }
-        public ICommand SaveAsConfigurationsCommand { get; set; }
-        public ICommand LoadConfigurationsCommand { get; set; }
-        public ICommand CompleteInitializationCommand { get; }
+        // Commands
+        public ICommand CreateConfigInstanceCommand { get; }
+        public ICommand SaveConfigurationsCommand { get; }
+        public ICommand SaveAsConfigurationsCommand { get; }
+        public ICommand LoadConfigurationsCommand { get; }
 
-
-        public ConfigurationCreationViewModel(Action<ControllerManager> onInitializationCompleted, ConcurrentQueue<string> log)
+        public ConfigurationCreationViewModel(
+            ControllerManager manager,
+            ILogger<ConfigurationCreationViewModel> logger,
+            ILoggerFactory loggerFactory,
+            NavigationStore navigationStore,
+            Action onWizardComplete
+        )
         {
-            _log = log;
-            _onInitializationComplete = onInitializationCompleted;
+            _controllerManager = manager;
+            _logger = logger;
+            _loggerFactory = loggerFactory;
+            _navigationStore = navigationStore;
+            _onWizardComplete = onWizardComplete;
 
-            _serializationHelper = new SerializationHelper(log);
-            Configurations = new ObservableCollection<ConfigurationViewModel> { new ConfigurationViewModel(this, _log) };
+            _serializationHelper = new SerializationHelper(loggerFactory.CreateLogger<SerializationHelper>(), _loggerFactory);
+            Configurations = new ObservableCollection<ConfigurationViewModel>
+            {
+                new ConfigurationViewModel(this, loggerFactory.CreateLogger<ConfigurationViewModel>(), _loggerFactory)
+            };
 
             _configurationData = new ConfigurationData();
 
+            // Initialize commands
             LoadConfigurationsCommand = new RelayCommand(LoadConfigurations);
             SaveConfigurationsCommand = new RelayCommand(SaveConfigurationsExecute);
             SaveAsConfigurationsCommand = new RelayCommand(SaveAsConfigurationsExecute);
-            CreateConfigInstanceCommand = new RelayCommand(ExecuteCreateConfigsInstance, CanCreateConfigurationInstance);
-
+            CreateConfigInstanceCommand = new RelayCommand(
+                ExecuteCreateConfigsInstance,
+                CanCreateConfigurationInstance
+            );
         }
 
         private bool CanCreateConfigurationInstance()
         {
             if (Configuration.Controllers.Count < 1)
                 return false;
-            if (Configuration.XToolDependancy == string.Empty || Configuration.YToolDependancy == string.Empty || Configuration.ZToolDependancy == string.Empty)
+
+            if (string.IsNullOrWhiteSpace(Configuration.XToolDependancy) ||
+                string.IsNullOrWhiteSpace(Configuration.YToolDependancy) ||
+                string.IsNullOrWhiteSpace(Configuration.ZToolDependancy))
                 return false;
 
             return true;
         }
 
+        private void ExecuteCreateConfigsInstance()
+        {
+            try
+            {
+                // 1) Clear & set manager name (since user might re-run wizard)
+                //_controllerManager.ClearControllers();
+                _controllerManager.Name = Configuration.Name;
+
+                // 2) Add controllers/devices
+                foreach (var ctrlModel in Configuration.Controllers)
+                {
+                    if (!ctrlModel.IsEnabled)
+                        continue;
+
+                    var controllerInstance = ctrlModel.ExtractController();
+                    foreach (var deviceModel in ctrlModel.Devices.Where(d => d.IsEnabled))
+                    {
+                        var deviceInstance = deviceModel.ExtractDevice(controllerInstance);
+                        controllerInstance.AddDevice(deviceInstance);
+                    }
+                    _controllerManager.AddController(controllerInstance);
+                }
+
+                // 3) Master/Slave
+                foreach (var ctrlModel in Configuration.Controllers)
+                {
+                    if (string.IsNullOrWhiteSpace(ctrlModel.SelectedMasterControllerName))
+                        continue;
+
+                    var selectedMaster = _controllerManager.Controllers.Values
+                        .FirstOrDefault(c => c.Name == ctrlModel.SelectedMasterControllerName);
+
+                    if (selectedMaster is BaseMasterController masterController)
+                    {
+                        _controllerManager.Controllers[ctrlModel.Name].MasterController = masterController;
+                        masterController.AddSlaveController(
+                            _controllerManager.Controllers[ctrlModel.Name],
+                            _controllerManager.ControllerLocks[ctrlModel.Name]
+                        );
+                    }
+                }
+
+                // 4) Tool creation
+                var shutterDevice = _controllerManager.GetDevices<BaseShutterDevice>().FirstOrDefault()
+                    ?? new ShutterDevice('s', "undefined");
+                var positioners = _controllerManager.GetDevices<BasePositionerDevice>();
+
+                var calculator = new ToolPositionCalculator(_loggerFactory.CreateLogger<ToolPositionCalculator>());
+
+                // build X function
+                calculator.CreateFunction(Configuration.XToolDependancy, positioners.Select(d => d.Name).ToList());
+                var funcX = calculator.GetFunction();
+                // Y
+                calculator.CreateFunction(Configuration.YToolDependancy, positioners.Select(d => d.Name).ToList());
+                var funcY = calculator.GetFunction();
+                // Z
+                calculator.CreateFunction(Configuration.ZToolDependancy, positioners.Select(d => d.Name).ToList());
+                var funcZ = calculator.GetFunction();
+
+                if (funcX is null || funcY is null || funcZ is null)
+                    throw new ArgumentNullException("Tool position is not defined.");
+
+                var tool = new ToolInformation(
+                    positioners,
+                    shutterDevice,
+                    positions => new System.Numerics.Vector3
+                    {
+                        X = funcX(positions),
+                        Y = funcY(positions),
+                        Z = funcZ(positions)
+                    }
+                );
+
+                _controllerManager.ToolInformation = tool;
+
+                // 5) All done! Notify the App that the wizard is finished
+                _onWizardComplete?.Invoke();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex.Message);
+                MessageBox.Show(ex.Message);
+            }
+        }
+
         private void SaveConfigurationsExecute()
         {
-            if (!string.IsNullOrEmpty(_configurationData.Filepath))
+            if (!string.IsNullOrEmpty(_configurationData.Filepath) && Configurations.Any())
             {
-                if (Configurations.Count > 0)
-                {
-                    var serConfig = _serializationHelper.CreateSeriazableObject(Configurations.First());
-
-                    var filePath = _configurationData.Filepath;
-                    var json = System.Text.Json.JsonSerializer.Serialize(serConfig);
-                    File.WriteAllText(filePath, json);
-                }
+                var serConfig = _serializationHelper.CreateSeriazableObject(Configurations.First());
+                var filePath = _configurationData.Filepath;
+                var json = System.Text.Json.JsonSerializer.Serialize(serConfig);
+                File.WriteAllText(filePath, json);
             }
             else
             {
                 SaveAsConfigurationsExecute();
             }
         }
+
         private void SaveAsConfigurationsExecute()
         {
             var saveFileDialog = new Microsoft.Win32.SaveFileDialog
@@ -124,114 +227,21 @@ namespace standa_control_software_WPF.view_models
                 AddExtension = true
             };
 
-            if (saveFileDialog.ShowDialog() == true)
+            if (saveFileDialog.ShowDialog() == true && Configurations.Any())
             {
-                if (Configurations.Count > 0)
-                {
-                    var filePath = saveFileDialog.FileName;
-
-                    var serConfig = _serializationHelper.CreateSeriazableObject(Configurations.First());
-                    var json = System.Text.Json.JsonSerializer.Serialize(serConfig);
-                    var fileName = Path.GetFileNameWithoutExtension(saveFileDialog.FileName);
-                    File.WriteAllText(filePath, json);
-                    _configurationData.Name = fileName;
-                    _configurationData.Filepath = filePath;
-                    Configuration.Name = fileName;
-                }
+                var filePath = saveFileDialog.FileName;
+                var serConfig = _serializationHelper.CreateSeriazableObject(Configurations.First());
+                var json = System.Text.Json.JsonSerializer.Serialize(serConfig);
+                var fileName = Path.GetFileNameWithoutExtension(saveFileDialog.FileName);
+                File.WriteAllText(filePath, json);
+                _configurationData.Name = fileName;
+                _configurationData.Filepath = filePath;
+                Configuration.Name = fileName;
             }
         }
-        private void ExecuteCreateConfigsInstance()
+
+        private void LoadConfigurations()
         {
-            try
-            {
-
-                ControllerManager controllerMangerInstance = new ControllerManager(_log)
-                {
-                    Name = Configuration.Name
-                };
-
-                foreach (var controller in Configuration.Controllers)
-                {
-                    if (controller.IsEnabled)
-                    {
-
-                        var controllerInstance = controller.ExtractController();
-                        foreach (var device in controller.Devices)
-                        {
-                            if (device.IsEnabled)
-                            {
-                                var deviceInstance = device.ExtractDevice(controllerInstance);
-                                controllerInstance.AddDevice(deviceInstance);
-                            }
-                        }
-                        controllerMangerInstance.AddController(controllerInstance);
-                    }
-                }
-                // Master/Slave controller
-
-                foreach (var controller in Configuration.Controllers)
-                {
-                    var selectedMasterController = controllerMangerInstance.Controllers.Values.FirstOrDefault(controllerInstance => controllerInstance.Name == controller.SelectedMasterControllerName);
-                    if (controller.SelectedMasterControllerName != string.Empty && selectedMasterController is BaseMasterController masterController)
-                    {
-                        controllerMangerInstance.Controllers[controller.Name].MasterController = masterController;
-                        masterController.AddSlaveController(controllerMangerInstance.Controllers[controller.Name], controllerMangerInstance.ControllerLocks[controller.Name]);
-                    }
-                }
-
-                // Tool device creation
-                var shutterDevice = controllerMangerInstance.GetDevices<BaseShutterDevice>().FirstOrDefault() ?? new ShutterDevice('s', "undefined");
-                var positionerDevices = controllerMangerInstance.GetDevices<BasePositionerDevice>();
-                var positionerNames = positionerDevices.Select(dev => dev.Name).ToList();
-                var calculator = new ToolPositionCalculator(_log);
-
-                calculator.CreateFunction(Configuration.XToolDependancy, positionerDevices.Select(dev => dev.Name).ToList());
-                var funcDelegX = calculator.GetFunction();
-                calculator.CreateFunction(Configuration.YToolDependancy, positionerDevices.Select(dev => dev.Name).ToList());
-                var funcDelegY = calculator.GetFunction();
-                calculator.CreateFunction(Configuration.ZToolDependancy, positionerDevices.Select(dev => dev.Name).ToList());
-                var funcDelegZ = calculator.GetFunction();
-
-                if (funcDelegX is null || funcDelegY is null || funcDelegZ is null)
-                    throw new ArgumentNullException("Tool position is not defined.");
-
-                Func<Dictionary<char, float>, System.Numerics.Vector3> toolPosFunction = (positions) =>
-                {
-                    return new System.Numerics.Vector3()
-                    {
-                        X = funcDelegX.Invoke(positions),
-                        Y = funcDelegY.Invoke(positions),
-                        Z = funcDelegZ.Invoke(positions),
-                    };
-                };
-
-                var tool = new ToolInformation(
-                    controllerMangerInstance.GetDevices<BasePositionerDevice>(),
-                    shutterDevice,
-                    toolPosFunction
-                    );
-
-                controllerMangerInstance.ToolInformation = tool;
-
-                _onInitializationComplete.Invoke(controllerMangerInstance);
-            }
-            catch (Exception ex)
-            {
-                _log.Enqueue(ex.Message);
-                MessageBox.Show(ex.Message);
-            }
-        }
-        public void SaveConfigurations()
-        {
-            var serConfig = _serializationHelper.CreateSeriazableObject(Configurations.FirstOrDefault());
-
-            var filePath = "configuration.json";
-            var json = System.Text.Json.JsonSerializer.Serialize(serConfig);
-            File.WriteAllText(filePath, json);
-        }
-        public void LoadConfigurations()
-        {
-
             var openFileDialog = new Microsoft.Win32.OpenFileDialog
             {
                 Filter = "Configuration file (*.json)|*.json",
@@ -241,27 +251,24 @@ namespace standa_control_software_WPF.view_models
             if (openFileDialog.ShowDialog() == true)
             {
                 var pathToConfig = openFileDialog.FileName;
-                //Extract the file name without extension as the document name
+                if (!File.Exists(pathToConfig)) return;
+
                 string configName = Path.GetFileNameWithoutExtension(pathToConfig);
+                var json = File.ReadAllText(pathToConfig);
+                var configurationSer = JsonConvert.DeserializeObject<ConfigurationSer>(json);
+                var configuration = _serializationHelper.DeserializeObject(configurationSer, this);
 
-                if (File.Exists(pathToConfig))
-                {
-                    var json = File.ReadAllText(pathToConfig);
-                    var configurationSer = JsonConvert.DeserializeObject<ConfigurationSer>(json);
-                    var configuration = _serializationHelper.DeserializeObject(configurationSer, this);
-
-                    Configuration = configuration;
-                    _configurationData.Filepath = pathToConfig;
-                    _configurationData.Name = configName;
-                    Configuration.Name = configName;
-                }
+                Configuration = configuration;
+                _configurationData.Filepath = pathToConfig;
+                _configurationData.Name = configName;
+                Configuration.Name = configName;
             }
-
         }
+
         internal void ClearConfiguration()
         {
             Configurations.Clear();
-            Configurations.Add(new ConfigurationViewModel(this, _log));
+            Configurations.Add(new ConfigurationViewModel(this, _loggerFactory.CreateLogger<ConfigurationViewModel>(), _loggerFactory));
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using opentk_painter_library.render_objects;
+﻿using Microsoft.Extensions.Logging;
+using opentk_painter_library.render_objects;
 using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
@@ -17,12 +18,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         private readonly Vector4 _leadColor = new Vector4(1f, 1f, 0.0f, 1f);
         private readonly Vector4 _disengagedColor = new Vector4(0.57f,0.69f,0.50f, 0.5f);
 
-        public PositionAndShutterController_Painter(string name, ConcurrentQueue<string> log, LineObjectCollection lineObjectCollection, ToolInformation toolInformation) : base(name, log)
+        public PositionAndShutterController_Painter(string name, ILoggerFactory loggerFactory, LineObjectCollection lineObjectCollection, ToolInformation toolInformation) : base(name, loggerFactory)
         {
+            _logger = loggerFactory.CreateLogger<PositionAndShutterController_Painter>();
+
             _lineObjectCollection = lineObjectCollection;
             _toolInformation = toolInformation;
         }
-
+        
         public override List<BaseDevice> GetDevices()
         {
             return new List<BaseDevice>();

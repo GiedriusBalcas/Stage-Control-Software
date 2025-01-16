@@ -1,0 +1,21 @@
+radius = 500;
+dl = 100;
+dtheta = tan(dl/radius);
+
+theta_max = 2*PI;
+
+moveA.Speed = 1000;
+
+shutter("s",true);
+
+for( theta = 0; theta < theta_max; theta += dtheta)
+{
+	xas = sin(theta) * radius;
+	yas = cos(theta) * radius;
+	zas = 0;
+	moveA("xyz", xas, yas, zas);
+
+}
+
+shutter("s",false);
+
