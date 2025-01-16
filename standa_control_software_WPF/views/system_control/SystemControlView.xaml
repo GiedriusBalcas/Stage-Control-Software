@@ -7,6 +7,7 @@
              xmlns:glWpfControl="clr-namespace:OpenTK.Wpf;assembly=GLWpfControl"
              xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit"
              xmlns:behave="clr-namespace:standa_control_software_WPF.views.behaviours"
+             xmlns:helpers="clr-namespace:standa_control_software_WPF.views.helpers"
              xmlns:vms="clr-namespace:standa_control_software_WPF.view_models"
              xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
              xmlns:controlVms="clr-namespace:standa_control_software_WPF.view_models.system_control.control"
@@ -14,6 +15,10 @@
              d:DesignHeight="450"
              d:DesignWidth="800">
 
+    <UserControl.Resources>
+        <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    </UserControl.Resources>
+    
     <Grid Background="Transparent">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="20" />
@@ -24,59 +29,10 @@
             <RowDefinition Height="auto" />
             <RowDefinition Height="auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="auto" />
+            <RowDefinition Height="15" />
         </Grid.RowDefinitions>
 
 
-
-
-        <!--<Border Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="3" Background="{StaticResource MidBackgroundColorBrush}">
-            <StackPanel Orientation="Horizontal">
-                <Button Content="Open" Command="{Binding OpenDocumentCommand}"
-                        Style="{StaticResource customButtonStyleForBar}"/>
-                <Button Content="New" Command="{Binding AddNewDocumentCommand}"
-                        Style="{StaticResource customButtonStyleForBar}"/>
-                <Button Content="Save" 
-                        Style="{StaticResource customButtonStyleForBar}"/>
-                <Button Content="Save All" 
-                        Style="{StaticResource customButtonStyleForBar}"/>
-
-                <Separator 
-                    BorderThickness="1" 
-                    BorderBrush="{StaticResource LightBackgroundColorBrush}" 
-                    Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
-                    />
-                <Label Content="Active document:" FontSize="12" VerticalAlignment="Center"/>
-                <Label Content="{Binding SelectedDocument.Name}" FontSize="12" VerticalAlignment="Center" Margin="0"/>
-                <Separator 
-                    BorderThickness="1" 
-                    BorderBrush="{StaticResource LightBackgroundColorBrush}" 
-                    Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
-                    />
-
-                <ListBox  Width="auto" VerticalAlignment="Center">
-                    <ListBoxItem  Content="Virtual Config"/>
-                </ListBox>
-
-                <Button Content="Parse"
-                        Command="{Binding CreateCommandQueueFromInputCommand}"
-                        Style="{StaticResource customButtonStyleForBar}"/>
-                <Button Content="Execute"
-                        Command="{Binding ExecuteCommandQueueCommand}"
-                        Style="{StaticResource customButtonStyleForBar}"/>
-
-
-                <Separator 
-                    BorderThickness="1" 
-                    BorderBrush="{StaticResource LightBackgroundColorBrush}" 
-                    Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
-                    />
-                
-                <Button Content="Force Stop"
-                        Command="{Binding ForceStopCommand}"
-                        Style="{StaticResource customButtonStyleForBar}"/>
-            </StackPanel>
-        </Border>-->
 
 
         <Border  Grid.Row="2"
@@ -216,8 +172,8 @@
         <Grid Grid.Row="2"
               Grid.Column="2">
             <Grid.RowDefinitions>
+                <RowDefinition Height="2*" />
                 <RowDefinition Height="*" />
-                <RowDefinition Height="125" />
             </Grid.RowDefinitions>
 
             <!--//HEREHH-->
@@ -368,6 +324,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="auto" />
                         <RowDefinition Height="*" />
+                        <RowDefinition Height="auto" />
                     </Grid.RowDefinitions>
 
                     <Border Grid.Row="0"
@@ -385,7 +342,7 @@
                     </Border>
 
                     <ScrollViewer Grid.Row="1"
-                                  Margin="10,5,0,5"
+                                  Margin="10,5,0,0"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Auto">
                         <TextBlock Text="{Binding OutputMessage}"
@@ -394,34 +351,35 @@
                                    Foreground="{StaticResource FontColorBrush}" />
                     </ScrollViewer>
 
+                    <StackPanel Grid.Row="2"
+                                Orientation="Horizontal"
+                                Margin="5 0 5 5">
+                        <!-- Indeterminate progress bar bound to IsParsing -->
+                        <ProgressBar Height="20"
+                                     Width="200"
+                                     IsIndeterminate="{Binding IsParsing}"
+                                     Visibility="{Binding IsParsing, Converter={StaticResource BoolToVisibilityConverter}}"
+                                     VerticalAlignment="Bottom" />
 
+                        <!-- Show the textual status of parsing -->
+                        <TextBlock Text="{Binding ParsingStatusMessage}"
+                                   Margin="10,10,10,0"
+                                   TextWrapping="Wrap" />
+
+                        <!-- Cancel button: only enabled while parsing -->
+                        <Button Content="Cancel Parsing"
+                                Style="{StaticResource customButtonStyle}"
+                                Command="{Binding CancelCommandQueueParsing}"
+                                IsEnabled="{Binding IsParsing}"
+                                Visibility="{Binding IsParsing, Converter={StaticResource BoolToVisibilityConverter}}"
+                                Margin="10,10,0,0" />
+                    </StackPanel>
                 </Grid>
             </Border>
         </Grid>
 
 
-        <StackPanel Grid.Row="3" Grid.ColumnSpan="3"
-                    Orientation="Horizontal"
-                    Margin="20">
-            <!-- Indeterminate progress bar bound to IsParsing -->
-            <ProgressBar Height="20"
-                         Width="200"
-                         IsIndeterminate="{Binding IsParsing}"
-                         Visibility="{Binding IsParsing}"
-                         VerticalAlignment="Bottom"/>
-
-            <!-- Show the textual status of parsing -->
-            <TextBlock Text="{Binding ParsingStatusMessage}"
-                       Margin="10,10,10,0"
-                       TextWrapping="Wrap" />
-
-            <!-- Cancel button: only enabled while parsing -->
-            <Button Content="Cancel Parsing"
-                    Style="{StaticResource customButtonStyle}"
-                    Command="{Binding CancelCommandQueueParsing}"
-                    IsEnabled="{Binding IsParsing}"
-                    Margin="10,10,0,0" />
-        </StackPanel>
+        
 
 
     </Grid>

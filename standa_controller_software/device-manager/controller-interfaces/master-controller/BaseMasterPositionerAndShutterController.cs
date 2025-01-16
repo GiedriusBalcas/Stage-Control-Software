@@ -18,6 +18,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 {
     public abstract class BaseMasterPositionerAndShutterController : BaseMasterController, IQuableController
     {
+
+
+        //public int NumberOfItemsInQueue { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        //public Action NumberOfItemsInQueueChanged { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public struct PositionerSyncItemInfo
         {
             public char[] Devices;
@@ -46,6 +50,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         protected bool _launchPending = true;
         protected TaskCompletionSource<bool> _processingCompletionSource;
         protected TaskCompletionSource<bool> _processingLastItemTakenSource;
+
 
         public BaseMasterPositionerAndShutterController(string name, ConcurrentQueue<string> log) : base(name, log)
         {

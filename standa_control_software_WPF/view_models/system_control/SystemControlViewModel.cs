@@ -337,6 +337,8 @@ namespace standa_control_software_WPF.view_models.system_control
                 PainterManager.PaintCommandQueue(commandList);
 
                 OutputMessage += $"\nParsed successfully. Estimated time: {allocatedTime_timeSpan.ToString("hh':'mm':'ss")}\n";
+
+                ParsingStatusMessage = $"Estimated time: {allocatedTime_timeSpan.ToString("hh':'mm':'ss")}";
             }
             catch (OperationCanceledException)
             {
