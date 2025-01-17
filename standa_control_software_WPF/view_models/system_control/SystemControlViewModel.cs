@@ -12,6 +12,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using standa_control_software_WPF.view_models.logging;
+using System.Diagnostics;
 
 namespace standa_control_software_WPF.view_models.system_control
 {
@@ -88,6 +89,8 @@ namespace standa_control_software_WPF.view_models.system_control
         public ICommand ForceStopCommand { get; set; }
         public ICommand ClearOutputMessageCommand { get; set; }
 
+        private Stopwatch _executionStopwatch;
+        private bool _updateLoopRunning;
 
         private bool _isParsing;
         public bool IsParsing
@@ -114,6 +117,8 @@ namespace standa_control_software_WPF.view_models.system_control
         private CancellationTokenSource _parsingCts;
 
         private int? _highlightedLineNumber;// _debugger.CurrentLine
+        private TimeSpan _allocatedTime = new TimeSpan();
+
         public int? HighlightedLineNumber
         {
             get { return _highlightedLineNumber; }
@@ -146,8 +151,50 @@ namespace standa_control_software_WPF.view_models.system_control
             ForceStopCommand = new RelayCommand(ForceStop);
 
             ClearOutputMessageCommand = new RelayCommand(() => OutputMessage = "");
+            _commandManager.OnStateChanged += CommandManager_OnStateChanged;
         }
+        private void CommandManager_OnStateChanged(CommandManagerState newState)
+        {
+            if (newState == CommandManagerState.Processing)
+            {
+                // Start a new stopwatch
+                _executionStopwatch = new Stopwatch();
+                _executionStopwatch.Start();
 
+                // Start the asynchronous UI update loop (if not already running)
+                if (!_updateLoopRunning)
+                {
+                    _updateLoopRunning = true;
+                    _ = UpdateExecutionTimerLoop();
+                }
+            }
+            else if (newState == CommandManagerState.Waiting)
+            {
+                // Stop the stopwatch
+                _executionStopwatch?.Stop();
+            }
+        }
+        private async Task UpdateExecutionTimerLoop()
+        {
+            try
+            {
+                while (_commandManager.CurrentState == CommandManagerState.Processing)
+                {
+                    if (_executionStopwatch != null)
+                    {
+                        var currentTime = _executionStopwatch.Elapsed.ToString(@"hh\:mm\:ss");
+                        var allocatedTime = _allocatedTime.ToString(@"hh\:mm\:ss");
+                        ParsingStatusMessage = $"Estimated time: {allocatedTime} | Time elapsed: {currentTime}";
+                    }
+                    await Task.Delay(1000);
+                }
+            }
+            finally
+            {
+                // When we exit the loop, we reset so we can start again next time
+                _updateLoopRunning = false;
+            }
+        }
         private void ExecuteCancelCommandParsing()
         {
             _parsingCts?.Cancel();
@@ -213,68 +260,21 @@ namespace standa_control_software_WPF.view_models.system_control
 
             if (_commandManager.CurrentState != CommandManagerState.Processing)
             {
-                ClearLog();
-                //ForceStop();
-
-                //OutputMessage += $"\nStop.";
-                //_commandManager.Stop();
-                //OutputMessage += $"\ndone Stop.";
-
-                //foreach (var (controllerName, controller) in _controllerManager.Controllers)
-                //{
-                //    if (_controllerManager.ControllerLocks[controllerName].CurrentCount == 0)
-                //        _controllerManager.ControllerLocks[controllerName].Release();
-                //}
-
                 _commandManager.ClearQueue();
                 foreach (var commandLine in _functionDefinitionLibrary.ExtractCommands())
                 {
                     _commandManager.EnqueueCommandLine(commandLine);
                 }
 
-                //var inputThread = new Thread(async() => await _commandManager.ProcessQueue());
-                //inputThread.Start();
                 SaveCommandLog();
-
-                //try
-                //{
 
                 await Task.Run(() => _commandManager.ProcessQueue());
                 OutputMessage += $"\nDone Executing.";
-                //}
-                //catch(Exception ex)
-                //{
-                //    OutputMessage += $"\n{ex.Message}";
-                //}
-                //var highPriorityThread = new Thread(() => _commandManager.ProcessQueue());
-                //highPriorityThread.Priority = ThreadPriority.Highest; // Set the priority to Highest
-                //highPriorityThread.Start();
-
-                //await Task.Run(() => highPriorityThread.Join()); // Wait for the high-priority thread to finish
-
-                //SaveLog();
-
-                //while(_commandManager.CurrentState == CommandManagerState.Processing)
-                //{
-                //    await Task.Delay(1000);
-                //    SaveLog();
-                //}
+                
             }
 
         }
 
-        private void ClearLog()
-        {
-            //_commandManager.ClearLog();
-
-            //var content = string.Join("\n", _commandManager.GetLog());
-            //// The name of the file where the content will be saved
-            //string fileName = "log.txt";
-
-            //// Path to save the file in the same project directory
-            //string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
-            //File.WriteAllText(filePath, content);
-        }
 
         private async Task CreateCommandQueueFromInputAsync()
         {
@@ -283,7 +283,6 @@ namespace standa_control_software_WPF.view_models.system_control
                 // Prepare for parse
                 _parsingCts = new CancellationTokenSource();
                 IsParsing = true;
-                ParsingStatusMessage = "Starting parse...";
 
                 var inputText = SelectedDocument.InputText;
                 var fileName = SelectedDocument.Name;
@@ -307,12 +306,12 @@ namespace standa_control_software_WPF.view_models.system_control
                 // If parse succeeds, do next steps (extract commands, etc.)
                 var commandList = _functionDefinitionLibrary.ExtractCommands();
                 var allocatedTime_s = commandList.Sum(cmdLine => cmdLine.Max(cmd => cmd.EstimatedTime));
-                TimeSpan allocatedTime_timeSpan = TimeSpan.FromSeconds(allocatedTime_s);
+                _allocatedTime = TimeSpan.FromSeconds(allocatedTime_s);
                 PainterManager.PaintCommandQueue(commandList);
 
-                OutputMessage += $"\nParsed successfully. Estimated time: {allocatedTime_timeSpan.ToString("hh':'mm':'ss")}\n";
+                OutputMessage += $"\nParsed successfully. Estimated time: {_allocatedTime.ToString("hh':'mm':'ss")}\n";
 
-                ParsingStatusMessage = $"Estimated time: {allocatedTime_timeSpan.ToString("hh':'mm':'ss")}";
+                ParsingStatusMessage = $"Estimated time: {_allocatedTime.ToString("hh':'mm':'ss")}";
             }
             catch (OperationCanceledException)
             {
@@ -331,6 +330,7 @@ namespace standa_control_software_WPF.view_models.system_control
             finally
             {
                 IsParsing = false;
+                ((RelayCommand)ExecuteCommandQueueCommand).RaiseCanExecuteChanged();
             }
         }
 

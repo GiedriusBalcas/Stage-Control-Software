@@ -50,8 +50,14 @@ namespace standa_controller_software.device_manager.controller_interfaces
             {
                 MethodHandle = Stop,
             };
+            _methodMap[CommandDefinitions.UpdateDeviceProperty] = new MethodInformation()
+            {
+                MethodHandle = UpdateDeviceProperty,
+            };
 
         }
+
+        protected abstract Task UpdateDeviceProperty(Command command, SemaphoreSlim slim);
 
         public virtual async Task<T> ExecuteCommandAsync<T>(Command command, SemaphoreSlim semaphore)
         {

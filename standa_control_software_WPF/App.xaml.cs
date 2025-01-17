@@ -33,7 +33,7 @@ namespace standa_control_software_WPF
                     services.AddLogging(logging =>
                     {
                         logging.ClearProviders();
-                        logging.SetMinimumLevel(LogLevel.Information);
+                        logging.SetMinimumLevel(LogLevel.Debug);
 
                         var logPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "log_on_demand.txt");
                         logging.AddOnDemandFileLogger(logPath, LogLevel.Debug);

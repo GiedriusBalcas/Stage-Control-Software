@@ -7,7 +7,9 @@ using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -61,6 +63,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         {
         }
 
+        protected override Task UpdateDeviceProperty(Command command, SemaphoreSlim slim)
+        {
+            return Task.CompletedTask;
+        }
         protected override Task ConnectDevice(Command command, SemaphoreSlim semaphore)
         {
             return Task.CompletedTask;

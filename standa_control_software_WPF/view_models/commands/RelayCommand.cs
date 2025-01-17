@@ -32,6 +32,10 @@ namespace standa_control_software_WPF.view_models.commands
         {
             _execute();
         }
+        public void RaiseCanExecuteChanged()
+        {
+            CommandManager.InvalidateRequerySuggested();
+        }
     }
 
 

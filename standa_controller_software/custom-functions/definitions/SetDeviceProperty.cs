@@ -1,5 +1,8 @@
 ﻿using standa_controller_software.command_manager;
+using standa_controller_software.command_manager.command_parameter_library.Common;
 using standa_controller_software.device_manager;
+using standa_controller_software.device_manager.controller_interfaces;
+using standa_controller_software.device_manager.controller_interfaces.shutter;
 using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Generic;
@@ -17,10 +20,12 @@ namespace standa_controller_software.custom_functions.definitions
     {
         public string Message { get; set; } = "";
         private readonly ControllerManager _controllerManager;
+        private readonly CommandManager _commandManager;
 
-        public SetDeviceProperty(ControllerManager controllerManager)
+        public SetDeviceProperty(ControllerManager controllerManager, CommandManager commandManager)
         {
             _controllerManager = controllerManager;
+            _commandManager = commandManager;
         }
 
         public override object? Execute(params object[] args)
@@ -35,6 +40,8 @@ namespace standa_controller_software.custom_functions.definitions
 
         public void ExecuteCore(char[] deviceNames, string propertyName, object propertyValue)
         {
+            var CommandLine = new List<Command>();
+
             foreach (char deviceName in deviceNames)
             {
                 // Find the device by name. This step depends on how your devices are stored and identified.
@@ -82,6 +89,32 @@ namespace standa_controller_software.custom_functions.definitions
                         propertyInfo.SetValue(device, convertedValue);
                         if (device is BasePositionerDevice positioner)
                             positioner.UpdatePending = true;
+
+                        if(_controllerManager.TryGetDeviceController<BaseController>(device.Name, out BaseController controller))
+                        {
+                            var commandParameters = new UpdateDevicePropertyParameters
+                            {
+                                DeviceName = device.Name,
+                                PropertyName = propertyName,
+                                PropertyValue = convertedValue
+                            };
+
+                            var command = new Command
+                            {
+                                Action = CommandDefinitions.UpdateDeviceProperty,
+                                Await = true,
+                                Parameters = commandParameters,
+                                TargetController = controller.Name,
+                                EstimatedTime = 0,
+                                TargetDevices = [device.Name],
+                            };
+
+                            CommandLine.Add(command);
+                        }
+                        else
+                        {
+                            throw new Exception($"Cannot Get controller instance for device {device.Name}, {propertyValue.GetType().Name} to {propertyType.Name} for property {propertyName}.");
+                        }
                     }
                     else
                     {
@@ -91,8 +124,14 @@ namespace standa_controller_software.custom_functions.definitions
                 }
                 catch (Exception ex)
                 {
-                    throw ex;
+                    throw;
                 }
+            }
+
+            if(CommandLine.Count > 0)
+            {
+                _commandManager.EnqueueCommandLine(CommandLine.ToArray());
+                _commandManager.TryExecuteCommandLine(CommandLine.ToArray()).GetAwaiter().GetResult();
             }
         }
 

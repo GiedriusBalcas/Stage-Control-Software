@@ -658,7 +658,7 @@ namespace standa_controller_software.custom_functions.definitions
             }
 
             var maxTimeToAccel = timesToAccel.Max(kvp => kvp.Value);
-            var maxTimeToDecel = timesToAccel.Max(kvp => kvp.Value);
+            var maxTimeToDecel = timesToDecel.Max(kvp => kvp.Value);
 
             foreach (char name in deviceNames)
             {

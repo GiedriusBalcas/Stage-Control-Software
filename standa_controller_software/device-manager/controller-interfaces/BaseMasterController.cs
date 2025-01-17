@@ -64,6 +64,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             throw new NotImplementedException();
         }
 
+        protected override async Task UpdateDeviceProperty(Command command, SemaphoreSlim slim)
+        {
+            await ExecuteSlaveCommand(command);
+        }
         protected override Task ConnectDevice(Command command, SemaphoreSlim semaphore)
         {
             throw new NotImplementedException();

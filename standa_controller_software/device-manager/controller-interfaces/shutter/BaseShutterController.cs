@@ -8,7 +8,9 @@ using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -60,6 +62,54 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             return Devices.Values.Cast<BaseDevice>().ToList();
         }
 
+        protected override Task UpdateDeviceProperty(Command command, SemaphoreSlim slim)
+        {
+            if (command.Parameters is UpdateDevicePropertyParameters parameters && Devices.TryGetValue(parameters.DeviceName, out BaseShutterDevice device))
+            {
+                PropertyInfo propertyInfo = device.GetType().GetProperty(parameters.PropertyName, BindingFlags.Public | BindingFlags.Instance);
+                if (propertyInfo == null)
+                {
+                    throw new Exception($"Property {parameters.PropertyName} not found on device {device.GetType().Name}.");
+                }
+
+                Type propertyType = propertyInfo.PropertyType;
+                object convertedValue = null;
+                var propertyValue = parameters.PropertyValue;
+
+                // Handle known type conversions manually
+                if (propertyType == typeof(float) && propertyValue.GetType() == typeof(int))
+                {
+                    convertedValue = Convert.ToSingle(propertyValue);
+                }
+                else if (propertyType.IsAssignableFrom(propertyValue.GetType()))
+                {
+                    // Direct assignment
+                    convertedValue = propertyValue;
+                }
+                else
+                {
+                    // Use TypeDescriptor for other conversions
+                    TypeConverter typeConverter = TypeDescriptor.GetConverter(propertyType);
+                    if (typeConverter != null && typeConverter.CanConvertFrom(propertyValue.GetType()))
+                    {
+                        convertedValue = typeConverter.ConvertFrom(propertyValue);
+                    }
+                }
+
+                // Check if conversion was successful
+                if (convertedValue != null)
+                {
+                    propertyInfo.SetValue(device, convertedValue);
+                }
+            }
+            else
+            {
+                _logger.LogError($"Unable to perform device property update.");
+                throw new Exception($"Unable to perform device property update.");
+            }
+
+            return Task.CompletedTask;
+        }
         protected override Task ConnectDevice(Command command, SemaphoreSlim semaphore)
         {
             if (command.Parameters is ConnectDevicesParameters connectDevicesParameters)

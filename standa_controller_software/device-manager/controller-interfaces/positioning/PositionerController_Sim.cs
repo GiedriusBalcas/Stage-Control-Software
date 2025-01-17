@@ -37,7 +37,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             public float Speed
             {
                 get => _speed;
-                set => _speed = Math.Min(value, this.MaxSpeed);
+                set => _speed = value;
             }
 
             public float CurrentPosition { get; set; } = 0;
@@ -92,7 +92,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             // Acquire per-device lock
             var deviceLock = _deviceLocks.GetOrAdd(deviceName, _ => new SemaphoreSlim(1, 1));
 
-            await deviceLock.WaitAsync();
+            //await deviceLock.WaitAsync();
             try
             {
                 // Check if there are any buffered SyncInAction commands
@@ -157,7 +157,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             finally
             {
                 // Release the per-device lock
-                deviceLock.Release();
+                //deviceLock.Release();
             }
         }
 
@@ -492,21 +492,17 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             return Task.Run(() =>
             {
                 const int maxItemSize = 20; // Maximum buffer size per device
-                int freeSpace = 0;
+                int freeSpace = int.MaxValue;
 
                 foreach (var deviceName in command.TargetDevices)
                 {
                     if (_buffer.TryGetValue(deviceName, out var queue))
                     {
-                        freeSpace += maxItemSize - queue.Count;
-                    }
-                    else
-                    {
-                        freeSpace += maxItemSize;
+                        freeSpace = Math.Min(maxItemSize - queue.Count(), freeSpace);
                     }
                 }
 
-                _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Buffer free space: {freeSpace}.");
+                _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Buffer free space for devices {command.TargetDevices}: {freeSpace}.");
                 return freeSpace;
             });
         }
@@ -582,9 +578,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         {
             if (_deviceInfo.TryGetValue(deviceName, out var deviceInfo))
             {
-                deviceInfo.Speed = Math.Min(speedValue, deviceInfo.MaxSpeed);
-                deviceInfo.Acceleration = Math.Min(accelValue, deviceInfo.Acceleration);
-                deviceInfo.Deceleration = Math.Min(decelValue, deviceInfo.Deceleration);
+                var device = Devices[deviceName];
+               
+                deviceInfo.Speed = Math.Min(speedValue, device.MaxSpeed);
+                deviceInfo.Acceleration = Math.Min(accelValue, device.MaxAcceleration);
+                deviceInfo.Deceleration = Math.Min(decelValue, device.MaxDeceleration);
 
                 _logger.LogDebug($"[{DateTime.Now:HH:mm:ss.fff}] Updated movement settings for '{deviceName}': Speed={speedValue}, Acceleration={accelValue}, Deceleration={decelValue}.");
             }

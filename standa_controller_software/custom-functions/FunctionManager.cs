@@ -48,7 +48,7 @@ namespace standa_controller_software.custom_functions
             Definitions.AddFunction("setPower", setPowerFunction);
             Definitions.AddFunction("shutter", changeShutterStateFunction);
             Definitions.AddFunction("shutterInterval", changeShutterStateForIntervalFunction);
-            Definitions.AddFunction("set", new SetDeviceProperty(_controllerManager_virtual));
+            Definitions.AddFunction("set", new SetDeviceProperty(_controllerManager_virtual, _commandManager_virtual));
             
             Definitions.AddVariable("PI", (float)Math.PI);
             Definitions.AddVariable("null", null);

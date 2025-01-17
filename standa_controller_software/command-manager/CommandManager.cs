@@ -26,6 +26,21 @@ namespace standa_controller_software.command_manager
         private readonly ILogger<CommandManager> _logger;
         private ConcurrentQueue<Command[]> _commandQueue = new ConcurrentQueue<Command[]>();
         private CommandManagerState _currentState = CommandManagerState.Waiting;
+        public event Action<CommandManagerState> OnStateChanged;
+        public CommandManagerState CurrentState
+        {
+            get => _currentState;
+            private set
+            {
+                if (_currentState != value)
+                {
+                    _currentState = value;
+                    // Fire the event whenever the state changes
+                    OnStateChanged?.Invoke(_currentState);
+                }
+            }
+        }
+
         private string _currentQueueController = string.Empty;
         private bool _allowedToRun = true;
         public CommandManager(ControllerManager controllerManager, ILogger<CommandManager> logger)
@@ -45,15 +60,6 @@ namespace standa_controller_software.command_manager
         }
 
         // interface for outside objects to execute commands.
-        public CommandManagerState CurrentState
-        {
-            get { return _currentState; }
-            private set
-            {
-                _currentState = value;
-                //_// log.Enqueue($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}: State changed to {_currentState}");
-            }
-        }
         
         public IEnumerable<Command[]> GetCommandQueueList()
         {

@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Shapes;
 
 namespace standa_control_software_WPF.view_models.logging
 {
@@ -21,6 +22,15 @@ namespace standa_control_software_WPF.view_models.logging
 
         public FileLogger(string categoryName, string filePath, LogLevel minLevel)
         {
+            if (!string.IsNullOrEmpty(categoryName))
+            {
+                var lastDotIndex = categoryName.LastIndexOf('.');
+                if (lastDotIndex >= 0 && lastDotIndex < categoryName.Length - 1)
+                {
+                    categoryName = categoryName.Substring(lastDotIndex + 1);
+                }
+            }
+
             _categoryName = categoryName;
             _filePath = filePath;
             _minLevel = minLevel;
@@ -63,18 +73,28 @@ namespace standa_control_software_WPF.view_models.logging
         {
             if (_logQueue.IsEmpty) return;
 
-            // Gather all queued messages
-            var linesToWrite = new System.Text.StringBuilder();
+            // Gather all queued messages into one big string
+            var sb = new StringBuilder();
             while (_logQueue.TryDequeue(out string line))
             {
-                linesToWrite.AppendLine(line);
+                sb.AppendLine(line);
             }
 
-            // Write them to file
             lock (_fileLock)
             {
-                File.AppendAllText(_filePath, linesToWrite.ToString());
+                try
+                {
+                    // Attempt to append the entire buffer to the file
+                    File.AppendAllText(_filePath, sb.ToString());
+                }
+                catch
+                {
+                    // If writing fails, log that fact and re-queue the entire batch
+                    sb.AppendLine("failed to save log file.");
+                    _logQueue.Enqueue(sb.ToString());
+                }
             }
         }
+
     }
 }

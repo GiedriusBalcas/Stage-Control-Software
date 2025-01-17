@@ -14,6 +14,7 @@ namespace standa_controller_software.command_manager
         UpdateState,
         ConnectDevice,
         Stop,
+        UpdateDeviceProperty,
         // queue
         AwaitQueuedItems,
         // positioners
