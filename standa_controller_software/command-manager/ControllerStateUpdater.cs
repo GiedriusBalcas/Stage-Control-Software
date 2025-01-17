@@ -25,7 +25,7 @@ namespace standa_controller_software.command_manager
             // Subscribe to unobserved task exceptions
             TaskScheduler.UnobservedTaskException += (sender, e) =>
             {
-                _logger.LogDebug($"Unobserved exception: {e.Exception.Message}\n{e.Exception.StackTrace}");
+                _logger.LogInformation($"Unobserved exception: {e.Exception.Message}\n{e.Exception.StackTrace}");
                 e.SetObserved(); // Prevents the process from crashing
             };
         }
@@ -36,11 +36,11 @@ namespace standa_controller_software.command_manager
 
             try
             {
-                _logger.LogDebug("Starting UpdateStatesAsync loop.");
+                _logger.LogInformation("Starting UpdateStatesAsync loop.");
 
                 while (true)
                 {
-                    //_logger.LogDebug("Beginning of loop iteration.");
+                    //_logger.LogInformation("Beginning of loop iteration.");
 
                     // Loop through all controllers
                     foreach (var controllerPair in _controllerManager.Controllers)
@@ -56,18 +56,18 @@ namespace standa_controller_software.command_manager
                         };
 
                         // Log attempting to acquire semaphore
-                        //_logger.LogDebug($"Attempting to acquire semaphore for controller: {controller.Name}");
+                        //_logger.LogInformation($"Attempting to acquire semaphore for controller: {controller.Name}");
 
                         // Attempt to acquire the semaphore without waiting
                         if (await semaphore.WaitAsync(0))
                         {
-                            //_logger.LogDebug($"Semaphore acquired for controller: {controller.Name}");
+                            //_logger.LogInformation($"Semaphore acquired for controller: {controller.Name}");
 
                             try
                             {
                                 if (!controller.GetDevices().Any(device => !device.IsConnected))
                                 {
-                                    //_logger.LogDebug($"Starting state update for controller: {controller.Name}");
+                                    //_logger.LogInformation($"Starting state update for controller: {controller.Name}");
 
                                     // Use Task.Run to run the update on a separate thread
                                     var updateTask = Task.Run(async () =>
@@ -75,11 +75,11 @@ namespace standa_controller_software.command_manager
                                         try
                                         {
                                             await controller.ExecuteCommandAsync(updateCommand, semaphore);
-                                            //_logger.LogDebug($"Successfully updated state for controller: {controller.Name}");
+                                            //_logger.LogInformation($"Successfully updated state for controller: {controller.Name}");
                                         }
                                         catch (Exception ex)
                                         {
-                                            _logger.LogDebug($"Exception in {controller.Name}'s UpdateStatesAsync: {ex.Message}\n{ex.StackTrace}");
+                                            _logger.LogInformation($"Exception in {controller.Name}'s UpdateStatesAsync: {ex.Message}\n{ex.StackTrace}");
                                             throw;
                                         }
                                     });
@@ -90,7 +90,7 @@ namespace standa_controller_software.command_manager
 
                                     if (completedTask == timeoutTask)
                                     {
-                                        _logger.LogDebug($"Stuck on updating: {controller.Name}");
+                                        _logger.LogInformation($"Stuck on updating: {controller.Name}");
                                         // Optionally, implement cancellation if UpdateStatesAsync supports it
                                     }
                                     else
@@ -101,26 +101,26 @@ namespace standa_controller_software.command_manager
                                 }
                                 else
                                 {
-                                    //_logger.LogDebug($"Skipping state update for controller {controller.Name} because a device is not connected.");
+                                    //_logger.LogInformation($"Skipping state update for controller {controller.Name} because a device is not connected.");
                                 }
                             }
                             catch (Exception ex)
                             {
-                                _logger.LogDebug($"Error encountered during state update of {controller.Name}: {ex.Message}\n{ex.StackTrace}");
+                                _logger.LogInformation($"Error encountered during state update of {controller.Name}: {ex.Message}\n{ex.StackTrace}");
                             }
                             finally
                             {
                                 semaphore.Release();
-                                //_logger.LogDebug($"Semaphore released for controller: {controller.Name}");
+                                //_logger.LogInformation($"Semaphore released for controller: {controller.Name}");
                             }
                         }
                         else
                         {
-                            //_logger.LogDebug($"Could not acquire semaphore for controller: {controller.Name}");
+                            //_logger.LogInformation($"Could not acquire semaphore for controller: {controller.Name}");
                         }
                     }
 
-                    //_logger.LogDebug("End of loop iteration.");
+                    //_logger.LogInformation("End of loop iteration.");
 
                     // Introduce a small delay to avoid overwhelming the system
                     await Task.Delay(20);
@@ -128,11 +128,11 @@ namespace standa_controller_software.command_manager
             }
             catch (Exception ex)
             {
-                _logger.LogDebug($"Exception in UpdateStatesAsync loop for controller {currentControllerName}: {ex.Message}\n{ex.StackTrace}");
+                _logger.LogInformation($"Exception in UpdateStatesAsync loop for controller {currentControllerName}: {ex.Message}\n{ex.StackTrace}");
             }
             finally
             {
-                _logger.LogDebug("Exiting UpdateStatesAsync loop.");
+                _logger.LogInformation("Exiting UpdateStatesAsync loop.");
             }
         }
     }

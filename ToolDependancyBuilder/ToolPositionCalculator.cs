@@ -37,13 +37,13 @@ namespace ToolDependancyBuilder
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex.Message);
+                _logger.LogInformation(ex.Message);
             }
             if (errorListener.Errors.Any())
             {
                 foreach (var error in errorListener.Errors)
                 {
-                    _logger.LogDebug(error);
+                    _logger.LogInformation(error);
                 }
             }
         }

@@ -65,23 +65,23 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             if (_processingLastItemTakenSource is not null)
                 _processingLastItemTakenSource.TrySetResult(true);
 
-            _logger.LogDebug($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled that execution finalized.");
+            _logger.LogInformation($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled that execution finalized.");
         }
         private void OnSyncControllerLastBufferItemTaken()
         {
             if(_processingLastItemTakenSource is not null)
                 _processingLastItemTakenSource.TrySetResult(true);
 
-            _logger.LogDebug($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled that last item was taken.");
+            _logger.LogInformation($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled that last item was taken.");
         }
         private async Task OnSyncControllerBufferSpaceAvailable()
         {
-           _logger.LogDebug($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled buffer has free slot");
+           _logger.LogInformation($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled buffer has free slot");
             await SendCommandIfAvailable();
         }
         protected override Task Stop(Command command, SemaphoreSlim semaphore)
         {
-            _logger.LogDebug($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: stop encountered.");
+            _logger.LogInformation($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: stop encountered.");
             _buffer.Clear();
             _buffer = new ConcurrentQueue<MovementInformation>();
             _launchPending = true;

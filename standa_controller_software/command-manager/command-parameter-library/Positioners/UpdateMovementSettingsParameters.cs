@@ -14,7 +14,7 @@ namespace standa_controller_software.command_manager.command_parameter_library
             foreach(var deviceName in MovementSettingsInformation.Keys)
             {
                 var info = MovementSettingsInformation[deviceName];
-                constructedString += $"vel: {info.TargetSpeed}, acc: {info.TargetAcceleration}, dec: {info.TargetDeceleration}";
+                constructedString += $"vel: {info.TargetSpeed}, acc: {info.TargetAcceleration}, dec: {info.TargetDeceleration}, blending: {Blending}.";
             }
 
             return constructedString;

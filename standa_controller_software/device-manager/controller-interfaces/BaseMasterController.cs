@@ -24,7 +24,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         
         public virtual async Task ExecuteSlaveCommandsAsync(Command[] commands, SemaphoreSlim semaphore) 
         {
-            _logger.LogDebug($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {string.Join(' ', commands.Select(command => command.Action).ToArray())} command on device {string.Join(' ', commands.SelectMany(command => command.TargetDevices).ToArray())}");
+            _logger.LogInformation($"{DateTime.Now.ToString("HH:mm:ss.fff")}: Executing {string.Join(' ', commands.Select(command => command.Action).ToArray())} command on device {string.Join(' ', commands.SelectMany(command => command.TargetDevices).ToArray())}");
             var groupedCommands = commands
                 .GroupBy(command => command.Action)
                 .ToDictionary(

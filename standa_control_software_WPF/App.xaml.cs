@@ -34,6 +34,7 @@ namespace standa_control_software_WPF
                     {
                         logging.ClearProviders();
                         logging.SetMinimumLevel(LogLevel.Debug);
+                        logging.AddFilter("standa_controller_software.device_manager.controller_interfaces.positioning.PositionerController_Sim", LogLevel.Information);
 
                         var logPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "log_on_demand.txt");
                         logging.AddOnDemandFileLogger(logPath, LogLevel.Debug);

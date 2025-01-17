@@ -80,7 +80,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
 
             var processedResponse = ProcessResponse(response);
             if (processedResponse == false)
-                _logger.LogDebug("Arduino_shutter: error response received.");
+                _logger.LogInformation("Arduino_shutter: error response received.");
         }
         protected override async Task ChangeStateOnInterval_implementation(BaseShutterDevice device, float duration)
         {
@@ -98,7 +98,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
 
             var processedResponse = ProcessResponse(response);
             if (processedResponse == false)
-                _logger.LogDebug("Arduino_shutter: error response received.");
+                _logger.LogInformation("Arduino_shutter: error response received.");
 
             await Task.Delay((int)(duration * 1000));
 
@@ -219,7 +219,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             }
             else
             {
-                _logger.LogDebug($"Arduino Shutter Controller: Unexpected response code: {response.ResponseCode}");
+                _logger.LogInformation($"Arduino Shutter Controller: Unexpected response code: {response.ResponseCode}");
                 return false;
             }
         }

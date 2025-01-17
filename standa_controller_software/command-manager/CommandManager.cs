@@ -138,7 +138,7 @@ namespace standa_controller_software.command_manager
         public async Task ProcessQueue()
         {
             _allowedToRun = true;
-            _logger.LogDebug("ProcessingQueue.");
+            _logger.LogInformation("ProcessingQueue.");
             CurrentState = CommandManagerState.Processing;
             while (_commandQueue.Count > 0 && _allowedToRun)
             {
@@ -155,7 +155,7 @@ namespace standa_controller_software.command_manager
                 await CheckAndUpdateControllerQueue(String.Empty);
 
             CurrentState = CommandManagerState.Waiting;
-            _logger.LogDebug("QueueEnd in command manager.");
+            _logger.LogInformation("QueueEnd in command manager.");
 
         }
         public void EnqueueCommandLine(Command[] commands)

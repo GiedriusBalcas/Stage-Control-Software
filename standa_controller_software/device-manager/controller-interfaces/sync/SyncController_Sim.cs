@@ -1,16 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
 using standa_controller_software.command_manager;
-using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.devices;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO.Ports;
-using System.Linq;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace standa_controller_software.device_manager.controller_interfaces.sync
 {
@@ -43,7 +35,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
         public void GotSyncOut(char deviceName)
         {
-            //_logger.LogDebug($"Got SyncOut from: {deviceName}");
+            //_logger.LogInformation($"Got SyncOut from: {deviceName}");
 
             _gotSyncOutFrom.Add(deviceName);
         }
@@ -68,7 +60,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             {
                 Devices = Devices,
                 Launch = Launch,
-                Rethrow = Rethrow ,
+                Rethrow = Rethrow,
                 Shutter = Shutter,
                 Shutter_delay_off = Shutter_delay_off,
                 Shutter_delay_on = Shutter_delay_on
@@ -78,6 +70,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                 _logger.LogError($"Buffered item count surpasses maximum allowed item size.");
 
             _buffer.Enqueue(executionInformation);
+            _logger.LogDebug($"Added Sync Buffer Item: devices: {string.Join(',', Devices)} | launch: {Launch} | rethrow: {Rethrow} | shutter: {Shutter} | shutter_on: {Shutter_delay_on} | shutter_off: {Shutter_delay_off}.");
 
             return Task.CompletedTask;
         }
@@ -89,13 +82,17 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         {
             // Detach ExecuteQueue to run on a separate thread
             Task.Run(() => ExecuteQueue());
+            _logger.LogDebug($"StartQueueExecution encountered.");
 
             return Task.CompletedTask;
         }
         protected override async Task<int> GetBufferCount(Command command, SemaphoreSlim semaphore)
         {
             int currentSize = _buffer.Count;
-            return _maxBufferSize - currentSize;
+            var result = _maxBufferSize - currentSize;
+            _logger.LogDebug($"buffer count: {result}.");
+
+            return result;
         }
         protected override Task ConnectDevice_implementation(BaseDevice device)
         {
@@ -105,25 +102,33 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
         private async Task ExecuteQueue()
         {
+            _logger.LogDebug($"Execute queue encountered.");
+
             _allowedToRun = true;
             var timer = new Stopwatch();
             bool lastItemTaken = false;
             var startTime = timer.ElapsedMilliseconds;
+            var waitingForSyncOutsFrom = new List<char>();
+            _gotSyncOutFrom.Clear();
+
             while (!lastItemTaken && _allowedToRun)
             {
+                _logger.LogDebug($"Execute queue. There are items in queue and is allowed to run");
+
                 bool has_item = _buffer.TryDequeue(out var exec_info);
                 if (has_item)
                 {
-                    var waitingForSyncOutsFrom = new List<char>();
                     bool has_next_item = _buffer.TryPeek(out var exec_info_next);
                     if (exec_info.Launch)
                     {
                         foreach (var device in exec_info.Devices)
                         {
                             waitingForSyncOutsFrom.Add(device);
+                            _gotSyncOutFrom.Clear();
+
                         }
 
-                        _= SendPulse(exec_info.Devices);
+                        _ = SendPulse(exec_info.Devices);
                         timer.Restart();
                     }
 
@@ -147,6 +152,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                     {
                         if (waitingForSyncOutsFrom.All(syncOut => _gotSyncOutFrom.Contains(syncOut)))
                         {
+                            _logger.LogDebug($"Execute queue. Got all of the sync out signals from devices: {string.Join(',', waitingForSyncOutsFrom)}.");
+
                             _gotSyncOutFrom.Clear();
                             break;
                         }
@@ -154,18 +161,24 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                         var elapsed_ms = timer.ElapsedMilliseconds;
                         if (shutter_pending_on && elapsed_ms >= shutter_on)
                         {
+                            _logger.LogDebug($"Execute queue. shutter on.");
+
                             _shutterChangeState?.Invoke(true);
                             shutter_pending_on = false;
                         }
-                        
+
                         if (shutter_pending_off && elapsed_ms >= shutter_off)
                         {
+                            _logger.LogDebug($"Execute queue. shutter off.");
+
                             _shutterChangeState?.Invoke(false);
                             shutter_pending_off = false;
                         }
 
-                        if(rethrow_ms >0 && elapsed_ms >= rethrow_ms)
+                        if (rethrow_ms > 0 && elapsed_ms >= rethrow_ms)
                         {
+                            _logger.LogDebug($"Execute queue. rethrow encountered.");
+
                             break;
                         }
 
@@ -174,6 +187,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
                     if (shutter_pending_off)
                     {
+                        _logger.LogDebug($"Execute queue. shutter off.");
                         _shutterChangeState?.Invoke(false);
                     }
 
@@ -185,15 +199,22 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                         {
                             waitingForSyncOutsFrom.Add(device);
                         }
+                        _gotSyncOutFrom.Clear();
+
                         await SendPulse(exec_info_next.Devices);
+                        _logger.LogDebug($"Execute queue. Sent pulses and awaiting: {string.Join(',', waitingForSyncOutsFrom)}. Restarting timer.");
                         timer.Restart();
                     }
                 }
                 else
                 {
+                    _logger.LogDebug($"Execute queue. Ran out of items.");
+
                     lastItemTaken = true;
                 }
             }
+            _logger.LogDebug($"Execute queue. Ran out of queued items or allowed to run: {_allowedToRun}.");
+
             _ = Task.Run(() => SendMessage?.Invoke("0x02"));
         }
 
@@ -201,8 +222,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         {
             foreach (var device in devices)
             {
-                Task.Run(() => _positionerSyncInMap[device].Invoke());       
+                Task.Run(() => _positionerSyncInMap[device].Invoke());
             }
+            _logger.LogDebug($"Send pulse encountered. Devices: {string.Join(',', devices)}.");
+
             return Task.CompletedTask;
         }
 

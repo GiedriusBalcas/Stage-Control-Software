@@ -151,7 +151,7 @@ namespace standa_controller_software.custom_functions.definitions
                 {
                     MovementSettingsInformation = movementSettings,
                     AccelChangePending = isAccelChangeNeeded,
-                    Blending = false
+                    Blending = true
                 };
 
                 updateParametersCommandLine.Add(new Command

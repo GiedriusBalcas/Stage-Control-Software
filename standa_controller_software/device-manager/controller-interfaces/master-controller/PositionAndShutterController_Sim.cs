@@ -106,13 +106,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 _processingCompletionSource.TrySetResult(true);
                 _processingLastItemTakenSource.TrySetResult(true);
 
-                _logger.LogDebug("Sync controller signaled execution completed");
+                _logger.LogInformation("Sync controller signaled execution completed");
             }
             else if (Message == "0x03") // Arduino signaled buffer is empty
             {
                 _processingLastItemTakenSource.TrySetResult(true);
 
-                _logger.LogDebug("Sync controller signaled las item taken");
+                _logger.LogInformation("Sync controller signaled las item taken");
             }
         }
         protected override async Task Stop(Command command, SemaphoreSlim semaphore)

@@ -197,7 +197,7 @@ namespace standa_control_software_WPF.view_models
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex.Message);
+                _logger.LogInformation(ex.Message);
                 MessageBox.Show(ex.Message);
             }
         }

@@ -155,6 +155,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         protected virtual async Task UpdateMoveSettings(Command[] commands, SemaphoreSlim semaphore)
         {
             //TODO: store the update commands until the second one or awaitQueuedItems is hit.
+            _logger.LogInformation("update move settings encountered.");
 
             var isUpdateNeeded = commands.Any(command =>
             {
@@ -168,14 +169,17 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
             if (isUpdateNeeded = true)
             {
+                _logger.LogInformation("update move settings. update is needed.");
 
                 await ProcessQueue(semaphore);
+                _logger.LogInformation("update move settings. awaited ProcessQueue().");
 
                 if (_updateMoveSettingsCommands != null)
                     _logger.LogError("Last move settings update missed.");
 
                 _updateMoveSettingsCommands = commands;
                 _launchPending = true;
+                _logger.LogInformation("update move settings. updated next move settings update command.");
             }
         }
         protected virtual Task ChangeState(Command[] commands, SemaphoreSlim semaphore)
@@ -328,11 +332,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         }
         protected async Task FillControllerBuffers(SemaphoreSlim semaphore)
         {
-            _logger.LogDebug($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: trying to fill slave buffers");
+            _logger.LogInformation($"trying to fill slave buffers");
 
             int minFreeItemCount = await GetMinFreeBufferItemCount();
             if(minFreeItemCount < 2)
-                _logger.LogDebug($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: available buffer spave is slaves is less than 2.");
+                _logger.LogInformation($"available buffer space is slaves is less than 2.");
 
 
             int bufferCount = _buffer.Count;
@@ -348,20 +352,29 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 }
                 else
                 {
-                    throw new Exception("master: Was Unable to dequeue a command from the buffer");
+                    throw new Exception("Was Unable to dequeue a command from the buffer");
                 }
             }
 
         }
         protected async Task ProcessQueue(SemaphoreSlim semaphore)
         {
+            _logger.LogInformation("process queue encountered.");
+
             await AwaitExecutionEnd();
-            
+            _logger.LogInformation("process queue. awaited execution end.");
+
+
             if (_updateMoveSettingsCommands != null)
             {
+                _logger.LogInformation("process queue. theres pending move settings update.");
+
+
                 foreach (Command command in _updateMoveSettingsCommands)
                 {
                     // first, let's await until the device is stationary unless its a blended movement.
+                    _logger.LogInformation("process queue. waiting for positioners to stop moving.");
+
                     var targetDevices = command.TargetDevices;
                     var targetController = command.TargetController;
 
@@ -377,38 +390,49 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
                         await ExecuteSlaveCommand(waitUntilStopCommand);
                     }
+                    _logger.LogInformation("process queue. awaited for positioners to stop moving.");
+
+                    _logger.LogInformation("process queue. executing move settings update command for slaves.");
 
                     await ExecuteSlaveCommand(command);
                 }
+                _logger.LogInformation("process queue. done updating.");
 
                 _updateMoveSettingsCommands = null;
             }
             //await AwaitExecutionEnd();
 
             await FillControllerBuffers(semaphore);
-            _logger.LogDebug("master: filled slaves to the brim");
+            _logger.LogInformation("process queue. filled slave controllers with buffer items.");
+
 
             await StartExecutionOnSyncController(semaphore);
-            _logger.LogDebug("master: sent Sync Controller to execute its buffer");
+            _logger.LogInformation("process queue. executed StartExecutionOnSyncController.");
+
 
             _launchPending = true;
             await AwaitExecutionEnd();
+            _logger.LogInformation("process queue. awaited execution end via AwaitExecutionEnd().");
 
 
         }
         protected async Task AwaitExecutionEnd()
         {
+            _logger.LogInformation("AwaitExecutionEnd encountered.");
+
             if (_processingCompletionSource is not null)
             {
                 if (!_processingCompletionSource.Task.IsCompleted)
                 {
+                    _logger.LogInformation("AwaitExecutionEnd. theres ongoing process. Gonna await _processingCompletionSource.Task");
+
                     await _processingCompletionSource.Task;
-                    _logger.LogDebug("master: awaited the exec_end");
+                    _logger.LogInformation("AwaitExecutionEnd. awaited _processingCompletionSource.Task");
+
                 }
                 else
                 {
-                    _logger.LogDebug("master: exec_end was allready complete.");
-
+                    _logger.LogInformation("AwaitExecutionEnd. _processingCompletionSource.Task.IsCompleted was completed.");
                 }
             }
         }
