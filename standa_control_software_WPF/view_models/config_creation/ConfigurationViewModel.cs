@@ -83,6 +83,77 @@ namespace standa_control_software_WPF.view_models.config_creation
             }
         }
 
+        private float _minimumPositionX;
+        private float _maximumPositionX;
+        private float _minimumPositionY;
+        private float _maximumPositionY;
+        private float _minimumPositionZ;
+        private float _maximumPositionZ;
+
+        public float MinimumPositionX
+        {
+            get { return _minimumPositionX; }
+            set
+            {
+                _minimumPositionX = value;
+                OnPropertyChanged(nameof(MinimumPositionX));
+            }
+        }
+
+
+        public float MaximumPositionX
+        {
+            get { return _maximumPositionX; }
+            set
+            {
+                _maximumPositionX = value;
+                OnPropertyChanged(nameof(MaximumPositionX));
+            }
+        }
+
+        public float MinimumPositionY
+        {
+            get { return _minimumPositionY; }
+            set
+            {
+                _minimumPositionY = value;
+                OnPropertyChanged(nameof(MinimumPositionY));
+            }
+        }
+
+        public float MaximumPositionY
+        {
+            get { return _maximumPositionY; }
+            set
+            {
+                _maximumPositionY = value;
+                OnPropertyChanged(nameof(MaximumPositionY));
+            }
+        }
+
+
+        public float MinimumPositionZ
+        {
+            get { return _minimumPositionZ; }
+            set
+            {
+                _minimumPositionZ = value;
+                OnPropertyChanged(nameof(MinimumPositionZ));
+            }
+        }
+
+
+        public float MaximumPositionZ
+        {
+            get { return _maximumPositionZ; }
+            set
+            {
+                _maximumPositionZ = value;
+                OnPropertyChanged(nameof(MaximumPositionZ));
+            }
+        }
+
+
 
         public ObservableCollection<ControllerConfigViewModel> Controllers { get; set; } = new ObservableCollection<ControllerConfigViewModel>();
 
@@ -112,10 +183,6 @@ namespace standa_control_software_WPF.view_models.config_creation
             ConfigManager.ClearConfiguration();
         }
 
-        public IEnumerable<char> GetAllDeviceNames()
-        {
-            return Controllers.SelectMany(controller => controller.Devices.Select(device => device.Name)).Distinct();
-        }
 
 
     }

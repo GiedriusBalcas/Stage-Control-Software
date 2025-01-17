@@ -20,11 +20,40 @@ namespace standa_controller_software.device_manager
 
         public char Name { get => _shutterDevice.Name;}
 
+        private Vector3 _minimumCoordinates;
+
+        public Vector3 MinimumCoordinates
+        {
+            get { return _minimumCoordinates; }
+            set 
+            { 
+                _minimumCoordinates = value; 
+            }
+        }
+
+        private Vector3 _maximumCoordinates;
+
+        public Vector3 MaximumCoordinates
+        {
+            get { return _maximumCoordinates; }
+            set
+            {
+                _maximumCoordinates = value;
+            }
+        }
+
         public Vector3 Position
         {
             get => _position;
             private set
             {
+                if (value.X < MinimumCoordinates.X || value.X > MaximumCoordinates.X ||
+                value.Y < MinimumCoordinates.Y || value.Y > MaximumCoordinates.Y ||
+                value.Z < MinimumCoordinates.Z || value.Z > MaximumCoordinates.Z)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(Position),
+                        $"New position {value} is outside allowed bounds (Min: {MinimumCoordinates}, Max: {MaximumCoordinates}).");
+                }
                 _position = value;
                 PositionChanged?.Invoke(_position);
             }

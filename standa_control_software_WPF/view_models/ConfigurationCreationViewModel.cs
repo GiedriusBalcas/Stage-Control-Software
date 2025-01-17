@@ -188,7 +188,21 @@ namespace standa_control_software_WPF.view_models
                         Y = funcY(positions),
                         Z = funcZ(positions)
                     }
-                );
+                )
+                {
+                    MinimumCoordinates = new System.Numerics.Vector3
+                    {
+                        X = Configuration.MinimumPositionX,
+                        Y = Configuration.MinimumPositionY,
+                        Z = Configuration.MinimumPositionZ
+                    },
+                    MaximumCoordinates = new System.Numerics.Vector3
+                    {
+                        X = Configuration.MaximumPositionX,
+                        Y = Configuration.MaximumPositionY,
+                        Z = Configuration.MaximumPositionZ
+                    },
+                };
 
                 _controllerManager.ToolInformation = tool;
 
