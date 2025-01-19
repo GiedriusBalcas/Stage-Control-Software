@@ -117,19 +117,21 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 {
                     Devices = command.TargetDevices,
                     TargetPositions = command.TargetDevices.Select(deviceName => commandParameters.PositionerInfo[deviceName].TargetPosition).ToArray(),
-                    AllocatedTimes = command.TargetDevices.Select(deviceName => commandParameters.AllocatedTime).ToArray(),
+                    //AllocatedTimes = command.TargetDevices.Select(deviceName => (commandParameters.PositionerInfo[deviceName].MovementInformation.TotalTime + commandParameters.PositionerInfo[deviceName].MovementInformation.ConstantSpeedEndTime) / 2 ).ToArray(),
+                    AllocatedTimes = command.TargetDevices.Select(deviceName => (commandParameters.PositionerInfo[deviceName].MovementInformation.TotalTime + commandParameters.PositionerInfo[deviceName].MovementInformation.ConstantSpeedEndTime - commandParameters.PositionerInfo[deviceName].MovementInformation.ConstantSpeedStartTime) / 2).ToArray(),
                 };
             }
 
             var rethrow_ms = moveAbsoluteParameterList.Select(moveParam => moveParam.WaitUntilTime * 1000f).Max();
-            var maxAllocatedTime_ms = posInfoGroups.Select(info => info.Value.AllocatedTimes.Max()).Max() * 1000;
+            var maxTotalMovementTime_ms = moveAbsoluteParameterList.Max(cmd => cmd.PositionerInfo.Values.Max(posInfo => posInfo.MovementInformation.TotalTime)) * 1000f;
+                
             bool isShutterUsed = moveAbsoluteParameterList.Any(moveParam => moveParam.IsShutterUsed);
 
             var shutter_on_delays = moveAbsoluteParameterList.Select(moveParam => moveParam.ShutterInfo.DelayOn).Where(n => !float.IsNaN(n));
             float shutter_on_delay_ms = shutter_on_delays.Any() ? shutter_on_delays.Max() : float.NaN;
 
             var shutter_off_delays = moveAbsoluteParameterList.Select(moveParam => moveParam.ShutterInfo.DelayOff).Where(n => !float.IsNaN(n));
-            float shutter_off_delay_ms = shutter_off_delays.Any() ? Math.Max(maxAllocatedTime_ms - shutter_off_delays.Min(), float.IsNaN(shutter_on_delay_ms) ? 0f : shutter_on_delay_ms) : float.NaN;
+            float shutter_off_delay_ms = shutter_off_delays.Any() ? Math.Max(maxTotalMovementTime_ms - shutter_off_delays.Min(), float.IsNaN(shutter_on_delay_ms) ? 0f : shutter_on_delay_ms) : float.NaN;
 
             var executionParameters = new ExecutionInformation()
             {

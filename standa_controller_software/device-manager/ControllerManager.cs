@@ -28,7 +28,7 @@ namespace standa_controller_software.device_manager
             _loggerFactory = loggerFactory;
         }
 
-        public async void AddController(BaseController controller)
+        public void AddController(BaseController controller)
         {
             // Check if controller's name is unique
             if (Controllers.ContainsKey(controller.Name))

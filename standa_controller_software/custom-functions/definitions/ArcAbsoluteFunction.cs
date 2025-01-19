@@ -499,6 +499,16 @@ namespace standa_controller_software.custom_functions.definitions
                         TargetSpeed = positionerMovementInfos[deviceName].TargetMovementParameters.TargetSpeed,
                         Direction = positionerMovementInfos[deviceName].TargetMovementParameters.Direction,
                         TargetPosition = positionerMovementInfos[deviceName].TargetMovementParameters.Position,
+                        MovementInformation = new MovementInformation()
+                        {
+                            StartPosition = positionerMovementInfos[deviceName].StartingMovementParameters.Position,
+                            EndPosition = positionerMovementInfos[deviceName].TargetMovementParameters.Position,
+                            TotalTime = allocatedTime,
+                            ConstantSpeedStartTime = 0,
+                            ConstantSpeedEndTime = allocatedTime,
+                            ConstantSpeedEndPosition = positionerMovementInfos[deviceName].KinematicParameters.ConstantSpeedEndPosition,
+                            ConstantSpeedStartPosition = positionerMovementInfos[deviceName].KinematicParameters.ConstantSpeedStartPosition,
+                        }
                     });
 
                 var moveAParameters = new MoveAbsoluteParameters
@@ -557,7 +567,7 @@ namespace standa_controller_software.custom_functions.definitions
                     Position = targetPosition,
                     Distance = targetDistance,
                     Direction = targetDirection,
-                }
+                },
             };
             CustomFunctionHelper.CalculateKinParametersForMovementInfo(ref movementInfo_x);
             var calculatedTime_x = movementInfo_x.KinematicParameters.TotalTime;
