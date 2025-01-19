@@ -141,6 +141,8 @@ namespace standa_control_software_WPF
             try
             {
                 // The manager is now fully configured by the wizard
+                var kaka = _host.Services.GetRequiredService<ControllerManager>();
+
                 var controllerStateUpdater = _host.Services.GetRequiredService<ControllerStateUpdater>();
                 var systemControlMainVM = _host.Services.GetRequiredService<SystemControlMainViewModel>();
 

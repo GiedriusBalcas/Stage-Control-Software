@@ -30,6 +30,12 @@ namespace standa_control_software_WPF.view_models.config_creation.serialization_
                 XToolPositionDependancy = config.XToolDependancy,
                 YToolPositionDependancy = config.YToolDependancy,
                 ZToolPositionDependancy = config.ZToolDependancy,
+                MinimumPositionX = config.MinimumPositionX,
+                MinimumPositionY = config.MinimumPositionY,
+                MinimumPositionZ = config.MinimumPositionZ,
+                MaximumPositionX = config.MaximumPositionX,
+                MaximumPositionY = config.MaximumPositionY,
+                MaximumPositionZ = config.MaximumPositionZ
             };
 
             foreach (var controller in config.Controllers)
@@ -79,6 +85,12 @@ namespace standa_control_software_WPF.view_models.config_creation.serialization_
                 XToolDependancy = configSer.XToolPositionDependancy,
                 YToolDependancy = configSer.YToolPositionDependancy,
                 ZToolDependancy = configSer.ZToolPositionDependancy,
+                MinimumPositionX = configSer.MinimumPositionX,
+                MinimumPositionY = configSer.MinimumPositionY,
+                MinimumPositionZ = configSer.MinimumPositionZ,
+                MaximumPositionZ = configSer.MaximumPositionZ,
+                MaximumPositionY = configSer.MaximumPositionY,
+                MaximumPositionX = configSer.MaximumPositionX,
             };
 
             foreach (var controllerSer in configSer.Controllers)

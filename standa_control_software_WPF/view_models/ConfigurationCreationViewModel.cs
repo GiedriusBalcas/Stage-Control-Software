@@ -188,23 +188,21 @@ namespace standa_control_software_WPF.view_models
                         Y = funcY(positions),
                         Z = funcZ(positions)
                     }
-                )
-                {
-                    MinimumCoordinates = new System.Numerics.Vector3
-                    {
-                        X = Configuration.MinimumPositionX,
-                        Y = Configuration.MinimumPositionY,
-                        Z = Configuration.MinimumPositionZ
-                    },
-                    MaximumCoordinates = new System.Numerics.Vector3
-                    {
-                        X = Configuration.MaximumPositionX,
-                        Y = Configuration.MaximumPositionY,
-                        Z = Configuration.MaximumPositionZ
-                    },
-                };
+                );
 
                 _controllerManager.ToolInformation = tool;
+                _controllerManager.ToolInformation.MinimumCoordinates = new System.Numerics.Vector3
+                (
+                    Configuration.MinimumPositionX,
+                    Configuration.MinimumPositionY,
+                    Configuration.MinimumPositionZ
+                );
+                _controllerManager.ToolInformation.MaximumCoordinates = new System.Numerics.Vector3
+                (
+                    Configuration.MaximumPositionX,
+                    Configuration.MaximumPositionY,
+                    Configuration.MaximumPositionZ
+                );
 
                 // 5) All done! Notify the App that the wizard is finished
                 _onWizardComplete?.Invoke();

@@ -1,6 +1,7 @@
 ﻿using opentk_painter_library;
 using opentk_painter_library.common;
 using opentk_painter_library.render_objects;
+using standa_controller_software.device_manager;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -9,12 +10,14 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media.Media3D;
+using System.Xml.Serialization;
 
 namespace standa_control_software_WPF.view_models.system_control.control.render
 {
     public class GridLayerViewModel : BaseRenderLayer, INotifyPropertyChanged
     {
         private readonly OrbitalCamera _camera;
+        private readonly ToolInformation _toolInformation;
         private UniformMatrix4 _viewUniform;
         private UniformMatrix4 _projectionUniform;
 
@@ -26,10 +29,10 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
         public double GridSpacing { get => _gridSpacing; private set { _gridSpacing = value; OnPropertyChanged(nameof(GridSpacing)); } }
         public event PropertyChangedEventHandler PropertyChanged;
 
-        public GridLayerViewModel(OrbitalCamera camera)
+        public GridLayerViewModel(OrbitalCamera camera, ToolInformation toolInformation)
         {
             _camera = camera;
-
+            _toolInformation = toolInformation;
             _lineCollection = new LineObjectCollection() { lineWidth = 3 };
 
             _vertexShader = "#version 330 core\r\n\r\nlayout(location = 0) in vec3 aPosition;\r\nlayout(location = 1) in vec4 aColor;\r\n\r\nout vec4 vertexColor;\r\nout vec4 clipSpacePos; // Pass clip space position to fragment shader\r\n\r\nuniform mat4 projection;\r\nuniform mat4 view;\r\n\r\nvoid main()\r\n{\r\n    // Calculate world position (assuming model matrix is identity)\r\n    vec4 worldPosition = vec4(aPosition, 1.0);\r\n\r\n    // Calculate clip space position without the view matrix\r\n    clipSpacePos = projection * view * worldPosition;\r\n\r\n    // Compute final position with view matrix for correct rendering\r\n    gl_Position = projection * view * worldPosition;\r\n\r\n    // Pass the vertex color\r\n    vertexColor = aColor;\r\n}\r\n";
@@ -58,6 +61,68 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
             base.InitializeLayer();
         }
 
+        private void UpdateGrid(float minX, float minY, float minZ, float maxX, float maxY, float maxZ, float dx, float dy)
+        {
+            if (minX > maxX || minY > maxY)
+                throw new Exception("Maximum grid bound coordinate exceeds minimum grid bound.");
+
+            _lineCollection.ClearCollection();
+            var startCoordinateX = minX >= 0 ?
+                (Math.Floor(minX / dx) + 1) * dx :
+                Math.Floor(minX / dx) * dx;
+
+            var startCoordinateY = minY >= 0 ?
+                (Math.Floor(minY / dy) + 1) * dy :
+                Math.Floor(minY / dy) * dy;
+
+            var numberOfLinesX = Math.Floor((maxX - minX) / dx);
+            var numberOfLinesY = Math.Floor((maxY - minY) / dy);
+
+            for (int i = 1; i <= numberOfLinesX; i++)
+            {
+                float xas = (float)(startCoordinateX + i * dx);
+                if(Math.Abs(xas) > 0.1 && Math.Abs(xas - minY) > 0.1 && Math.Abs(xas - maxY) > 0.1)
+                    _lineCollection.AddLine(new Vector3(xas, minY, 0f), new Vector3(xas, maxY, 0f), _gridColor);
+            }
+            for (int j = 1; j <= numberOfLinesY; j++)
+            {
+                float yas = (float)(startCoordinateY + j * dy);
+                if(Math.Abs(yas) > 0.1 && Math.Abs(yas - minY) > 0.1 && Math.Abs(yas - maxY) > 0.1)
+                    _lineCollection.AddLine(new Vector3(minX, yas, 0f), new Vector3(maxX, yas, 0f), _gridColor);
+            }
+
+            // center lines
+            _lineCollection.AddLine(new Vector3(minX, 0, 0f), new Vector3(maxX, 0, 0f), new Vector4(0.8f, 0.8f, 0.8f, 0.1f));
+            _lineCollection.AddLine(new Vector3(0, minY, 0f), new Vector3(0, maxY, 0f), new Vector4(0.8f, 0.8f, 0.8f, 0.1f));
+            // edge lines
+            _lineCollection.AddLine(new Vector3(minX, minY, 0f), new Vector3(maxX, minY, 0f), new Vector4(0.8f, 0.8f, 0.8f, 0.1f));
+            _lineCollection.AddLine(new Vector3(minX, maxY, 0f), new Vector3(maxX, maxY, 0f), new Vector4(0.8f, 0.8f, 0.8f, 0.1f));
+            _lineCollection.AddLine(new Vector3(minX, minY, 0f), new Vector3(minX, maxY, 0f), new Vector4(0.8f, 0.8f, 0.8f, 0.1f));
+            _lineCollection.AddLine(new Vector3(maxX, minY, 0f), new Vector3(maxX, maxY, 0f), new Vector4(0.8f, 0.8f, 0.8f, 0.1f));
+
+
+            // painting the bounding box
+            var boundingBoxColor = new Vector4(1,0,0,0.05f);
+            // lower rectangle
+            _lineCollection.AddLine(new Vector3(minX, minY, minZ), new Vector3(minX, maxY, minZ), boundingBoxColor);
+            _lineCollection.AddLine(new Vector3(maxX, minY, minZ), new Vector3(maxX, maxY, minZ), boundingBoxColor);
+            _lineCollection.AddLine(new Vector3(minX, maxY, minZ), new Vector3(maxX, maxY, minZ), boundingBoxColor);
+            _lineCollection.AddLine(new Vector3(minX, minY, minZ), new Vector3(maxX, minY, minZ), boundingBoxColor);
+            // higher rectangle
+            _lineCollection.AddLine(new Vector3(minX, minY, maxZ), new Vector3(minX, maxY, maxZ), boundingBoxColor);
+            _lineCollection.AddLine(new Vector3(maxX, minY, maxZ), new Vector3(maxX, maxY, maxZ), boundingBoxColor);
+            _lineCollection.AddLine(new Vector3(minX, maxY, maxZ), new Vector3(maxX, maxY, maxZ), boundingBoxColor);
+            _lineCollection.AddLine(new Vector3(minX, minY, maxZ), new Vector3(maxX, minY, maxZ), boundingBoxColor);
+            // vertical lines
+            _lineCollection.AddLine(new Vector3(minX, minY, minZ), new Vector3(minX, minY, maxZ), boundingBoxColor);
+            _lineCollection.AddLine(new Vector3(minX, maxY, minZ), new Vector3(minX, maxY, maxZ), boundingBoxColor);
+            _lineCollection.AddLine(new Vector3(maxX, maxY, minZ), new Vector3(maxX, maxY, maxZ), boundingBoxColor);
+            _lineCollection.AddLine(new Vector3(maxX, minY, minZ), new Vector3(maxX, minY, maxZ), boundingBoxColor);
+
+
+            InitializeCollections();
+
+        }
         private void UpdateGrid(float width, float length, int numberOfLinesX, int numberOfLinesY, float centerX, float centerY)
         {
 
@@ -93,7 +158,8 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
                 GridSpacing = distance * 0.1;
                 int numberOfLines = (int)(widthMax / GridSpacing);
 
-                UpdateGrid(widthMax, widthMax, numberOfLines, numberOfLines, 0, 0);
+                //UpdateGrid(widthMax, widthMax, numberOfLines, numberOfLines, 0, 0);
+                UpdateGrid(_toolInformation.MinimumCoordinates.X, _toolInformation.MinimumCoordinates.Y, _toolInformation.MinimumCoordinates.Z, _toolInformation.MaximumCoordinates.X, _toolInformation.MaximumCoordinates.Y, _toolInformation.MaximumCoordinates.Z, (float)GridSpacing, (float)GridSpacing);
                 _distanceToGrid = _camera.Distance;
             }
             

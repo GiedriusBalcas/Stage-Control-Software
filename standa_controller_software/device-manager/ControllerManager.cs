@@ -120,9 +120,19 @@ namespace standa_controller_software.device_manager
                 }
             }
 
-            ToolInformation toolInfo = new ToolInformation(controllerManager_copy.GetDevices<BasePositionerDevice>(), new ShutterDevice('u', "undefined"), this.ToolInformation.PositionCalcFunctions);
+            ToolInformation toolInfo = new ToolInformation(controllerManager_copy.GetDevices<BasePositionerDevice>(), new ShutterDevice('u', "undefined"), this.ToolInformation.PositionCalcFunctions) 
+            {
+                MinimumCoordinates = this.ToolInformation.MinimumCoordinates,
+                MaximumCoordinates = this.ToolInformation.MaximumCoordinates,
+            };
             if (controllerManager_copy.TryGetDevice<BaseShutterDevice>(this.ToolInformation.Name, out BaseShutterDevice shutterDevice))
-                toolInfo = new ToolInformation(controllerManager_copy.GetDevices<BasePositionerDevice>(), shutterDevice, this.ToolInformation.PositionCalcFunctions);
+            {
+                toolInfo = new ToolInformation(controllerManager_copy.GetDevices<BasePositionerDevice>(), shutterDevice, this.ToolInformation.PositionCalcFunctions)
+                {
+                    MinimumCoordinates = this.ToolInformation.MinimumCoordinates,
+                    MaximumCoordinates = this.ToolInformation.MaximumCoordinates,
+                };
+            }
             controllerManager_copy.ToolInformation = toolInfo;
 
             return controllerManager_copy;
