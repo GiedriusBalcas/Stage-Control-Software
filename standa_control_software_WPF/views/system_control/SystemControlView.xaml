@@ -11,6 +11,7 @@
              xmlns:vms="clr-namespace:standa_control_software_WPF.view_models"
              xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
              xmlns:controlVms="clr-namespace:standa_control_software_WPF.view_models.system_control.control"
+             xmlns:wf="clr-namespace:System.Windows.Forms;assembly=System.Windows.Forms"
              mc:Ignorable="d"
              d:DesignHeight="450"
              d:DesignWidth="800">
@@ -274,13 +275,13 @@
 
 
 
-                <glWpfControl:GLWpfControl Grid.Column="0"
-                                           Grid.Row="1"
-                                           Grid.ColumnSpan="1"
-                                           x:Name="glControl"
-                                           Margin="0,0,0,0"
-                                            />
-                
+                <WindowsFormsHost Grid.Row="1"
+                                  Grid.Column="0"
+                                  Margin="0"
+                                  x:Name="windowsFormsHost">
+                    
+                </WindowsFormsHost>
+
 
             </Grid>
 

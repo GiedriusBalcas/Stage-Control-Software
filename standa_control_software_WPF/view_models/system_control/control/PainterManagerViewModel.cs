@@ -64,9 +64,9 @@ namespace standa_control_software_WPF.view_models.system_control.control
 
         }
 
-        public void PaintCommandQueue(IEnumerable<Command[]> commandLines)
+        public async Task PaintCommandQueue(IEnumerable<Command[]> commandLines)
         {
-            CommandLayer.PaintCommandQueue(commandLines);
+            await CommandLayer.PaintCommandQueue(commandLines);
         }
 
         public void InitializeLayers()

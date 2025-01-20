@@ -59,7 +59,7 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
             _viewUniform.Value = _camera.GetViewMatrix();
             _projectionUniform.Value = _camera.GetProjectionMatrix();
         }
-        public void PaintCommandQueue(IEnumerable<Command[]> commandLines) 
+        public async Task PaintCommandQueue(IEnumerable<Command[]> commandLines) 
         {
 
             var controllerManager_virtual = _controllerManager.CreateAVirtualCopy();
@@ -81,7 +81,7 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
 
             foreach (var commandLine in commandLines)
             {
-                commandManager_virtual.TryExecuteCommandLine(commandLine).GetAwaiter().GetResult();
+                await commandManager_virtual.TryExecuteCommandLine(commandLine);
             }
             InitializeCollections();
 

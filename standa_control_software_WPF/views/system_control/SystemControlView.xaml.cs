@@ -1,5 +1,7 @@
 ﻿using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
+using OpenTK;
+using OpenTK.GLControl;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
@@ -9,6 +11,7 @@ using standa_control_software_WPF.view_models.system_control.control;
 using standa_control_software_WPF.views.behaviours;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -18,127 +21,192 @@ namespace standa_control_software_WPF.views.system_control
     /// <summary>
     /// Interaction logic for CompilerView.xaml
     /// </summary>
-    public partial class SystemControlView : UserControl
+    public partial class SystemControlView : System.Windows.Controls.UserControl
     {
         private PainterManagerViewModel? _viewModel;
         private CameraViewModel _cameraViewModel;
-        private System.Windows.Point _lastPos;
         private LineBackgroundTransformer _highlighter;
         private DispatcherTimer _updateTimer;
         private int _pendingLineNumberUpdate;
         private Color4 _backgroundColor = new Color4(0, 0, 0, 1);
 
+        private GLControl _glControl; // declare a field if you need to reference it later
+        private System.Windows.Forms.Timer _timer;
+        private System.Drawing.Point _lastPos;
+
         public SystemControlView()
         {
             InitializeComponent();
 
-            var settings = new GLWpfControlSettings { MajorVersion = 3, MinorVersion = 3, GraphicsProfile = ContextProfile.Compatability, GraphicsContextFlags = ContextFlags.Debug };
-            glControl.RegisterToEventsDirectly = false;
-            glControl.CanInvokeOnHandledEvents = false;
-            glControl.Start(settings);
             Loaded += OnLoaded;
+            Unloaded += OnUnloaded;
 
         }
 
-        private void GlControl_SizeChanged(object sender, SizeChangedEventArgs e)
+        private void OnUnloaded(object sender, RoutedEventArgs e)
         {
-            _cameraViewModel.AspectRatio = (float)(glControl.ActualWidth / (float)glControl.ActualHeight);
 
-            _cameraViewModel.WindowWidth = (float)glControl.ActualWidth;
-            _cameraViewModel.WindowHeight = (float)glControl.ActualHeight;
+            if (_viewModel is not null)
+                _viewModel.DeinitializeLayers();
+
+            if (_glControl != null)
+            {
+                _timer.Stop();
+                _glControl.SizeChanged -= glControl_SizeChanged; ;
+                _glControl.Paint -= glControl_Paint;
+                _glControl.MouseWheel -= glControl_MouseWheel;
+                _glControl.MouseMove -= glControl_MouseMove;
+                _glControl.Load -= glControl_Load;
+                _glControl.Dispose();
+            }
+
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            _viewModel = (DataContext as SystemControlViewModel)?.PainterManager;
-            //_viewModel = glControl.DataContext as PainterManagerViewModel;
-            if (_viewModel is not null)
-            {
-                _cameraViewModel = _viewModel.CameraViewModel;
-                _viewModel.InitializeLayers();
 
-                _cameraViewModel.WindowWidth = (float)glControl.ActualWidth;
-                _cameraViewModel.WindowHeight = (float)glControl.ActualHeight;
-
-                glControl.SizeChanged += GlControl_SizeChanged;
-                glControl.Render += glControl_Render;
-                glControl.MouseMove += glControl_MouseMove;
-                glControl.MouseWheel += glControl_MouseWheel;
-                glControl.Unloaded += glControl_Unload;
-            }
-
-            if (Application.Current.Resources["DarkBackgroundColorBrush"] is SolidColorBrush darkBrush)
+            if (System.Windows.Application.Current.Resources["DarkBackgroundColorBrush"] is SolidColorBrush darkBrush)
             {
                 var wpfColor = darkBrush.Color;
                 _backgroundColor = new Color4(wpfColor.R / 255f, wpfColor.G / 255f, wpfColor.B / 255f, 1);
             }
 
-        }
+            _glControl = new GLControl();
+            _glControl.Dock = DockStyle.Fill; 
+            _glControl.API = OpenTK.Windowing.Common.ContextAPI.OpenGL;
+            _glControl.APIVersion = new System.Version(3, 3, 0, 0);
+            _glControl.Flags = OpenTK.Windowing.Common.ContextFlags.Debug;
+            _glControl.IsEventDriven = false;
+            _glControl.Name = "glControl";
+            _glControl.Profile = OpenTK.Windowing.Common.ContextProfile.Core;
+            _glControl.SharedContext = null;
+            _glControl.Size = new System.Drawing.Size(433, 281);
 
-        private void glControl_Unload(object sender, RoutedEventArgs e)
-        {
-            if(_viewModel is not null)
-                _viewModel.DeinitializeLayers();
+            _glControl.Text = "glControl1";
+            _glControl.Load += glControl_Load;
 
-            glControl.Dispose();
-            glControl.SizeChanged -= GlControl_SizeChanged;
-            glControl.Render -= glControl_Render;
-            glControl.MouseMove -= glControl_MouseMove;
-            glControl.MouseWheel -= glControl_MouseWheel;
-            glControl.Unloaded -= glControl_Unload;
-        }
+            windowsFormsHost.Child = _glControl;
+            _glControl.Size = new System.Drawing.Size(_glControl.ClientSize.Width, _glControl.ClientSize.Height);
 
-        private void glControl_Render(TimeSpan delta)
-        {
-            GL.ClearColor(_backgroundColor);
-            // Enable blending
-            GL.Enable(EnableCap.Blend);
-            GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 
-            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+            if (_glControl.Context is not null && !_glControl.Context.IsCurrent)
+                _glControl.MakeCurrent();
 
-            if(_viewModel is not null)
-                _viewModel.DrawFrame();
-        }
 
-        
-        private void glControl_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
-        {
-            if (e.LeftButton == MouseButtonState.Pressed)
+            _viewModel = (DataContext as SystemControlViewModel)?.PainterManager;
+            if (_viewModel is not null)
             {
-                var pos = e.GetPosition(this);
+                _cameraViewModel = _viewModel.CameraViewModel;
+                _viewModel.InitializeLayers();
+
+                _cameraViewModel.WindowWidth = (float)_glControl.Width;
+                _cameraViewModel.WindowHeight = (float)_glControl.Height;
+            }
+
+
+            glControl_SizeChanged(_glControl, EventArgs.Empty);
+
+
+        }
+
+        private void glControl_Load(object? sender, EventArgs e)
+        {
+            _glControl.SizeChanged += glControl_SizeChanged; ;
+            _glControl.Paint += glControl_Paint;
+            _glControl.MouseWheel += glControl_MouseWheel;
+            _glControl.MouseMove += glControl_MouseMove;
+            
+            // Redraw the screen every 1/20 of a second.
+            _timer = new System.Windows.Forms.Timer();
+            _timer.Tick += (sender, e) =>
+            {
+                Render();
+            };
+            _timer.Interval = 20;   // 1000 ms per sec / 50 ms per frame = 20 FPS
+            _timer.Start();
+
+        }
+
+        private void glControl_MouseMove(object? sender, System.Windows.Forms.MouseEventArgs e)
+        {
+            
+            if (e.Button == MouseButtons.Left)
+            {
+                var pos = e.Location;
                 float dx = (float)(pos.X - _lastPos.X);
                 float dy = (float)(pos.Y - _lastPos.Y);
 
                 _cameraViewModel.Yaw += dx;
                 _cameraViewModel.Pitch += dy;
-
-                glControl.InvalidateVisual(); // Force re-render
             }
 
-            else if (e.RightButton == MouseButtonState.Pressed)
+            else if (e.Button == MouseButtons.Right)
             {
-                var pos = e.GetPosition(this);
-                var dx = (float)(pos.X - _lastPos.X) / (float)glControl.ActualHeight;
-                var dy = (float)(pos.Y - _lastPos.Y) / (float)glControl.ActualHeight; // Use 'dz' to represent movement along camera's local Z axis
+                var pos = e.Location;
+                var dx = (float)(pos.X - _lastPos.X) / (float)_glControl.Height;
+                var dy = (float)(pos.Y - _lastPos.Y) / (float)_glControl.Height; // Use 'dz' to represent movement along camera's local Z axis
 
                 _cameraViewModel.ReferencePositionXY = new Vector2(dx, dy);
             }
-            _lastPos = e.GetPosition(this);
+            _lastPos = e.Location;
         }
 
-        private void glControl_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+        private void glControl_MouseWheel(object? sender, System.Windows.Forms.MouseEventArgs e)
         {
             float delta = e.Delta;
             var dr = Math.Sign(delta) * 1;
 
             _cameraViewModel.Distance -= dr;
-            _cameraViewModel.AspectRatio = (float)(glControl.ActualWidth / (float)glControl.ActualHeight);
+            _cameraViewModel.AspectRatio = (float)(_glControl.Width / (float)_glControl.Height);
 
-            _cameraViewModel.WindowWidth = (float)glControl.ActualWidth;
-            _cameraViewModel.WindowHeight = (float)glControl.ActualHeight;
+            _cameraViewModel.WindowWidth = (float)_glControl.Width;
+            _cameraViewModel.WindowHeight = (float)_glControl.Height;
         }
 
+        private void Render()
+        {
+            if(_glControl is not null && _viewModel is not null)
+            {
+                GL.ClearColor(_backgroundColor);
+                // Enable blending
+                GL.Enable(EnableCap.Blend);
+                GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+
+                GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+
+                if (_viewModel is not null)
+                    _viewModel.DrawFrame();
+
+                _glControl.SwapBuffers();
+            }
+
+        }
+
+        private void glControl_Paint(object? sender, PaintEventArgs e)
+        {
+            //Render();
+        }
+
+        private void glControl_SizeChanged(object? sender, EventArgs e)
+        {
+            if (_glControl.Context is not null &&!_glControl.Context.IsCurrent)
+                _glControl.MakeCurrent();
+
+            if (_glControl.ClientSize.Height == 0)
+                _glControl.ClientSize = new System.Drawing.Size(_glControl.ClientSize.Width, 1);
+
+            GL.Viewport(0, 0, _glControl.ClientSize.Width, _glControl.ClientSize.Height);
+
+            if(_cameraViewModel is not null)
+            {
+                float aspect_ratio = Math.Max(_glControl.Width, 1) / (float)Math.Max(_glControl.Height, 1);
+                _cameraViewModel.AspectRatio = aspect_ratio;
+
+                _cameraViewModel.WindowWidth = (float)Math.Max(_glControl.Width, 1);
+                _cameraViewModel.WindowHeight = (float)Math.Max(_glControl.Height, 1);
+            }
+        }
+        
         private void avalonEditor_Loaded(object sender, RoutedEventArgs e)
         {
             var editor = sender as TextEditor;

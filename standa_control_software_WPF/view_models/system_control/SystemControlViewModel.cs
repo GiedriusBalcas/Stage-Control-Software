@@ -307,7 +307,10 @@ namespace standa_control_software_WPF.view_models.system_control
                 var commandList = _functionDefinitionLibrary.ExtractCommands();
                 var allocatedTime_s = commandList.Sum(cmdLine => cmdLine.Max(cmd => cmd.EstimatedTime));
                 _allocatedTime = TimeSpan.FromSeconds(allocatedTime_s);
-                PainterManager.PaintCommandQueue(commandList);
+
+                
+                await PainterManager.PaintCommandQueue(commandList);
+                
 
                 OutputMessage += $"\nParsed successfully. Estimated time: {_allocatedTime.ToString("hh':'mm':'ss")}\n";
 
