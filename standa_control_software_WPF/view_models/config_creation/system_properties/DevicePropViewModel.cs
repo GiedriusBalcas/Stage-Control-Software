@@ -1,4 +1,5 @@
 ﻿
+using Microsoft.Extensions.Logging;
 using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library.Common;
 using standa_controller_software.device_manager;
@@ -7,12 +8,14 @@ using standa_controller_software.device_manager.controller_interfaces;
 using standa_controller_software.device_manager.devices;
 using System.Collections.ObjectModel;
 using System.Reflection;
+using System.Windows;
 using System.Windows.Input;
 
 namespace standa_control_software_WPF.view_models.config_creation.system_properties
 {
     public class DevicePropViewModel : ViewModelBase
     {
+        private readonly ILogger<DevicePropViewModel> _logger;
         private readonly ControllerManager _controllerManager;
         private readonly standa_controller_software.command_manager.CommandManager _commandManager;
         public readonly BaseDevice _device;
@@ -67,8 +70,9 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
         }
 
 
-        public DevicePropViewModel(ControllerManager controllerManager, standa_controller_software.command_manager.CommandManager commandManager, BaseDevice device)
+        public DevicePropViewModel(ControllerManager controllerManager, standa_controller_software.command_manager.CommandManager commandManager, BaseDevice device, ILogger<DevicePropViewModel> logger)
         {
+            _logger = logger;
             _controllerManager = controllerManager;
             _commandManager = commandManager;
             _device = device;
@@ -116,7 +120,16 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
                         Devices = [_device.Name],
                     }
                 };
-                await _commandManager.TryExecuteCommand(connectCommand);
+                try
+                {
+                    await _commandManager.TryExecuteCommand(connectCommand);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"Error encountered when trying to connect {_device.Name} device. \n{ex.Message}");
+                    MessageBox.Show(ex.Message);
+
+                }
 
                 OnPropertyChanged(nameof(IsConnectedText));
             }

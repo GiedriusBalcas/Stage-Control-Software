@@ -159,9 +159,12 @@ namespace standa_control_software_WPF
             }
             catch (Exception ex)
             {
-                var logger = _host.Services.GetRequiredService<ILogger>();
+                var loggerFactory = _host.Services.GetRequiredService<ILoggerFactory>();
+                var logger = loggerFactory.CreateLogger("General");
                 logger.LogError("Fatal error encountered in System Control Window");
-                logger.LogError(ex.Message);
+                logger.LogError($"{ex.Message} | {ex.StackTrace}");
+                MessageBox.Show(ex.Message);
+
             }
         }
     }

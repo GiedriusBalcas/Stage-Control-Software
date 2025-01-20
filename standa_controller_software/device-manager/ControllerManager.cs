@@ -28,6 +28,11 @@ namespace standa_controller_software.device_manager
             _loggerFactory = loggerFactory;
         }
 
+        public void ClearControllers()
+        {
+            Controllers.Clear();
+            ControllerLocks.Clear();
+        }
         public void AddController(BaseController controller)
         {
             // Check if controller's name is unique

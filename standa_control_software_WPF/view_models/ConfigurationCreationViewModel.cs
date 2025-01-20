@@ -122,7 +122,7 @@ namespace standa_control_software_WPF.view_models
             try
             {
                 // 1) Clear & set manager name (since user might re-run wizard)
-                //_controllerManager.ClearControllers();
+                _controllerManager.ClearControllers();
                 _controllerManager.Name = Configuration.Name;
 
                 // 2) Add controllers/devices

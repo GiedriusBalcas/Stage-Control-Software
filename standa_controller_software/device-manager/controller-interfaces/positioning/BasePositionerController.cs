@@ -139,7 +139,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 {
 
                     var device = Devices[deviceName];
-                    ConnectDevice_implementation(device);
+                    try
+                    {
+                        ConnectDevice_implementation(device);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new Exception($"Error encountered when trying to connect {device.Name} device. \n{ex.Message}");
+                    }
                     device.IsConnected = true;
                 }
             }
