@@ -184,63 +184,40 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="auto" />
                 </Grid.ColumnDefinitions>
-
-                <glWpfControl:GLWpfControl Grid.Column="0"
-                                           Grid.ColumnSpan="2"
-                                           x:Name="glControl"
-                                           Margin="10,10,10,0"
-                                            />
-
-
-                <Grid Grid.Column="1">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="auto" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="auto" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="auto" />
-                    </Grid.RowDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="auto" />
+                </Grid.RowDefinitions>
 
 
-                    <Border Grid.Row="0"
-                            Background="#AA111111"
-                            VerticalAlignment="Top"
-                            Opacity="0.8"
-                            Margin="0,10,10,0"
-                            Padding="5,5,5,5"
-                            Style="{StaticResource parentBorder}"
-                            HorizontalAlignment="Right"
-                            DataContext="{Binding PainterManager.CameraViewModel}">
-                        <StackPanel Orientation="Horizontal">
-                            <Button Content="Fit"
-                                    Command="{Binding CameraFitObjectCommand}"
-                                    VerticalAlignment="Top"
-                                    Style="{StaticResource customButtonStyle}" />
-                            <ToggleButton Content="Track"
-                                          VerticalAlignment="Bottom"
-                                          IsChecked="{Binding IsTrackingTool}"
-                                          Style="{StaticResource customToggleButtonStyle}" />
-                            <ToggleButton Content="Orth."
-                                          VerticalAlignment="Bottom"
-                                          IsChecked="{Binding IsOrthographicView}"
-                                          Style="{StaticResource customToggleButtonStyle}" />
-                        </StackPanel>
-
-                    </Border>
+                <Border Grid.Row="0"
+                        Background="#AA111111"
+                        VerticalAlignment="Top"
+                        Opacity="0.8"
+                        Margin="0,0,0,0"
+                        Padding="5,5,5,5"
+                        Style="{StaticResource parentBorder}"
+                        HorizontalAlignment="Right"
+                        DataContext="{Binding PainterManager.CameraViewModel}">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Fit"
+                                Command="{Binding CameraFitObjectCommand}"
+                                VerticalAlignment="Top"
+                                Style="{StaticResource customButtonStyle}" />
+                        <ToggleButton Content="Track"
+                                      VerticalAlignment="Bottom"
+                                      IsChecked="{Binding IsTrackingTool}"
+                                      Style="{StaticResource customToggleButtonStyle}" />
+                        <ToggleButton Content="Orth."
+                                      VerticalAlignment="Bottom"
+                                      IsChecked="{Binding IsOrthographicView}"
+                                      Style="{StaticResource customToggleButtonStyle}" />
 
 
-
-
-                    <Border Grid.Row="2"
-                            Background="#AA111111"
-                            VerticalAlignment="Top"
-                            Opacity="0.8"
-                            Margin="0,10,10,0"
-                            Padding="5,5,5,5"
-                            Style="{StaticResource parentBorder}"
-                            DataContext="{Binding PainterManager.CameraViewModel}"
-                            HorizontalAlignment="Right">
-                        <StackPanel Orientation="Vertical">
+                        <StackPanel Orientation="Horizontal"
+                                    Margin="10 0 10 0"
+                                    DataContext="{Binding PainterManager.CameraViewModel}">
                             <Button Content="xy"
                                     Command="{Binding CameraViewXYCommand}"
                                     VerticalAlignment="Top"
@@ -257,20 +234,11 @@
 
                         </StackPanel>
 
-                    </Border>
-
-                    <Border Grid.Row="4"
-                            Background="#AA111111"
-                            Opacity="0.8"
-                            VerticalAlignment="Bottom"
-                            Margin="0,10,10,0"
-                            Padding="5,5,5,2"
-                            Style="{StaticResource parentBorder}"
-                            DataContext="{Binding PainterManager.GridLayer}"
-                            HorizontalAlignment="Right">
-                        <StackPanel Orientation="Vertical">
-                            <TextBlock Text="{Binding GridSpacing, StringFormat={}{0:0.0} um}" 
-                                       HorizontalAlignment="Center"/>
+                        <StackPanel Orientation="Vertical"
+                                    Margin="10,0,10,0"
+                                    DataContext="{Binding PainterManager.GridLayer}">
+                            <TextBlock Text="{Binding GridSpacing, StringFormat={}{0:0.0} um}"
+                                       HorizontalAlignment="Center" />
                             <Canvas Width="40"
                                     Height="5"
                                     HorizontalAlignment="Center"
@@ -300,8 +268,18 @@
                                       StrokeThickness="1" />
                             </Canvas>
                         </StackPanel>
-                    </Border>
-                </Grid>
+                    </StackPanel>
+
+                </Border>
+
+
+
+                <glWpfControl:GLWpfControl Grid.Column="0"
+                                           Grid.Row="1"
+                                           Grid.ColumnSpan="1"
+                                           x:Name="glControl"
+                                           Margin="0,0,0,0"
+                                            />
                 
 
             </Grid>

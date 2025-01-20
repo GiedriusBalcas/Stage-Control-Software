@@ -1,24 +1,17 @@
-﻿using OpenTK.Mathematics;
+﻿using ICSharpCode.AvalonEdit;
+using ICSharpCode.AvalonEdit.Highlighting;
+using OpenTK.Graphics.OpenGL;
+using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Wpf;
-using OpenTK.Graphics.OpenGL;
-using System.Windows.Controls;
+using standa_control_software_WPF.view_models.system_control;
+using standa_control_software_WPF.view_models.system_control.control;
+using standa_control_software_WPF.views.behaviours;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using ICSharpCode;
-using ICSharpCode.AvalonEdit;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
-using ICSharpCode.AvalonEdit.Highlighting;
-using ICSharpCode.AvalonEdit.Rendering;
 using System.Windows.Threading;
-using OxyPlot;
-using standa_control_software_WPF.view_models.system_control;
-using standa_control_software_WPF.views.behaviours;
-using opentk_painter_library;
-using Antlr4.Runtime.Misc;
-using opentk_painter_library.common;
-using standa_control_software_WPF.view_models.system_control.control;
 
 namespace standa_control_software_WPF.views.system_control
 {
@@ -27,7 +20,6 @@ namespace standa_control_software_WPF.views.system_control
     /// </summary>
     public partial class SystemControlView : UserControl
     {
-       
         private PainterManagerViewModel? _viewModel;
         private CameraViewModel _cameraViewModel;
         private System.Windows.Point _lastPos;
@@ -35,8 +27,6 @@ namespace standa_control_software_WPF.views.system_control
         private DispatcherTimer _updateTimer;
         private int _pendingLineNumberUpdate;
         private Color4 _backgroundColor = new Color4(0, 0, 0, 1);
-
-
 
         public SystemControlView()
         {
@@ -57,7 +47,6 @@ namespace standa_control_software_WPF.views.system_control
             _cameraViewModel.WindowWidth = (float)glControl.ActualWidth;
             _cameraViewModel.WindowHeight = (float)glControl.ActualHeight;
         }
-
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
@@ -192,8 +181,6 @@ namespace standa_control_software_WPF.views.system_control
                 editor.SyntaxHighlighting = null;
                 editor.SyntaxHighlighting = highlighting;
             }
-
-
         }
 
     }

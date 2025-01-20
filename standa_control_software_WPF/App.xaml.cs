@@ -17,6 +17,7 @@ namespace standa_control_software_WPF
     public partial class App : Application
     {
         private IHost _host;
+        public IHost HostHandle { get => _host;}
 
         private MainNavigationStore _mainNavigationStore; // top-level store
         private LSCNavigationStore _lscNavigationStore;   // child-level store
@@ -111,6 +112,19 @@ namespace standa_control_software_WPF
 
             // 2) Start the Host
             await _host.StartAsync();
+
+            AppDomain.CurrentDomain.UnhandledException += (s, ex) =>
+            {
+                var logger = _host.Services.GetRequiredService<ILogger<App>>();
+                logger.LogCritical(ex.ExceptionObject as Exception, "An unhandled exception occurred.");
+            };
+
+            this.DispatcherUnhandledException += (s, ex) =>
+            {
+                var logger = _host.Services.GetRequiredService<ILogger<App>>();
+                logger.LogCritical(ex.Exception, "A dispatcher unhandled exception occurred.");
+                ex.Handled = true;
+            };
 
             // 3) Retrieve references from DI
             _mainNavigationStore = _host.Services.GetRequiredService<MainNavigationStore>();
