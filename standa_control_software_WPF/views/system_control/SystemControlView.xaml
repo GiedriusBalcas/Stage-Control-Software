@@ -195,27 +195,28 @@
                 <Border Grid.Row="0"
                         Background="#AA111111"
                         VerticalAlignment="Top"
-                        Opacity="0.8"
-                        Margin="0,0,0,0"
-                        Padding="5,5,5,5"
-                        Style="{StaticResource parentBorder}"
+                        Margin="0,0,10,0"
+                        Padding="0,0,0,0"
                         HorizontalAlignment="Right"
-                        DataContext="{Binding PainterManager.CameraViewModel}">
+                        Style="{StaticResource parentBorder}">
                     <StackPanel Orientation="Horizontal">
-                        <Button Content="Fit"
-                                Command="{Binding CameraFitObjectCommand}"
-                                VerticalAlignment="Top"
-                                Style="{StaticResource customButtonStyle}" />
-                        <ToggleButton Content="Track"
-                                      VerticalAlignment="Bottom"
-                                      IsChecked="{Binding IsTrackingTool}"
-                                      Style="{StaticResource customToggleButtonStyle}" />
-                        <ToggleButton Content="Orth."
-                                      VerticalAlignment="Bottom"
-                                      IsChecked="{Binding IsOrthographicView}"
-                                      Style="{StaticResource customToggleButtonStyle}" />
-
-
+                        <StackPanel Orientation="Horizontal"
+                                    Margin="10 0 10 0"
+                            DataContext="{Binding PainterManager.CameraViewModel}">
+                            <Button Content="Fit"
+                                    Command="{Binding CameraFitObjectCommand}"
+                                    VerticalAlignment="Top"
+                                    Style="{StaticResource customButtonStyle}" />
+                            <ToggleButton Content="Track"
+                                          VerticalAlignment="Bottom"
+                                          IsChecked="{Binding IsTrackingTool}"
+                                          Style="{StaticResource customToggleButtonStyle}" />
+                            <ToggleButton Content="Orth."
+                                          VerticalAlignment="Bottom"
+                                          IsChecked="{Binding IsOrthographicView}"
+                                          Style="{StaticResource customToggleButtonStyle}" />
+                        </StackPanel>
+                       
                         <StackPanel Orientation="Horizontal"
                                     Margin="10 0 10 0"
                                     DataContext="{Binding PainterManager.CameraViewModel}">
@@ -237,12 +238,14 @@
 
                         <StackPanel Orientation="Vertical"
                                     Margin="10,0,10,0"
+                                    VerticalAlignment="Bottom"
                                     DataContext="{Binding PainterManager.GridLayer}">
                             <TextBlock Text="{Binding GridSpacing, StringFormat={}{0:0.0} um}"
                                        HorizontalAlignment="Center" />
                             <Canvas Width="40"
                                     Height="5"
                                     HorizontalAlignment="Center"
+                                    VerticalAlignment="Bottom"
                                     Margin="0,0,0,5">
                                 <!-- Left Vertical Line -->
                                 <Line X1="0"

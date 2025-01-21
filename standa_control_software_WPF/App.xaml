@@ -281,6 +281,17 @@ z" />
                     Value="{StaticResource ComboBoxTemplate}" />
             <Setter Property="Foreground"
                     Value="{StaticResource FontColorBrush}" />
+
+            <Style.Triggers>
+                <Trigger Property="IsEnabled"
+                         Value="False">
+                    <!-- Force background/foreground for disabled combobox -->
+                    <Setter Property="Background"
+                            Value="{StaticResource DarkBackgroundColorBrush}" />
+                    <Setter Property="Foreground"
+                            Value="{StaticResource FontColorDisabledBrush}" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
         <Style TargetType="GridViewColumnHeader">
@@ -447,7 +458,7 @@ z" />
             </Style.Triggers>
         </Style>
 
-        <Style TargetType="TextBox">
+        <!--<Style TargetType="TextBox">
             <Setter Property="Background"
                     Value="{StaticResource MidBackgroundColorBrush}" />
             <Setter Property="Foreground"
@@ -458,7 +469,49 @@ z" />
                     Value="0.5" />
             <Setter Property="TextAlignment"
                     Value="Left" />
+        </Style>-->
+
+
+        <Style TargetType="TextBox">
+            <Setter Property="Background"
+                    Value="{StaticResource MidBackgroundColorBrush}" />
+            <Setter Property="BorderBrush"
+                    Value="{StaticResource LightBackgroundColorBrush}" />
+            <Setter Property="BorderThickness"
+                    Value="0.5" />
+            <Setter Property="Foreground"
+                    Value="{StaticResource FontColorBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Name="Bd"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                Background="{TemplateBinding Background}"
+                                SnapsToDevicePixels="true">
+                            <ScrollViewer Name="PART_ContentHost"
+                                          Background="{TemplateBinding Background}"
+                                          SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled"
+                                     Value="False">
+                                <Setter Value="{StaticResource MidBackgroundColorBrush}"
+                                        Property="Background" />
+                                <Setter Value="{StaticResource FontColorBrush}"
+                                        Property="Foreground" />
+                                <Setter TargetName="PART_ContentHost"
+                                        Property="Background"
+                                        Value="{StaticResource MidBackgroundColorBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
+
+
+
 
         <Style TargetType="Label">
             <Setter Property="Foreground"
