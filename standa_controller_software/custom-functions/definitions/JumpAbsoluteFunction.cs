@@ -52,11 +52,15 @@ namespace standa_controller_software.custom_functions.definitions
 
             if (!TryGetProperty("Accuracy", out var accuracyObj))
                 throw new Exception("Failed to get 'Accuracy' property.");
-            var accuracy = (float)accuracyObj;
+            if (!TryConvertToFloat(accuracyObj, out float accuracy))
+                throw new Exception("Failed to get 'Accuracy' property.");
+
 
             if (!TryGetProperty("WaitUntilTime", out var waitUntilTimeObj))
                 throw new Exception("Failed to get 'WaitUntilTime' property.");
-            float? waitUntilTime = waitUntilTimeObj is null ? null : (float)waitUntilTimeObj;
+            float? waitUntilTime = null;
+            if (TryConvertToFloat(waitUntilTimeObj, out float waitUntilTimeFloat))
+                waitUntilTime = waitUntilTimeFloat;
 
 
             ExecutionCore(parsedDeviceNames, parsedPositions, isShutterUsed, accuracy, waitUntilTime, parsedWaitUntil, blending);

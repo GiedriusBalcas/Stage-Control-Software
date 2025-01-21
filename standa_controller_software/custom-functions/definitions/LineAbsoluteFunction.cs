@@ -59,11 +59,14 @@ namespace standa_controller_software.custom_functions.definitions
 
             if (!TryGetProperty("Accuracy", out var accuracyObj))
                 throw new Exception("Failed to get 'Accuracy' property.");
-            var accuracy = (float)accuracyObj;
+            if (!TryConvertToFloat(accuracyObj, out float accuracy))
+                throw new Exception("Failed to get 'Accuracy' property.");
 
             if (!TryGetProperty("Speed", out var trajSpeedObj))
                 throw new Exception("Failed to get 'Speed' property.");
-            var trajectorySpeed = (float)trajSpeedObj;
+            if(!TryConvertToFloat(trajSpeedObj, out float trajectorySpeed))
+                throw new Exception("Failed to get 'Speed' property.");
+
 
             if (!TryGetProperty("LeadIn", out var leadInObj))
                 throw new Exception("Failed to get 'LeadIn' property.");

@@ -39,7 +39,7 @@
         <Border  Grid.Row="2"
                  Grid.Column="1"
                  Background="{StaticResource MidBackgroundColorBrush}"
-                 Margin="0,20,0,0"
+                 Margin="0,0,0,0"
                  Padding="0,0,5,5"
                  Style="{StaticResource parentBorder}">
             <TabControl ItemsSource="{Binding Documents}"
