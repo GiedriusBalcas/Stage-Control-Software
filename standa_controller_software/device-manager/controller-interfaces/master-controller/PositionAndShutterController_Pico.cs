@@ -79,6 +79,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
            _logger.LogInformation($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: Sync controller signaled buffer has free slot");
             await SendCommandIfAvailable();
         }
+
+        protected override float CalculateAlocatedTime(float totalTime, float constSpeedEndTime, float constSpeedStartTime)
+        {
+            return totalTime - (totalTime - constSpeedEndTime) / 2;
+        }
         protected override Task Stop(Command command, SemaphoreSlim semaphore)
         {
             _logger.LogInformation($"{DateTime.Now.ToString("HH:mm:ss.fff")}: master: stop encountered.");

@@ -133,6 +133,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             _processingLastItemTakenSource?.TrySetResult(true);
 
         }
-        
+
+
+        protected override float CalculateAlocatedTime(float totalTime, float constSpeedEndTime, float constSpeedStartTime)
+        {
+            //(commandParameters.PositionerInfo[deviceName].MovementInformation.TotalTime + commandParameters.PositionerInfo[deviceName].MovementInformation.ConstantSpeedEndTime - commandParameters.PositionerInfo[deviceName].MovementInformation.ConstantSpeedStartTime) / 2
+
+            return (totalTime  + constSpeedEndTime - constSpeedStartTime) / 2;
+        }
+
     }
 }

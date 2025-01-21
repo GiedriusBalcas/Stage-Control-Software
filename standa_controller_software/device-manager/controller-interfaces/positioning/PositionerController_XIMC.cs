@@ -166,6 +166,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 positioningDevice.Deceleration = positioningDevice.MaxDeceleration;
 
                 deviceInfo.moveSettings_t.Speed = Math.Min(positioningDevice.Speed, positioningDevice.MaxSpeed);
+
                 deviceInfo.moveSettings_t.Accel = Math.Min(positioningDevice.Acceleration, positioningDevice.MaxAcceleration);
                 deviceInfo.moveSettings_t.Decel = Math.Min(positioningDevice.Deceleration, positioningDevice.MaxDeceleration);
 

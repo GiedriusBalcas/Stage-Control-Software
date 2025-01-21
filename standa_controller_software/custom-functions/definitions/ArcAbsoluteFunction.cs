@@ -120,7 +120,7 @@ namespace standa_controller_software.custom_functions.definitions
         }
 
 
-        private Command[] CreateUpdateCommands(Dictionary<char, PositionerMovementInformation> positionerMovementInfos, Dictionary<BasePositionerController, List<BasePositionerDevice>> groupedDevicesByController)
+        private Command[] CreateUpdateCommands(Dictionary<char, PositionerMovementInformation> positionerMovementInfos, Dictionary<BasePositionerController, List<BasePositionerDevice>> groupedDevicesByController, bool blending = true)
         {
             var updateParametersCommandLine = new List<Command>();
 
@@ -154,7 +154,7 @@ namespace standa_controller_software.custom_functions.definitions
                 {
                     MovementSettingsInformation = movementSettings,
                     AccelChangePending = isAccelChangeNeeded,
-                    Blending = true
+                    Blending = blending
                 };
 
                 updateParametersCommandLine.Add(new Command
@@ -310,9 +310,14 @@ namespace standa_controller_software.custom_functions.definitions
                 };
                 positionerMovementInfo[yName] = movementInfo;
 
-                var commands_update = CreateUpdateCommands(positionerMovementInfo, groupedDevicesByController);
+                var commands_update = CreateUpdateCommands(positionerMovementInfo, groupedDevicesByController, false);
                 _commandManager.EnqueueCommandLine(commands_update);
                 _commandManager.TryExecuteCommandLine(commands_update).GetAwaiter().GetResult();
+
+
+                var commands_update_afterStop = CreateUpdateCommands(positionerMovementInfo, groupedDevicesByController);
+                _commandManager.EnqueueCommandLine(commands_update_afterStop);
+                _commandManager.TryExecuteCommandLine(commands_update_afterStop).GetAwaiter().GetResult();
 
                 CalculateTangentEndpoint(
                         centerX, centerY,

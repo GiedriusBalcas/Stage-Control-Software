@@ -118,7 +118,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     Devices = command.TargetDevices,
                     TargetPositions = command.TargetDevices.Select(deviceName => commandParameters.PositionerInfo[deviceName].TargetPosition).ToArray(),
                     //AllocatedTimes = command.TargetDevices.Select(deviceName => (commandParameters.PositionerInfo[deviceName].MovementInformation.TotalTime + commandParameters.PositionerInfo[deviceName].MovementInformation.ConstantSpeedEndTime) / 2 ).ToArray(),
-                    AllocatedTimes = command.TargetDevices.Select(deviceName => (commandParameters.PositionerInfo[deviceName].MovementInformation.TotalTime + commandParameters.PositionerInfo[deviceName].MovementInformation.ConstantSpeedEndTime - commandParameters.PositionerInfo[deviceName].MovementInformation.ConstantSpeedStartTime) / 2).ToArray(),
+                    AllocatedTimes = command.TargetDevices.Select(deviceName => 
+                    CalculateAlocatedTime(
+                        commandParameters.PositionerInfo[deviceName].MovementInformation.TotalTime, 
+                        commandParameters.PositionerInfo[deviceName].MovementInformation.ConstantSpeedEndTime,
+                        commandParameters.PositionerInfo[deviceName].MovementInformation.ConstantSpeedStartTime) 
+                    ).ToArray(),
                 };
             }
 
@@ -153,6 +158,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             _launchPending = false;
 
             return Task.CompletedTask;
+        }
+
+        protected virtual float CalculateAlocatedTime(float totalTime, float constSpeedEndTime, float constSpeedStartTime)
+        {
+            return totalTime;
         }
         protected virtual async Task UpdateMoveSettings(Command[] commands, SemaphoreSlim semaphore)
         {
