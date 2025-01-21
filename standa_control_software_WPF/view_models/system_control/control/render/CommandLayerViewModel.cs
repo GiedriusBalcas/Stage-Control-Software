@@ -79,9 +79,18 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
 
             _lineCollection.ClearCollection();
 
+            int counter = 0;
             foreach (var commandLine in commandLines)
             {
+                counter++;
                 await commandManager_virtual.TryExecuteCommandLine(commandLine);
+
+                // Only every 10th line:
+                if (counter % 10 == 0)
+                {
+                    InitializeCollections();
+                    await Task.Delay(1);
+                }
             }
             InitializeCollections();
 

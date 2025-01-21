@@ -73,7 +73,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        
+
 
         <StackPanel Grid.Column="1"
                     Grid.Row="1"
@@ -118,10 +118,16 @@
         <Grid Grid.Column="2"
               Grid.Row="1"
               Margin="0,5,50,0">
-            <StackPanel Orientation="Vertical"
+            <Grid 
                         HorizontalAlignment="Stretch"
                         DataContext="{Binding }">
-                <Border Background="{StaticResource MidBackgroundColorBrush}"
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                
+                <Border Grid.Row="0"
+                    Background="{StaticResource MidBackgroundColorBrush}"
                         BorderBrush="AliceBlue"
                         BorderThickness="0"
                         Margin="10,10"
@@ -148,50 +154,55 @@
                     </StackPanel>
                 </Border>
 
-                <Border Background="{StaticResource MidBackgroundColorBrush}"
+                <Border Grid.Row="1"
+                    Background="{StaticResource MidBackgroundColorBrush}"
                         BorderBrush="AliceBlue"
                         BorderThickness="0"
                         Margin="10,10"
                         Padding="10"
                         Style="{StaticResource parentBorder}">
+                    
 
-                    <ListView ItemsSource="{Binding DeviceProperties}"
-                              HorizontalAlignment="Stretch"
-                              VerticalAlignment="Stretch"
-                              ItemContainerStyle="{StaticResource butcheredLisViewItems}">
 
-                        <ListView.View>
-                            <GridView>
-                                <GridViewColumn Header="Property Name"
-                                                DisplayMemberBinding="{Binding PropertyName}"
-                                                Width="300" />
-                                <GridViewColumn Header="Value"
-                                                Width="150">
-                                    <GridViewColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <ContentPresenter Content="{Binding}"
-                                                              Width="auto"
-                                                              MinWidth="0"
-                                                              IsEnabled="{Binding isDynamic}"
-                                                              ContentTemplateSelector="{StaticResource PropertyDataTemplateSelector}" />
-                                        </DataTemplate>
-                                    </GridViewColumn.CellTemplate>
-                                </GridViewColumn>
-                                <GridViewColumn Header="Error Message"
-                                                Width="200">
-                                    <GridViewColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding PropertyMessage}"
-                                                       TextWrapping="Wrap" />
-                                            <!-- You can adjust the width as needed -->
-                                        </DataTemplate>
-                                    </GridViewColumn.CellTemplate>
-                                </GridViewColumn>
-                            </GridView>
-                        </ListView.View>
-                    </ListView>
+
+                        <ListView ItemsSource="{Binding DeviceProperties}"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Stretch"
+                                  ItemContainerStyle="{StaticResource butcheredLisViewItems}">
+
+                            <ListView.View>
+                                <GridView>
+                                    <GridViewColumn Header="Property Name"
+                                                    DisplayMemberBinding="{Binding PropertyName}"
+                                                    Width="300" />
+                                    <GridViewColumn Header="Value"
+                                                    Width="150">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <ContentPresenter Content="{Binding}"
+                                                                  Width="auto"
+                                                                  MinWidth="0"
+                                                                  IsEnabled="{Binding isDynamic}"
+                                                                  ContentTemplateSelector="{StaticResource PropertyDataTemplateSelector}" />
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="Error Message"
+                                                    Width="200">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding PropertyMessage}"
+                                                           TextWrapping="Wrap" />
+                                                <!-- You can adjust the width as needed -->
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
+                    
                 </Border>
-            </StackPanel>
+            </Grid>
 
         </Grid>
     </Grid>
