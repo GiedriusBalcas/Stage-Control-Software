@@ -89,18 +89,17 @@
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
-            <RowDefinition Height="30" />
         </Grid.RowDefinitions>
 
         <!-- Devices List -->
         <ScrollViewer Grid.Column="1"
                       Grid.Row="0"
-                      Margin="5,10,0,0"
+                      Margin="0,0,0,0"
                       VerticalScrollBarVisibility="Auto"
                       VerticalAlignment="Center">
             <StackPanel>
 
-                <ContentControl Content="{Binding ToolViewModel}" />
+                <ContentControl Content="{Binding ToolViewModel}"/>
 
                 <ItemsControl MinWidth="200"
                               MinHeight="100"

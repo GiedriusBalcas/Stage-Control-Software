@@ -28,6 +28,7 @@ namespace standa_control_software_WPF.view_models
 
         private readonly SerializationHelper _serializationHelper;
         private readonly ControllerManager _controllerManager;
+        private readonly standa_controller_software.command_manager.CommandManager _commandManager;
         private readonly ILogger<ConfigurationCreationViewModel> _logger;
         private readonly ILoggerFactory _loggerFactory;
         private readonly NavigationStore _navigationStore;
@@ -73,14 +74,14 @@ namespace standa_control_software_WPF.view_models
         public ICommand LoadConfigurationsCommand { get; }
 
         public ConfigurationCreationViewModel(
-            ControllerManager manager,
+            ControllerManager controllerManager,
             ILogger<ConfigurationCreationViewModel> logger,
             ILoggerFactory loggerFactory,
             NavigationStore navigationStore,
             Action onWizardComplete
         )
         {
-            _controllerManager = manager;
+            _controllerManager = controllerManager;
             _logger = logger;
             _loggerFactory = loggerFactory;
             _navigationStore = navigationStore;
@@ -180,14 +181,15 @@ namespace standa_control_software_WPF.view_models
                     throw new ArgumentNullException("Tool position is not defined.");
 
                 var tool = new ToolInformation(
-                    positioners,
+                    _controllerManager,
                     shutterDevice,
                     positions => new System.Numerics.Vector3
                     {
                         X = funcX(positions),
                         Y = funcY(positions),
                         Z = funcZ(positions)
-                    }
+                    },
+                    _loggerFactory.CreateLogger<ToolInformation>()
                 );
 
                 _controllerManager.ToolInformation = tool;

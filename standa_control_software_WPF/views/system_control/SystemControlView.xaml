@@ -30,7 +30,6 @@
             <RowDefinition Height="auto" />
             <RowDefinition Height="auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="15" />
         </Grid.RowDefinitions>
 
 
@@ -332,30 +331,6 @@
                                    Background="Transparent"
                                    Foreground="{StaticResource FontColorBrush}" />
                     </ScrollViewer>
-
-                    <StackPanel Grid.Row="2"
-                                Orientation="Horizontal"
-                                Margin="5 0 5 5">
-                        <!-- Indeterminate progress bar bound to IsParsing -->
-                        <ProgressBar Height="20"
-                                     Width="200"
-                                     IsIndeterminate="{Binding IsParsing}"
-                                     Visibility="{Binding IsParsing, Converter={StaticResource BoolToVisibilityConverter}}"
-                                     VerticalAlignment="Bottom" />
-
-                        <!-- Show the textual status of parsing -->
-                        <TextBlock Text="{Binding ParsingStatusMessage}"
-                                   Margin="10,10,10,0"
-                                   TextWrapping="Wrap" />
-
-                        <!-- Cancel button: only enabled while parsing -->
-                        <Button Content="Cancel Parsing"
-                                Style="{StaticResource customButtonStyle}"
-                                Command="{Binding CancelCommandQueueParsing}"
-                                IsEnabled="{Binding IsParsing}"
-                                Visibility="{Binding IsParsing, Converter={StaticResource BoolToVisibilityConverter}}"
-                                Margin="10,10,0,0" />
-                    </StackPanel>
                 </Grid>
             </Border>
         </Grid>

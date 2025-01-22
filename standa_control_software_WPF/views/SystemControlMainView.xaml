@@ -6,9 +6,14 @@
              xmlns:local="clr-namespace:standa_control_software_WPF.views"
              xmlns:vms="clr-namespace:standa_control_software_WPF.view_models.system_control"
              xmlns:views="clr-namespace:standa_control_software_WPF.views.system_control"
+             xmlns:helpers="clr-namespace:standa_control_software_WPF.views.helpers"
              mc:Ignorable="d"
              d:DesignHeight="450"
              d:DesignWidth="800">
+
+    <UserControl.Resources>
+        <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    </UserControl.Resources>
 
     <Grid Background="{StaticResource DarkBackgroundColorBrush}">
 
@@ -34,40 +39,16 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!--<ToolBarPanel Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2">
-            <ToolBar>
-                <Label Content="CurrentCommandScript" />
-
-                <ListBox  Width="auto">
-                    <ListBoxItem  Content="Configuration #1"/>
-                </ListBox>
-                <Button Content="Execute" VerticalAlignment="Center"/>
-            </ToolBar>
-        </ToolBarPanel>-->
-
-        <!--<Menu Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" FontSize="13"
-              Background="{StaticResource MidBackgroundColorBrush}">
-            <MenuItem Header="File">
-                <MenuItem Header="Open"/>
-                <MenuItem Header="New"/>
-                <Separator />
-                <MenuItem Header="Exit"/>
-            </MenuItem>
-            <MenuItem Header="View">
-                <MenuItem Header="System Properties"/>
-                <MenuItem Header="System Info"/>
-                <MenuItem Header="Compiler"/>
-            </MenuItem>
-        </Menu>-->
-
-
         <Border Grid.Column="0"
-                Grid.Row="1"
+                Grid.Row="0"
                 Grid.ColumnSpan="3"
-                Margin="0 0 0 10"
+                Margin="0 0 0 0"
                 Background="{StaticResource MidBackgroundColorBrush}"
+                BorderBrush="{StaticResource DarkBackgroundColorBrush}"
+                BorderThickness="0.5"
                 DataContext="{Binding CurrentCompilerViewModel}">
-            <StackPanel Orientation="Horizontal">
+            <StackPanel Orientation="Horizontal" MinHeight="30">
+                
                 <Button Content="Open"
                         Command="{Binding OpenDocumentCommand}"
                         Style="{StaticResource customButtonStyleForBar}" />
@@ -79,8 +60,8 @@
                 <Button Content="Save All"
                         Style="{StaticResource customButtonStyleForBar}" />
 
-                <Separator BorderThickness="1"
-                           BorderBrush="{StaticResource LightBackgroundColorBrush}"
+                <Separator BorderThickness="0.5"
+                           BorderBrush="{StaticResource DarkBackgroundColorBrush}"
                            Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
                 <Label Content="Active document:"
                        FontSize="12"
@@ -89,8 +70,8 @@
                        FontSize="12"
                        VerticalAlignment="Center"
                        Margin="0" />
-                <Separator BorderThickness="1"
-                           BorderBrush="{StaticResource LightBackgroundColorBrush}"
+                <Separator BorderThickness="0.5"
+                           BorderBrush="{StaticResource DarkBackgroundColorBrush}"
                            Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
 
 
@@ -98,6 +79,26 @@
                     <ListBoxItem  Content="Virtual Config"/>
                 </ListBox>-->
 
+
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Column="0"
+                Grid.Row="1"
+                Grid.ColumnSpan="3"
+                Background="{StaticResource MidBackgroundColorBrush}"
+                BorderBrush="{StaticResource DarkBackgroundColorBrush}"
+                BorderThickness="0.5"
+                DataContext="{Binding CurrentCompilerViewModel}">
+
+            <StackPanel Grid.Row="2"
+                        Orientation="Horizontal"
+                        MinHeight="30">
+                <!-- Indeterminate progress bar bound to IsParsing -->
+                <Separator BorderThickness="0.5"
+                           Margin="10 0 10 0"
+                           BorderBrush="{StaticResource DarkBackgroundColorBrush}"
+                           Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
 
                 <Button Command="{Binding CreateCommandQueueFromInput}"
                         Style="{StaticResource customButtonStyleForBar}">
@@ -128,24 +129,6 @@
                     </StackPanel>
                 </Button>
 
-
-
-                <!--<Button
-                        Command="{Binding PauseDebuggingCommand}"
-                        Style="{StaticResource customButtonStyleForBar}">
-                    <StackPanel Orientation="Horizontal">
-                        <Path Width="20" Height="15" Fill="{StaticResource FontColorBrush}" Data="{StaticResource pauseIconPath}" Stretch="Uniform"/>
-                        <TextBlock Text="Pause" VerticalAlignment="Center" Margin="5,0,0,0"/>
-                    </StackPanel>
-                </Button>
-                <Button 
-                        Command="{Binding ResumeDebuggingCommand}"
-                        Style="{StaticResource customButtonStyleForBar}">
-                    <StackPanel Orientation="Horizontal">
-                        <Path Width="20" Height="15" Fill="{StaticResource FontColorBrush}" Data="{StaticResource resumeIconPath}" Stretch="Uniform"/>
-                        <TextBlock Text="Resume" VerticalAlignment="Center" Margin="5,0,0,0"/>
-                    </StackPanel>
-                </Button>-->
                 <Button Command="{Binding ForceStopCommand}"
                         Style="{StaticResource customButtonStyleForBar}">
                     <StackPanel Orientation="Horizontal">
@@ -160,25 +143,64 @@
                     </StackPanel>
                 </Button>
 
-                <!--<Separator 
-                    BorderThickness="1" 
-                    BorderBrush="{StaticResource LightBackgroundColorBrush}" 
-                    Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
-                    />
 
-                <Button 
-                        Command="{Binding ForceStopCommand}"
-                        Style="{StaticResource customButtonStyleForBar}">
-                    <StackPanel Orientation="Horizontal">
-                        <Path Width="20" Height="15" Fill="{StaticResource FontColorBrush}" Data="{StaticResource foreceStopIconPath}" Stretch="Uniform"/>
-                        <TextBlock Text="Force Stop" VerticalAlignment="Center" Margin="5,0,0,0"/>
-                    </StackPanel>
-                </Button>-->
+                <Separator BorderThickness="0.5"
+                           Margin="10 0 10 0"
+                           BorderBrush="{StaticResource DarkBackgroundColorBrush}"
+                           Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
+
+                <TextBlock Text="{Binding ParsingStatusMessage, FallbackValue= 'text in system control VM'}"
+                           MinWidth="150"
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap" />
+
+                <Separator BorderThickness="0.5"
+                           Margin="10 0 10 0"
+                           BorderBrush="{StaticResource DarkBackgroundColorBrush}"
+                           Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
+
+                <ProgressBar Height="20"
+                             MaxWidth="200"
+                             Width="100"
+                             IsIndeterminate="{Binding IsParsing}"
+                             Margin="0 0 10 0"
+                             Visibility="{Binding IsParsing, Converter={StaticResource BoolToVisibilityConverter}}"
+                             VerticalAlignment="Center" />
+
+                <Button Content="Cancel"
+                        Style="{StaticResource customButtonStyle}"
+                        Command="{Binding CancelCommandQueueParsing}"
+                        IsEnabled="{Binding IsParsing}"
+                        Visibility="{Binding IsParsing, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                <Separator BorderThickness="0.5"
+                           Margin="10 0 10 0"
+                           BorderBrush="{StaticResource DarkBackgroundColorBrush}"
+                           Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
+                           Visibility="{Binding IsParsing, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+
+                <CheckBox Content="Allow out of Bounds"
+                          IsChecked="{Binding IsAllowedOutOfBounds}" 
+                          VerticalAlignment="Center"
+                          Visibility="{Binding IsOutOfBounds, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                <Separator BorderThickness="0.5"
+                           Margin="10 0 10 0"
+                           BorderBrush="{StaticResource DarkBackgroundColorBrush}"
+                           Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
+                           Visibility="{Binding IsOutOfBounds, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+
+
+
+
             </StackPanel>
+
         </Border>
 
 
-        <Grid Grid.Column="0"
+            <Grid Grid.Column="0"
               Grid.Row="2"
               Margin="0,0,0,0">
 
@@ -254,6 +276,7 @@
 
         <ContentControl Grid.Row="2"
                         Grid.Column="1"
+                        Margin="10 10 10 10"
                         Content="{Binding CurrentViewModel}" />
 
     </Grid>

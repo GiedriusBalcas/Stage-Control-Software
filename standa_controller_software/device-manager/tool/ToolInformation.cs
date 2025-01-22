@@ -1,4 +1,6 @@
-﻿using standa_controller_software.device_manager.devices;
+﻿using Microsoft.Extensions.Logging;
+using standa_controller_software.command_manager;
+using standa_controller_software.device_manager.devices;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,10 +12,26 @@ namespace standa_controller_software.device_manager
 {
     public class ToolInformation
     {
+        private readonly ILogger<ToolInformation> _logger;
+        private readonly ControllerManager _controllerManager;
+        private readonly CommandManager _commandManager;
+
         public Func<Dictionary<char, float>, Vector3> PositionCalcFunctions {  get; private set; }
         private readonly BaseShutterDevice _shutterDevice;
         private List<BasePositionerDevice> _positionerDevices = new List<BasePositionerDevice>();
         private Vector3 _position;
+
+        private bool _isOutOfBounds = false;
+        public bool IsOutOfBounds { get => _isOutOfBounds; private set 
+            {
+                if (value != _isOutOfBounds || value is true)
+                {
+                    _logger.LogError($"New position {value} is outside allowed bounds (Min: {MinimumCoordinates}, Max: {MaximumCoordinates}).");
+                    _isOutOfBounds = value;
+                    OutOfBoundsChanged?.Invoke(value);
+                }
+            }
+        }
 
         public event Action<Vector3>? PositionChanged;
         public event Action? EngagedStateChanged;
@@ -47,19 +65,25 @@ namespace standa_controller_software.device_manager
             get => _position;
             private set
             {
+                _position = value;
+
                 if (value.X < MinimumCoordinates.X || value.X > MaximumCoordinates.X ||
                 value.Y < MinimumCoordinates.Y || value.Y > MaximumCoordinates.Y ||
                 value.Z < MinimumCoordinates.Z || value.Z > MaximumCoordinates.Z)
                 {
-                    throw new ArgumentOutOfRangeException(nameof(Position),
-                        $"New position {value} is outside allowed bounds (Min: {MinimumCoordinates}, Max: {MaximumCoordinates}).");
+                    IsOutOfBounds = true;
                 }
-                _position = value;
+                else
+                {
+                    IsOutOfBounds = false;
+                }
+                
                 PositionChanged?.Invoke(_position);
             }
         }
 
         private bool _isOn;
+        private Vector3 _lastCoordinate;
 
         public bool IsOn
         {
@@ -74,8 +98,13 @@ namespace standa_controller_software.device_manager
             }
         }
 
-        public ToolInformation(IEnumerable<BasePositionerDevice> positioners, BaseShutterDevice shutterDevice, Func<Dictionary<char, float>, Vector3> positionCalculationFunctions)
+        public event Action<bool> OutOfBoundsChanged;
+
+        public ToolInformation(ControllerManager controllerManager, BaseShutterDevice shutterDevice, Func<Dictionary<char, float>, Vector3> positionCalculationFunctions, ILogger<ToolInformation> logger)
         {
+            _logger = logger;
+            _controllerManager = controllerManager;
+            var positioners = _controllerManager.GetDevices<BasePositionerDevice>();
             PositionCalcFunctions = positionCalculationFunctions;
             foreach (var positioner in positioners)
             {

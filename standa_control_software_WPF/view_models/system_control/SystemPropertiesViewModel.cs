@@ -60,12 +60,12 @@ namespace standa_control_software_WPF.view_models.system_control
 
             SelectedDevice = Devices.FirstOrDefault();
 
-            ConnectAllCommand = new RelayCommand(ExecuteConnectAllCommand);
-            ConnectCommand = new RelayCommand(ExecuteConnectCommandAsync);
+            ConnectAllCommand = new RelayCommand(async () => await ExecuteConnectAllCommand());
+            ConnectCommand = new RelayCommand( async () => await ExecuteConnectCommandAsync() );
 
         }
 
-        private async void ExecuteConnectCommandAsync()
+        private async Task ExecuteConnectCommandAsync()
         {
             try
             {
@@ -99,7 +99,7 @@ namespace standa_control_software_WPF.view_models.system_control
 
         }
 
-        private async void ExecuteConnectAllCommand()
+        private async Task ExecuteConnectAllCommand()
         {
             try
             {

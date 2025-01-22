@@ -188,7 +188,7 @@
                                         </GridViewColumn.CellTemplate>
                                     </GridViewColumn>
                                     <GridViewColumn Header="Error Message"
-                                                    Width="200">
+                                                    Width="auto">
                                         <GridViewColumn.CellTemplate>
                                             <DataTemplate>
                                                 <TextBlock Text="{Binding PropertyMessage}"

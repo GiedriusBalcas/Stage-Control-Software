@@ -11,6 +11,7 @@ using System.Xml.Linq;
 using OpenTK.Platform.Windows;
 using OpenTK.Graphics.OpenGL;
 using Microsoft.Extensions.Logging;
+using System.Numerics;
 
 namespace standa_controller_software.command_manager
 {
@@ -59,8 +60,9 @@ namespace standa_controller_software.command_manager
             }
         }
 
+
         // interface for outside objects to execute commands.
-        
+
         public IEnumerable<Command[]> GetCommandQueueList()
         {
             return [.. _commandQueue];
@@ -97,7 +99,7 @@ namespace standa_controller_software.command_manager
             CurrentState = CommandManagerState.Waiting;
         }
 
-        public async void Stop()
+        public async Task Stop()
         {
             _allowedToRun = false;
             CurrentState = CommandManagerState.Waiting;

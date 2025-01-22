@@ -8,6 +8,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Numerics;
+using System.Reflection;
 using System.Threading;
 
 namespace standa_controller_software.device_manager
@@ -18,6 +20,8 @@ namespace standa_controller_software.device_manager
         private ILoggerFactory _loggerFactory;
 
         public ToolInformation ToolInformation { get; set; }
+        public Action<Vector3> ToolPositionBoundExceeded;
+
         public Dictionary<string, BaseController> Controllers { get; private set; } = new Dictionary<string, BaseController>();
         public Dictionary<string, SemaphoreSlim> ControllerLocks { get; private set; } = new Dictionary<string, SemaphoreSlim>();
 
@@ -125,14 +129,14 @@ namespace standa_controller_software.device_manager
                 }
             }
 
-            ToolInformation toolInfo = new ToolInformation(controllerManager_copy.GetDevices<BasePositionerDevice>(), new ShutterDevice('u', "undefined"), this.ToolInformation.PositionCalcFunctions) 
+            var toolInfo = new ToolInformation(controllerManager_copy, new ShutterDevice('u', "undefined"), this.ToolInformation.PositionCalcFunctions, _loggerFactory.CreateLogger<ToolInformation>()) 
             {
                 MinimumCoordinates = this.ToolInformation.MinimumCoordinates,
                 MaximumCoordinates = this.ToolInformation.MaximumCoordinates,
             };
             if (controllerManager_copy.TryGetDevice<BaseShutterDevice>(this.ToolInformation.Name, out BaseShutterDevice shutterDevice))
             {
-                toolInfo = new ToolInformation(controllerManager_copy.GetDevices<BasePositionerDevice>(), shutterDevice, this.ToolInformation.PositionCalcFunctions)
+                toolInfo = new ToolInformation(controllerManager_copy, shutterDevice, this.ToolInformation.PositionCalcFunctions, _loggerFactory.CreateLogger<ToolInformation>())
                 {
                     MinimumCoordinates = this.ToolInformation.MinimumCoordinates,
                     MaximumCoordinates = this.ToolInformation.MaximumCoordinates,
@@ -141,6 +145,11 @@ namespace standa_controller_software.device_manager
             controllerManager_copy.ToolInformation = toolInfo;
 
             return controllerManager_copy;
+        }
+
+        internal void ToolPositionExceedsBounds(Vector3 value)
+        {
+            ToolPositionBoundExceeded.Invoke(value);
         }
     }
 }

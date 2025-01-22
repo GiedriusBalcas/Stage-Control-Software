@@ -121,7 +121,7 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 InitializePlotModel();
 
                 // Initialize commands
-                StopCommand = new RelayCommand(ExecuteStop);
+                StopCommand = new RelayCommand(async() => await ExecuteStop());
                 HomeCommand = new RelayCommand(() => Task.Run(async () => await ExecuteHome()));
                 MoveCommand = new RelayCommand(() => Task.Run(async() => await ExecuteMove() ) );
                 ShiftCommand = new RelayCommand(() => Task.Run(async () => await ExecuteShift()));
@@ -220,9 +220,12 @@ namespace standa_control_software_WPF.view_models.system_control.information
         }
 
         // Command execution methods
-        private void ExecuteStop()
+        private async Task ExecuteStop()
         {
-            //_positioner.Stop();
+            var controller = _controllerManager.GetDeviceController<BasePositionerController>(_positioner.Name);
+
+            await controller.ForceStop();
+
         }
         private async Task ExecuteHome()
         {

@@ -125,6 +125,30 @@ namespace standa_control_software_WPF.view_models.system_control
             private set { _highlightedLineNumber = value; }
         }
 
+        private bool _isOutOfBounds;
+        public bool IsOutOfBounds
+        {
+            get => _isOutOfBounds;
+            set
+            {
+                _isOutOfBounds = value;
+                OnPropertyChanged(nameof(IsOutOfBounds));
+            }
+        }
+
+
+        private bool _isAllowedOutOfBounds;
+        public bool IsAllowedOutOfBounds
+        {
+            get => _isAllowedOutOfBounds;
+            set
+            {
+                _isAllowedOutOfBounds = value;
+                OnPropertyChanged(nameof(IsAllowedOutOfBounds));
+            }
+        }
+
+
 
         public SystemControlViewModel(ControllerManager controllerManager, standa_controller_software.command_manager.CommandManager commandManager, ILogger<SystemControlViewModel> logger, ILoggerFactory loggerFactory)
         {
@@ -148,11 +172,32 @@ namespace standa_control_software_WPF.view_models.system_control
             CancelCommandQueueParsing = new RelayCommand(ExecuteCancelCommandParsing);
 
             ExecuteCommandQueueCommand = new RelayCommand(async () => await ExecuteCommandsQueueAsync(), CanExecuteCommandQueue);
-            ForceStopCommand = new RelayCommand(ForceStop);
+            ForceStopCommand = new RelayCommand(async() => await ForceStop());
 
             ClearOutputMessageCommand = new RelayCommand(() => OutputMessage = "");
+            
             _commandManager.OnStateChanged += CommandManager_OnStateChanged;
+            _controllerManager.ToolInformation.OutOfBoundsChanged += async(value) => await Tool_OutOfBoundsChanged(value);
+
         }
+
+        private async Task Tool_OutOfBoundsChanged(bool isOutOfBounds)
+        {
+            IsOutOfBounds = isOutOfBounds;
+
+            if (isOutOfBounds)
+            {
+                if (!IsAllowedOutOfBounds)
+                    await ForceStop("Tool Out of Bounds Deteced. ");
+            }
+            else
+            {
+                IsAllowedOutOfBounds = false;
+            }
+
+            
+        }
+
         private void CommandManager_OnStateChanged(CommandManagerState newState)
         {
             if (newState == CommandManagerState.Processing)
@@ -233,15 +278,16 @@ namespace standa_control_software_WPF.view_models.system_control
 
         
 
-        private async void ForceStop()
+        private async Task ForceStop(string message = "")
         {
+            ParsingStatusMessage = $"{message}Stop Command Initiated";
 
-            OutputMessage += $"\nStop.";
-            _commandManager.Stop();
-            OutputMessage += $"\ndone Stop.";
+            await _commandManager.Stop();
+
+            ParsingStatusMessage = $"{message}Stop Command Completed";
         }
 
-       
+
         private void SaveCommandLog()
         {
             var content = string.Join("\n", _commandManager.GetCommandQueueAsString());

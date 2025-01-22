@@ -123,23 +123,7 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
             InitializeCollections();
 
         }
-        private void UpdateGrid(float width, float length, int numberOfLinesX, int numberOfLinesY, float centerX, float centerY)
-        {
-
-            _lineCollection.ClearCollection();
-            for (int i = 1; i < numberOfLinesX; i++)
-            {
-                var xas = -width / 2 + width / numberOfLinesX * i;
-                _lineCollection.AddLine(new Vector3(xas + centerX, -length / 2 + centerY, 0f), new Vector3(xas + centerX, length / 2 + centerY, 0f), _gridColor);
-            }
-            for (int j = 1; j < numberOfLinesY; j++)
-            {
-                var yas = -length / 2 + length / numberOfLinesY * j;
-                _lineCollection.AddLine(new Vector3(-width / 2 + centerX, yas + centerY, 0f), new Vector3(width / 2 + centerX, yas + centerY, 0f), _gridColor);
-            }
-            InitializeCollections();
-        }
-        // Enhanced Inverse method with closest value logic
+        
         public float ScaleValueInverse(float inputResult)
         {
             if (inputResult <= 0)
@@ -205,9 +189,10 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
         {
            
             // check if camera Distance has changed.
-            if (_distanceToGrid != _camera.Distance)
+            if (_distanceToGrid != _camera.Distance + Math.Abs(_camera.ReferencePosition.Y))
             {
-                var distance = _camera.Distance + _camera.ReferencePosition.Y; // Math.Abs(CommandLayer.Camera.CameraPosition.Y) + 
+                var distance = _camera.Distance + Math.Abs(_camera.ReferencePosition.Y); // Math.Abs(CommandLayer.Camera.CameraPosition.Y) + 
+                distance = Math.Max(1, distance);
                 distance = ScaleValueInverse((int)distance);
                 
                 distance = Math.Max(distance, 10);
@@ -221,7 +206,7 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
 
                 //UpdateGrid(widthMax, widthMax, numberOfLines, numberOfLines, 0, 0);
                 UpdateGrid(_toolInformation.MinimumCoordinates.X, _toolInformation.MinimumCoordinates.Y, _toolInformation.MinimumCoordinates.Z, _toolInformation.MaximumCoordinates.X, _toolInformation.MaximumCoordinates.Y, _toolInformation.MaximumCoordinates.Z, (float)GridSpacing, (float)GridSpacing);
-                _distanceToGrid = _camera.Distance;
+                _distanceToGrid = _camera.Distance + Math.Abs(_camera.ReferencePosition.Y); ;
             }
             
         }
