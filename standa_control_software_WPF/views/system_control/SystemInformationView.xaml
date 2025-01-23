@@ -129,10 +129,12 @@
                         Style="{StaticResource customButtonStyle}"
                         Command="{Binding AcquireCommand}"
                         Margin="5,0,0,0" />
-                <TextBlock Margin="30,0,0,0"
+                <TextBlock Margin="30,0,10,0"
                            VerticalAlignment="Center"
                            Text="Continious: " />
-                <CheckBox VerticalAlignment="Center"
+                <ToggleButton 
+                    Style="{StaticResource CustomToggleButton}"
+                    VerticalAlignment="Center"
                           IsChecked="{Binding IsContiniousAcquisition}" />
             </StackPanel>
 

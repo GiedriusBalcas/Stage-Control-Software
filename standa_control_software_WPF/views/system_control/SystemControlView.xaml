@@ -6,6 +6,7 @@
              xmlns:local="clr-namespace:standa_control_software_WPF.views.system_control"
              xmlns:glWpfControl="clr-namespace:OpenTK.Wpf;assembly=GLWpfControl"
              xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit"
+             xmlns:editing="clr-namespace:ICSharpCode.AvalonEdit.Editing;assembly=ICSharpCode.AvalonEdit"
              xmlns:behave="clr-namespace:standa_control_software_WPF.views.behaviours"
              xmlns:helpers="clr-namespace:standa_control_software_WPF.views.helpers"
              xmlns:vms="clr-namespace:standa_control_software_WPF.view_models"
@@ -18,9 +19,57 @@
 
     <UserControl.Resources>
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+
+        <Style x:Shared="False"
+               TargetType="{x:Type editing:TextArea}">
+            <Setter Property="FocusVisualStyle"
+                    Value="{x:Null}" />
+            <Setter Property="SelectionBrush">
+                <Setter.Value>
+                    <SolidColorBrush Opacity="0.7"
+                                     Color="{StaticResource AccenColor}" />
+                </Setter.Value>
+            </Setter>
+            <Setter Property="SelectionBorder">
+                <Setter.Value>
+                    <Pen>
+                        <Pen.Brush>
+                            <SolidColorBrush Color="{StaticResource AccenColor}" />
+                        </Pen.Brush>
+                    </Pen>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="SelectionForeground">
+                <Setter.Value>
+                    <SolidColorBrush Color="White" />
+                </Setter.Value>
+            </Setter>
+
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type editing:TextArea}">
+                        <DockPanel Focusable="False">
+                            <ItemsControl Margin="0,0,10,0"
+                                          Focusable="False"
+                                          ItemsSource="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=LeftMargins}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                            <ContentPresenter Panel.ZIndex="-1"
+                                              Content="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=TextView}"
+                                              Focusable="False" />
+                        </DockPanel>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
     </UserControl.Resources>
     
-    <Grid Background="Transparent">
+    <Grid Background="{StaticResource MidCustomColorBrush}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="20" />
             <ColumnDefinition Width="2*" />
@@ -37,24 +86,23 @@
 
         <Border  Grid.Row="2"
                  Grid.Column="1"
-                 Background="{StaticResource MidBackgroundColorBrush}"
                  Margin="0,0,0,0"
                  Padding="0,0,5,5"
                  Style="{StaticResource parentBorder}">
             <TabControl ItemsSource="{Binding Documents}"
                         SelectedItem="{Binding SelectedDocument}"
-                        Background="{StaticResource MidBackgroundColorBrush}"
+                        Background="Transparent"
                         Foreground="{StaticResource FontColorBrush}"
                         BorderBrush="Transparent">
 
                 <TabControl.Resources>
                     <Style TargetType="TabItem">
                         <Setter Property="Background"
-                                Value="{StaticResource DarkBackgroundColorBrush}" />
+                                Value="{StaticResource MidCustomColorBrush}" />
                         <Setter Property="Foreground"
                                 Value="{StaticResource FontColorBrush}" />
                         <Setter Property="BorderBrush"
-                                Value="{StaticResource LightBackgroundColorBrush}" />
+                                Value="{StaticResource LightCustomColorBrush}" />
                         <Setter Property="BorderThickness"
                                 Value="1,0,1,0" />
                         <Setter Property="Padding"
@@ -80,7 +128,7 @@
                                             <!--Adjust color for hover state-->
                                             <Setter TargetName="border"
                                                     Property="Background"
-                                                    Value="{StaticResource                                    MidBackgroundColorBrush}" />
+                                                    Value="{StaticResource                                    DarkCustomColorBrush}" />
                                             <Setter Property="BorderBrush"
                                                     Value="{StaticResource AccentColorBrush}" />
                                             <Setter Property="BorderThickness"
@@ -91,7 +139,7 @@
                                             <!--Adjust color for selected state-->
                                             <Setter TargetName="border"
                                                     Property="Background"
-                                                    Value="{StaticResource                                    MidBackgroundColorBrush}" />
+                                                    Value="{StaticResource                                    DarkCustomColorBrush}" />
                                         </Trigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>
@@ -107,7 +155,7 @@
                                    Height="auto">
                             <DockPanel.ContextMenu>
                                 <!--ContextMenu for right-click on tab-->
-                                <ContextMenu Background="{StaticResource MidBackgroundColorBrush}">
+                                <ContextMenu Background="{StaticResource DarkCustomColorBrush}">
                                     <MenuItem Header="Save"
                                               Command="{Binding SaveFileCommand}" />
                                     <MenuItem Header="Save As"
@@ -135,23 +183,36 @@
                 </TabControl.ItemTemplate>
                 <TabControl.ContentTemplate>
                     <DataTemplate>
-                        <avalonEdit:TextEditor Grid.Row="0"
-                                               Loaded="avalonEditor_Loaded"
-                                               x:Name="avalonEditor"
-                                               SyntaxHighlighting="C#"
-                                               Margin="5,10,0,5"
-                                               ShowLineNumbers="True"
-                                               WordWrap="True"
-                                               HorizontalScrollBarVisibility="Auto"
-                                               VerticalScrollBarVisibility="Visible"
-                                               controlVms:TextEditorExtensions.Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}"
-                                               Background="{StaticResource MidBackgroundColorBrush}"
-                                               Foreground="{StaticResource FontColorBrush}">
-                            <i:Interaction.Behaviors>
-                                <behave:HighlightLineBehavior />
-                                <behave:FontSizeAdjustmentBehavior />
-                            </i:Interaction.Behaviors>
-                        </avalonEdit:TextEditor>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Separator Grid.Row="0"
+                                BorderThickness="0.5"
+                                       Margin="10 0 10 0"
+                                       BorderBrush="{StaticResource MidCustomColorBrush}"
+                                       Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
+
+
+                            <avalonEdit:TextEditor Grid.Row="1"
+                                                   Loaded="avalonEditor_Loaded"
+                                                   x:Name="avalonEditor"
+                                                   SyntaxHighlighting="C#"
+                                                   Margin="5,10,0,5"
+                                                   ShowLineNumbers="True"
+                                                   WordWrap="False"
+                                                   HorizontalScrollBarVisibility="Auto"
+                                                   VerticalScrollBarVisibility="Visible"
+                                                   controlVms:TextEditorExtensions.Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}"
+                                                   Background="{StaticResource DarkCustomColorBrush}"
+                                                   Foreground="{StaticResource FontColorBrush}">
+                                <i:Interaction.Behaviors>
+                                    <behave:HighlightLineBehavior />
+                                    <behave:FontSizeAdjustmentBehavior />
+                                </i:Interaction.Behaviors>
+                            </avalonEdit:TextEditor>
+                        </Grid>
                     </DataTemplate>
                 </TabControl.ContentTemplate>
             </TabControl>
@@ -159,10 +220,10 @@
 
         <GridSplitter Grid.Column="2"
                       Grid.Row="2"
-                      Grid.RowSpan="1"
+                      Grid.RowSpan="2"
                       HorizontalAlignment="Left"
                       VerticalAlignment="Stretch"
-                      Background="{StaticResource MidBackgroundColorBrush}"
+                      Background="Transparent"
                       ShowsPreview="true"
                       Margin="0,20,0,0"
                       Width="3" />
@@ -192,15 +253,22 @@
 
 
                 <Border Grid.Row="0"
-                        Background="#AA111111"
                         VerticalAlignment="Top"
-                        Margin="0,0,10,0"
-                        Padding="0,0,0,0"
-                        HorizontalAlignment="Right"
+                        Margin="0,0,0,10"
+                        Padding="10 2 10 2"
+                        HorizontalAlignment="Center"
                         Style="{StaticResource parentBorder}">
                     <StackPanel Orientation="Horizontal">
+
+                        <ToggleButton Style="{StaticResource CustomToggleButton}" IsChecked="{Binding PainterManager.IsRendering}"/>
+                        
+                        <Separator BorderThickness="0.5"
+                                   Margin="10 0 10 0"
+                                   BorderBrush="{StaticResource MidCustomColorBrush}"
+                                   Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
+                        
                         <StackPanel Orientation="Horizontal"
-                                    Margin="10 0 10 0"
+                                    Margin="0"
                             DataContext="{Binding PainterManager.CameraViewModel}">
                             <Button Content="Fit"
                                     Command="{Binding CameraFitObjectCommand}"
@@ -215,9 +283,14 @@
                                           IsChecked="{Binding IsOrthographicView}"
                                           Style="{StaticResource customToggleButtonStyle}" />
                         </StackPanel>
-                       
+                        
+                        <Separator BorderThickness="0.5"
+                                   Margin="10 0 10 0"
+                                   BorderBrush="{StaticResource MidCustomColorBrush}"
+                                   Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
+                        
                         <StackPanel Orientation="Horizontal"
-                                    Margin="10 0 10 0"
+                                    Margin="0"
                                     DataContext="{Binding PainterManager.CameraViewModel}">
                             <Button Content="xy"
                                     Command="{Binding CameraViewXYCommand}"
@@ -234,9 +307,13 @@
                                     Style="{StaticResource customButtonStyle}" />
 
                         </StackPanel>
-
+                        
+                        <Separator BorderThickness="0.5"
+                                   Margin="10 0 10 0"
+                                   BorderBrush="{StaticResource MidCustomColorBrush}"
+                                   Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
+                        
                         <StackPanel Orientation="Vertical"
-                                    Margin="10,0,10,0"
                                     VerticalAlignment="Bottom"
                                     DataContext="{Binding PainterManager.GridLayer}">
                             <TextBlock Text="{Binding GridSpacing, StringFormat={}{0:0.0} um}"
@@ -291,7 +368,7 @@
                           Grid.ColumnSpan="5"
                           HorizontalAlignment="Stretch"
                           VerticalAlignment="Bottom"
-                          Background="{StaticResource MidBackgroundColorBrush}"
+                          Background="Transparent"
                           ShowsPreview="true"
                           Height="5"
                           Margin="15,0,10,0" />
@@ -299,7 +376,6 @@
 
             <Border Grid.Row="1"
                     Margin="15,0,10,0"
-                    Background="{StaticResource MidBackgroundColorBrush}"
                     Style="{StaticResource parentBorder}">
                 <Grid>
                     <Grid.RowDefinitions>

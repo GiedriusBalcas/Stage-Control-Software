@@ -16,7 +16,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Border Grid.Row="0"
-                Background="{StaticResource MidBackgroundColorBrush}"
+                Background="{StaticResource DarkCustomColorBrush}"
                 Margin="5"
                 Padding="8"
                 BorderBrush="AliceBlue"
@@ -26,7 +26,7 @@
             <Label Content="User configuration properties" />
         </Border>
         <Border Grid.Row="1"
-                Background="{StaticResource MidBackgroundColorBrush}"
+                Background="{StaticResource DarkCustomColorBrush}"
                 Margin="5"
                 Padding="8"
                 BorderBrush="AliceBlue"

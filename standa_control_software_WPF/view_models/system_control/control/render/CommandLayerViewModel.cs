@@ -86,9 +86,9 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
                 await commandManager_virtual.TryExecuteCommandLine(commandLine);
 
                 // Only every 10th line:
-                if (counter % 10 == 0)
+                if (counter % 100 == 0)
                 {
-                    InitializeCollections();
+                    //InitializeCollections();
                     await Task.Delay(1);
                 }
             }

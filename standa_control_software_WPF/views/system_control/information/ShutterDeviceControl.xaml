@@ -8,10 +8,7 @@
              d:DesignHeight="450"
              d:DesignWidth="800">
 
-    <Border Background="{StaticResource MidBackgroundColorBrush}"
-            BorderBrush="AliceBlue"
-            BorderThickness="0"
-            Margin="10,10"
+    <Border Margin="10,10"
             Padding="10,10"
             Style="{StaticResource parentBorder}"
             Width="auto">

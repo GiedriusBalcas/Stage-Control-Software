@@ -34,17 +34,17 @@ namespace standa_control_software_WPF.views.system_control.information
             var oxyColorMid = OxyColors.Gray;
             var oxyColorLight = OxyColors.LightGray;
             var oxyColorWhite = OxyColors.White;
-            if (Application.Current.Resources["DarkBackgroundColorBrush"] is SolidColorBrush darkBrush)
+            if (Application.Current.Resources["MidCustomColorBrush"] is SolidColorBrush darkBrush)
             {
                 var wpfColor = darkBrush.Color;
                 oxyColorDark = OxyColor.FromArgb(wpfColor.A, wpfColor.R, wpfColor.G, wpfColor.B);
             }
-            if (Application.Current.Resources["MidBackgroundColorBrush"] is SolidColorBrush midBrush)
+            if (Application.Current.Resources["DarkCustomColorBrush"] is SolidColorBrush midBrush)
             {
                 var wpfColor = midBrush.Color;
                 oxyColorMid = OxyColor.FromArgb(wpfColor.A, wpfColor.R, wpfColor.G, wpfColor.B);
             }
-            if (Application.Current.Resources["LightBackgroundColorBrush"] is SolidColorBrush lightBrush)
+            if (Application.Current.Resources["LightCustomColorBrush"] is SolidColorBrush lightBrush)
             {
                 var wpfColor = lightBrush.Color;
                 oxyColorLight = OxyColor.FromArgb(wpfColor.A, wpfColor.R, wpfColor.G, wpfColor.B);

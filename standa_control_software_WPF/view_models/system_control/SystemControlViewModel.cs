@@ -136,6 +136,20 @@ namespace standa_control_software_WPF.view_models.system_control
             }
         }
 
+        private string _currentStateMessage = "Idle";
+        public string CurrentStateMessage
+        {
+            get => _currentStateMessage;
+            set
+            {
+                if(value != _currentStateMessage)
+                {
+                    _currentStateMessage = value;
+                    OnPropertyChanged(nameof(CurrentStateMessage));
+                }
+            }
+        }
+
 
         private bool _isAllowedOutOfBounds;
         public bool IsAllowedOutOfBounds
@@ -172,7 +186,7 @@ namespace standa_control_software_WPF.view_models.system_control
             CancelCommandQueueParsing = new RelayCommand(ExecuteCancelCommandParsing);
 
             ExecuteCommandQueueCommand = new RelayCommand(async () => await ExecuteCommandsQueueAsync(), CanExecuteCommandQueue);
-            ForceStopCommand = new RelayCommand(async() => await ForceStop());
+            ForceStopCommand = new RelayCommand(async() => await ExecuteForceStopCommand());
 
             ClearOutputMessageCommand = new RelayCommand(() => OutputMessage = "");
             
@@ -187,11 +201,19 @@ namespace standa_control_software_WPF.view_models.system_control
 
             if (isOutOfBounds)
             {
+
                 if (!IsAllowedOutOfBounds)
-                    await ForceStop("Tool Out of Bounds Deteced. ");
+                {
+                    CurrentStateMessage = "Out of Bounds";
+
+                    await ForceStop();
+                    CurrentStateMessage = "Out of Bounds";
+
+                }
             }
             else
             {
+                CurrentStateMessage = "Idle";
                 IsAllowedOutOfBounds = false;
             }
 
@@ -276,15 +298,18 @@ namespace standa_control_software_WPF.view_models.system_control
             return true;
         }
 
-        
 
-        private async Task ForceStop(string message = "")
+
+        private async Task ForceStop()
         {
-            ParsingStatusMessage = $"{message}Stop Command Initiated";
-
             await _commandManager.Stop();
+        }
+        private async Task ExecuteForceStopCommand()
+        {
+            CurrentStateMessage = "Stoppping";
+            await ForceStop();
+            CurrentStateMessage = "Idle";
 
-            ParsingStatusMessage = $"{message}Stop Command Completed";
         }
 
 
@@ -306,6 +331,7 @@ namespace standa_control_software_WPF.view_models.system_control
 
             if (_commandManager.CurrentState != CommandManagerState.Processing)
             {
+                CurrentStateMessage = "Executing Commands";
                 _commandManager.ClearQueue();
                 foreach (var commandLine in _functionDefinitionLibrary.ExtractCommands())
                 {
@@ -315,8 +341,8 @@ namespace standa_control_software_WPF.view_models.system_control
                 SaveCommandLog();
 
                 await Task.Run(() => _commandManager.ProcessQueue());
-                OutputMessage += $"\nDone Executing.";
-                
+                OutputMessage += $"\nExecution of commands finalized.";
+                CurrentStateMessage = "Idle";
             }
 
         }
@@ -326,6 +352,7 @@ namespace standa_control_software_WPF.view_models.system_control
         {
             try
             {
+                CurrentStateMessage = "Parsing Text";
                 // Prepare for parse
                 _parsingCts = new CancellationTokenSource();
                 IsParsing = true;
@@ -354,12 +381,11 @@ namespace standa_control_software_WPF.view_models.system_control
                 var allocatedTime_s = commandList.Sum(cmdLine => cmdLine.Max(cmd => cmd.EstimatedTime));
                 _allocatedTime = TimeSpan.FromSeconds(allocatedTime_s);
 
-                OutputMessage += $"\nParsed successfully. Rendering.\n";
+                OutputMessage += $"\nParsed successfully. Estimated time: {_allocatedTime.ToString("hh':'mm':'ss")}";
 
+                CurrentStateMessage = "Rendering Commands";
                 await PainterManager.PaintCommandQueue(commandList);
                 
-                OutputMessage += $"\nParsed successfully. Estimated time: {_allocatedTime.ToString("hh':'mm':'ss")}\n";
-
                 ParsingStatusMessage = $"Estimated time: {_allocatedTime.ToString("hh':'mm':'ss")}";
             }
             catch (OperationCanceledException)
@@ -379,6 +405,7 @@ namespace standa_control_software_WPF.view_models.system_control
             finally
             {
                 IsParsing = false;
+                CurrentStateMessage = "Idle";
                 ((RelayCommand)ExecuteCommandQueueCommand).RaiseCanExecuteChanged();
             }
         }

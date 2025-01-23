@@ -30,6 +30,19 @@ namespace standa_control_software_WPF.view_models.system_control.control
         public GridLayerViewModel GridLayer { get; private set; }
         public OrientationArrowsLayerViewModel OrientationLayer { get; private set; }
 
+        private bool _isRendering = true;
+
+        public bool IsRendering
+        {
+            get { return _isRendering; }
+            set 
+            { 
+                _isRendering = value; 
+                OnPropertyChanged(nameof(IsRendering));
+            }
+        }
+
+
         public PainterManagerViewModel(ControllerManager controllerManager, CommandManager commandManager, ILoggerFactory loggerFactory)
         {
             //CameraViewModel = new CameraViewModel(_painterManager, _controllerManager);
@@ -92,10 +105,13 @@ namespace standa_control_software_WPF.view_models.system_control.control
 
         public void DrawFrame()
         {
-            foreach (var layer in RenderLayers)
+            if (IsRendering)
             {
-                layer.UpdateUniforms();
-                layer.DrawLayer();
+                foreach (var layer in RenderLayers)
+                {
+                    layer.UpdateUniforms();
+                    layer.DrawLayer();
+                }
             }
         }
     }

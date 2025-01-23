@@ -14,9 +14,7 @@
     </UserControl.Resources>
     
 
-    <Border Background="{StaticResource MidBackgroundColorBrush}"
-            BorderBrush="AliceBlue"
-            BorderThickness="0"
+    <Border 
             Margin="10,10"
             Padding="10,10"
             Style="{StaticResource parentBorder}"

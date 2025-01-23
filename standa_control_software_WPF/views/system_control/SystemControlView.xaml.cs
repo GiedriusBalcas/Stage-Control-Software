@@ -65,7 +65,7 @@ namespace standa_control_software_WPF.views.system_control
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
 
-            if (System.Windows.Application.Current.Resources["DarkBackgroundColorBrush"] is SolidColorBrush darkBrush)
+            if (System.Windows.Application.Current.Resources["MidCustomColorBrush"] is SolidColorBrush darkBrush)
             {
                 var wpfColor = darkBrush.Color;
                 _backgroundColor = new Color4(wpfColor.R / 255f, wpfColor.G / 255f, wpfColor.B / 255f, 1);
@@ -136,8 +136,8 @@ namespace standa_control_software_WPF.views.system_control
                 float dx = (float)(pos.X - _lastPos.X);
                 float dy = (float)(pos.Y - _lastPos.Y);
 
-                _cameraViewModel.Yaw += dx;
-                _cameraViewModel.Pitch += dy;
+                _cameraViewModel.Yaw += dx * 0.1f;
+                _cameraViewModel.Pitch += dy * 0.1f;
             }
 
             else if (e.Button == MouseButtons.Right)

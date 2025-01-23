@@ -11,6 +11,7 @@ using System.Windows;
 using System;
 using Microsoft.Extensions.Logging;
 using standa_control_software_WPF.view_models.logging;
+using standa_control_software_WPF.views.system_control;
 
 namespace standa_control_software_WPF
 {

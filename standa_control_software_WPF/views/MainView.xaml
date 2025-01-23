@@ -11,7 +11,7 @@
 
 
 
-    <Grid Background="{StaticResource DarkBackgroundColorBrush}">
+    <Grid Background="{StaticResource MidCustomColorBrush}">
         <Grid.Resources>
             <DataTemplate DataType="{x:Type vms:ConfigurationCreationViewModel}">
                 <views:ConfigurationCreationView/>

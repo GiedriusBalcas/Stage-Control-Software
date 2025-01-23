@@ -3,21 +3,21 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:standa_control_software_WPF">
     <Application.Resources>
-        <Color x:Key="DarkBackgroundColor">#303030</Color>
+        <Color x:Key="MidCustomColor">#303030</Color>
         <Color x:Key="AccenColor">#2892D7</Color>
-        <Color x:Key="MidBackgroundColor">#111111</Color>
-        <Color x:Key="LightBackgroundColor">#7A8B99</Color>
+        <Color x:Key="DarkCustomColor">#191919</Color>
+        <Color x:Key="LightCustomColor">#7A8B99</Color>
         <Color x:Key="FontColor">#FEFCFB</Color>
         <Color x:Key="FontColorDisabled">#aaaaaa</Color>
         <!-- Define SolidColorBrush resources to use these colors easily in XAML -->
-        <SolidColorBrush x:Key="DarkBackgroundColorBrush"
-                         Color="{StaticResource DarkBackgroundColor}" />
+        <SolidColorBrush x:Key="MidCustomColorBrush"
+                         Color="{StaticResource MidCustomColor}" />
         <SolidColorBrush x:Key="AccentColorBrush"
                          Color="{StaticResource AccenColor}" />
-        <SolidColorBrush x:Key="MidBackgroundColorBrush"
-                         Color="{StaticResource MidBackgroundColor}" />
-        <SolidColorBrush x:Key="LightBackgroundColorBrush"
-                         Color="{StaticResource LightBackgroundColor}" />
+        <SolidColorBrush x:Key="DarkCustomColorBrush"
+                         Color="{StaticResource DarkCustomColor}" />
+        <SolidColorBrush x:Key="LightCustomColorBrush"
+                         Color="{StaticResource LightCustomColor}" />
         <SolidColorBrush x:Key="FontColorBrush"
                          Color="{StaticResource FontColor}" />
         <SolidColorBrush x:Key="FontColorDisabledBrush"
@@ -127,22 +127,73 @@ c 1.14398,0 2.071301,-0.927321 2.071301,-2.0713 0,-1.14398 -0.927321,-2.071301 -
 z" />
 
 
-        <Style TargetType="Border"
-               x:Key="parentBorder">
-            <Setter Property="Effect">
+        <Style  x:Key="CustomToggleButton" TargetType="ToggleButton">
+
+            <Setter Property="MaxHeight"
+                    Value="15" />
+            <Setter Property="MaxWidth"
+                    Value="20" />
+            <Setter Property="MinHeight"
+                    Value="18" />
+            <Setter Property="MinWidth"
+                    Value="35" />
+
+            <Setter Property="Template">
+
+
                 <Setter.Value>
-                    <DropShadowEffect Color="{StaticResource DarkBackgroundColor}"
-                                      Direction="-45"
-                                      ShadowDepth="3"
-                                      Opacity="1"
-                                      BlurRadius="10" />
+                    <ControlTemplate TargetType ="ToggleButton">
+                        <Border x:Name="bk"
+                                Background="#FFD1D1D1"
+                                CornerRadius="10">
+                            <Ellipse x:Name="ep"
+                                     Fill="{StaticResource MidCustomColorBrush}"
+                                     HorizontalAlignment="Left"
+                                     Margin="1"
+                                     Width="16"></Ellipse>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked"
+                                     Value="true">
+                                <Setter TargetName="ep"
+                                        Property="HorizontalAlignment"
+                                        Value="Right" />
+                                <Setter Property="Background"
+                                        TargetName="bk"
+                                        Value="{StaticResource AccentColorBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+
+                    </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
 
+
+        <Style TargetType="Border"
+               x:Key="parentBorder">
+
+            <Setter Property="BorderBrush"
+                    Value="{StaticResource LightCustomColorBrush}" />
+            <Setter Property="BorderThickness"
+                    Value="0.5" />
+            <Setter Property="Background" 
+                    Value="{StaticResource DarkCustomColorBrush}"/>
+
+            <!--<Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="{StaticResource MidCustomColor}"
+                                      Direction="-45"
+                                      ShadowDepth="5"
+                                      Opacity="1"
+                                      BlurRadius="10" />
+                </Setter.Value>
+            </Setter>-->
+        </Style>
+
         <Style TargetType="ComboBoxItem">
             <Setter Property="Background"
-                    Value="{StaticResource MidBackgroundColorBrush}" />
+                    Value="{StaticResource DarkCustomColorBrush}" />
             <Setter Property="Foreground"
                     Value="{StaticResource FontColorBrush}" />
             <Setter Property="BorderBrush"
@@ -169,11 +220,11 @@ z" />
                 </Grid.ColumnDefinitions>
                 <Border x:Name="Border"
                         Grid.ColumnSpan="2"
-                        Background="{StaticResource MidBackgroundColorBrush}"
-                        BorderBrush="{StaticResource LightBackgroundColorBrush}"
+                        Background="{StaticResource DarkCustomColorBrush}"
+                        BorderBrush="{StaticResource LightCustomColorBrush}"
                         BorderThickness="1" />
                 <Border Grid.Column="1"
-                        Background="{StaticResource MidBackgroundColorBrush}"
+                        Background="{StaticResource DarkCustomColorBrush}"
                         Margin="1" />
                 <Path x:Name="Arrow"
                       Grid.Column="1"
@@ -187,7 +238,7 @@ z" />
                          Value="true">
                     <Setter TargetName="Border"
                             Property="Background"
-                            Value="{StaticResource MidBackgroundColorBrush}" />
+                            Value="{StaticResource DarkCustomColorBrush}" />
                 </Trigger>
                 <Trigger Property="IsPressed"
                          Value="true">
@@ -259,7 +310,7 @@ z" />
                           MinWidth="{TemplateBinding ActualWidth}"
                           MaxHeight="{TemplateBinding MaxDropDownHeight}">
                         <Border x:Name="DropDownBorder"
-                                Background="{StaticResource MidBackgroundColorBrush}"
+                                Background="{StaticResource DarkCustomColorBrush}"
                                 BorderThickness="0.5"
                                 BorderBrush="{StaticResource FontColorBrush}" />
                         <ScrollViewer Margin="4,6,4,6"
@@ -287,7 +338,7 @@ z" />
                          Value="False">
                     <!-- Force background/foreground for disabled combobox -->
                     <Setter Property="Background"
-                            Value="{StaticResource DarkBackgroundColorBrush}" />
+                            Value="{StaticResource MidCustomColorBrush}" />
                     <Setter Property="Foreground"
                             Value="{StaticResource FontColorDisabledBrush}" />
                 </Trigger>
@@ -296,11 +347,11 @@ z" />
 
         <Style TargetType="GridViewColumnHeader">
             <Setter Property="Background"
-                    Value="{StaticResource MidBackgroundColorBrush}" />
+                    Value="{StaticResource DarkCustomColorBrush}" />
             <Setter Property="Foreground"
                     Value="{StaticResource FontColorBrush}" />
             <Setter Property="BorderBrush"
-                    Value="{StaticResource LightBackgroundColorBrush}" />
+                    Value="{StaticResource LightCustomColorBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type GridViewColumnHeader}">
@@ -325,7 +376,7 @@ z" />
                 <Trigger Property="IsEnabled"
                          Value="false">
                     <Setter Property="Background"
-                            Value="{StaticResource DarkBackgroundColorBrush}" />
+                            Value="{StaticResource MidCustomColorBrush}" />
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -334,7 +385,7 @@ z" />
             
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="Background" Value="{StaticResource MidBackgroundColorBrush}"/>
+            <Setter Property="Background" Value="{StaticResource DarkCustomColorBrush}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type ListView}">
@@ -368,7 +419,7 @@ z" />
             <Setter Property="BorderBrush"
                     Value="Transparent" />
             <Setter Property="Background"
-                    Value="{StaticResource MidBackgroundColorBrush}" />
+                    Value="{StaticResource DarkCustomColorBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListView">
@@ -392,7 +443,7 @@ z" />
                                      Value="false">
                                 <Setter Property="Background"
                                         TargetName="Bd"
-                                        Value="{StaticResource DarkBackgroundColorBrush}" />
+                                        Value="{StaticResource MidCustomColorBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -434,7 +485,7 @@ z" />
                     <Setter Property="Background"
                             Value="{StaticResource AccentColorBrush}" />
                     <Setter Property="BorderBrush"
-                            Value="{StaticResource LightBackgroundColorBrush}" />
+                            Value="{StaticResource LightCustomColorBrush}" />
                     <Setter Property="BorderThickness"
                             Value="0.5" />
                 </Trigger>
@@ -444,14 +495,14 @@ z" />
                             Value="Transparent" />
 
                     <Setter Property="BorderBrush"
-                            Value="{StaticResource LightBackgroundColorBrush}" />
+                            Value="{StaticResource LightCustomColorBrush}" />
                     <Setter Property="BorderThickness"
                             Value="0.5" />
                 </Trigger>
                 <Trigger Property="IsEnabled"
                          Value="false">
                     <Setter Property="Background"
-                            Value="{StaticResource DarkBackgroundColorBrush}" />
+                            Value="{StaticResource MidCustomColorBrush}" />
                     <Setter Property="Opacity"
                             Value="1" />
                 </Trigger>
@@ -460,11 +511,11 @@ z" />
 
         <!--<Style TargetType="TextBox">
             <Setter Property="Background"
-                    Value="{StaticResource MidBackgroundColorBrush}" />
+                    Value="{StaticResource DarkCustomColorBrush}" />
             <Setter Property="Foreground"
                     Value="{StaticResource FontColorBrush}" />
             <Setter Property="BorderBrush"
-                    Value="{StaticResource LightBackgroundColorBrush}" />
+                    Value="{StaticResource LightCustomColorBrush}" />
             <Setter Property="BorderThickness"
                     Value="0.5" />
             <Setter Property="TextAlignment"
@@ -474,9 +525,9 @@ z" />
 
         <Style TargetType="TextBox">
             <Setter Property="Background"
-                    Value="{StaticResource MidBackgroundColorBrush}" />
+                    Value="{StaticResource DarkCustomColorBrush}" />
             <Setter Property="BorderBrush"
-                    Value="{StaticResource LightBackgroundColorBrush}" />
+                    Value="{StaticResource LightCustomColorBrush}" />
             <Setter Property="BorderThickness"
                     Value="0.5" />
             <Setter Property="Foreground"
@@ -496,13 +547,13 @@ z" />
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsEnabled"
                                      Value="False">
-                                <Setter Value="{StaticResource MidBackgroundColorBrush}"
+                                <Setter Value="{StaticResource DarkCustomColorBrush}"
                                         Property="Background" />
                                 <Setter Value="{StaticResource FontColorBrush}"
                                         Property="Foreground" />
                                 <Setter TargetName="PART_ContentHost"
                                         Property="Background"
-                                        Value="{StaticResource MidBackgroundColorBrush}" />
+                                        Value="{StaticResource DarkCustomColorBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -526,7 +577,7 @@ z" />
             <Setter Property="Margin"
                     Value="3,0" />
             <Setter Property="Background"
-                    Value="{StaticResource MidBackgroundColorBrush}" />
+                    Value="{StaticResource DarkCustomColorBrush}" />
             <Setter Property="Foreground"
                     Value="Red" />
             <Setter Property="Padding"
@@ -542,7 +593,7 @@ z" />
                         <Border Name="border"
                                 BorderThickness="2,0,2,0"
                                 Padding="4,2"
-                                BorderBrush="{StaticResource LightBackgroundColorBrush}"
+                                BorderBrush="{StaticResource LightCustomColorBrush}"
                                 CornerRadius="0"
                                 Background="{TemplateBinding Background}">
                             <ContentPresenter HorizontalAlignment="Center"
@@ -582,7 +633,7 @@ z" />
 
         <Style TargetType="ListBoxItem">
             <Setter Property="Background"
-                    Value="{StaticResource MidBackgroundColorBrush}" />
+                    Value="{StaticResource DarkCustomColorBrush}" />
             <Setter Property="Foreground"
                     Value="{StaticResource FontColorBrush}" />
             <Setter Property="BorderThickness"
@@ -610,7 +661,7 @@ z" />
                             <Trigger Property="IsSelected"
                                      Value="True">
                                 <Setter Property="Background"
-                                        Value="{StaticResource DarkBackgroundColorBrush}" />
+                                        Value="{StaticResource MidCustomColorBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -624,7 +675,7 @@ z" />
             <Setter Property="Margin"
                     Value="3,0" />
             <Setter Property="Background"
-                    Value="{StaticResource MidBackgroundColorBrush}" />
+                    Value="{StaticResource DarkCustomColorBrush}" />
             <Setter Property="Foreground"
                     Value="Red" />
             <Setter Property="Padding"
@@ -637,7 +688,7 @@ z" />
                         <Border Name="border"
                                 BorderThickness="2,0,2,0"
                                 Padding="4,2"
-                                BorderBrush="{StaticResource LightBackgroundColorBrush}"
+                                BorderBrush="{StaticResource LightCustomColorBrush}"
                                 CornerRadius="0"
                                 Background="{TemplateBinding Background}">
                             <ContentPresenter HorizontalAlignment="Center"
@@ -667,7 +718,7 @@ z" />
             <Setter Property="Margin"
                     Value="3,0" />
             <Setter Property="Background"
-                    Value="{StaticResource MidBackgroundColorBrush}" />
+                    Value="{StaticResource DarkCustomColorBrush}" />
             <Setter Property="Foreground"
                     Value="Red" />
             <Setter Property="Padding"
@@ -683,7 +734,7 @@ z" />
                         <Border Name="border"
                                 BorderThickness="0,0,0,0"
                                 Padding="4,2"
-                                BorderBrush="{StaticResource LightBackgroundColorBrush}"
+                                BorderBrush="{StaticResource LightCustomColorBrush}"
                                 CornerRadius="0"
                                 Background="{TemplateBinding Background}">
                             <ContentPresenter HorizontalAlignment="Center"
@@ -710,17 +761,17 @@ z" />
 
         <ItemsPanelTemplate x:Key="MenuTPL">
             <StackPanel Margin="-10,0,0,-1"
-                        Background="{StaticResource MidBackgroundColorBrush}" />
+                        Background="{StaticResource DarkCustomColorBrush}" />
         </ItemsPanelTemplate>
 
 
         <Style TargetType="ContextMenu">
             <Setter Property="Background"
-                    Value="{StaticResource MidBackgroundColorBrush}" />
+                    Value="{StaticResource DarkCustomColorBrush}" />
             <Setter Property="Foreground"
-                    Value="{StaticResource MidBackgroundColorBrush}" />
+                    Value="{StaticResource DarkCustomColorBrush}" />
             <Setter Property="BorderBrush"
-                    Value="{StaticResource MidBackgroundColorBrush}" />
+                    Value="{StaticResource DarkCustomColorBrush}" />
             <Setter Property="ItemsPanel"
                     Value="{StaticResource MenuTPL}" />
             <Setter Property="BorderThickness"
@@ -735,7 +786,7 @@ z" />
                     Value="False" />
             <Setter Property="Foreground">
                 <Setter.Value>
-                    <SolidColorBrush Color="{Binding Color, Source={StaticResource LightBackgroundColorBrush}}"
+                    <SolidColorBrush Color="{Binding Color, Source={StaticResource LightCustomColorBrush}}"
                                      Opacity="0.5" />
                 </Setter.Value>
             </Setter>
@@ -788,7 +839,7 @@ z" />
                                      Value="True">
                                 <Setter TargetName="Thumb"
                                         Property="Background"
-                                        Value="{StaticResource LightBackgroundColorBrush}" />
+                                        Value="{StaticResource LightCustomColorBrush}" />
                             </Trigger>
                             <Trigger SourceName="Thumb"
                                      Property="IsDragging"

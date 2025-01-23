@@ -126,7 +126,7 @@
                                 <Trigger Property="IsMouseOver"
                                          Value="True">
                                     <Setter Property="Background"
-                                            Value="{StaticResource MidBackgroundColorBrush}" />
+                                            Value="{StaticResource DarkCustomColorBrush}" />
                                     <Setter Property="Foreground"
                                             Value="Black" />
                                 </Trigger>
@@ -197,7 +197,7 @@
                                            Margin="5,0"
                                            Foreground="{StaticResource AccentColorBrush}" />
                                 <TextBlock Text="{Binding SelectedControllerType}"
-                                           Foreground="{StaticResource LightBackgroundColorBrush}"
+                                           Foreground="{StaticResource LightCustomColorBrush}"
                                            FontSize="10"
                                            VerticalAlignment="Center" />
                             </StackPanel>
@@ -226,7 +226,7 @@
                                            Margin="5,0"
                                            Foreground="{StaticResource AccentColorBrush}" />
                                 <TextBlock Text="{Binding SelectedDeviceType}"
-                                           Foreground="{StaticResource LightBackgroundColorBrush}"
+                                           Foreground="{StaticResource LightCustomColorBrush}"
                                            FontSize="10"
                                            VerticalAlignment="Center" />
                             </StackPanel>
