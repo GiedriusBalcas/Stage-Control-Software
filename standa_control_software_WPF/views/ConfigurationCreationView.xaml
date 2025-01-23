@@ -197,7 +197,7 @@
                                            Margin="5,0"
                                            Foreground="{StaticResource AccentColorBrush}" />
                                 <TextBlock Text="{Binding SelectedControllerType}"
-                                           Foreground="{StaticResource LightCustomColorBrush}"
+                                           Foreground="{StaticResource FontColorDisabledBrush}"
                                            FontSize="10"
                                            VerticalAlignment="Center" />
                             </StackPanel>
@@ -226,7 +226,7 @@
                                            Margin="5,0"
                                            Foreground="{StaticResource AccentColorBrush}" />
                                 <TextBlock Text="{Binding SelectedDeviceType}"
-                                           Foreground="{StaticResource LightCustomColorBrush}"
+                                           Foreground="{StaticResource FontColorDisabledBrush}"
                                            FontSize="10"
                                            VerticalAlignment="Center" />
                             </StackPanel>

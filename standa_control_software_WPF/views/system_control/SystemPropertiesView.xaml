@@ -12,7 +12,6 @@
              d:DesignHeight="450"
              d:DesignWidth="800">
 
-
     <UserControl.Resources>
 
         <x:Array x:Key="LowercaseAlphabet"
@@ -60,144 +59,131 @@
                                                  CustomFieldTemplate="{StaticResource CustomFieldTemplate}" />
     </UserControl.Resources>
 
-
-
     <Grid Background="Transparent">
         <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="10" />
             <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="auto" />
-            <ColumnDefinition Width="auto" />
-            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="10" />
         </Grid.ColumnDefinitions>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
 
+        <!-- Nested Grid for Proportional Spacing -->
+        <Grid Grid.Column="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*" />
+                <!-- Left Spacer -->
+                <ColumnDefinition Width="Auto" />
+                <!-- Content -->
+                <ColumnDefinition Width="3*" />
+                <!-- Right Spacer -->
+            </Grid.ColumnDefinitions>
 
+            <!-- StackPanel Content in the Middle Column -->
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
 
-        <StackPanel Grid.Column="1"
-                    Grid.Row="1"
-                    VerticalAlignment="Top"
-                    Margin="0,100,0,0">
+                <!-- Left Border and Its Content -->
+                <Border Padding="0,0"
+                        Style="{StaticResource parentBorder}"
+                        VerticalAlignment="Center">
+                    <StackPanel>
+                        <ListView Margin="10"
+                                  Height="Auto"
+                                  ItemsSource="{Binding Devices}"
+                                  SelectedItem="{Binding SelectedDevice}">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Name}"
+                                                   Margin="0,0,10,0"
+                                                   Background="Transparent"
+                                                   FontSize="15"
+                                                   Foreground="White" />
+                                        <TextBlock Text="{Binding IsConnectedText}"
+                                                   Foreground="{StaticResource LightCustomColorBrush}"
+                                                   VerticalAlignment="Bottom" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
 
-            <Border 
-                    Margin="10,10"
-                    Padding="0,0"
-                    Style="{StaticResource parentBorder}">
-                <StackPanel>
-                    <ListView Margin="10"
-                              Height="auto"
-                              ItemsSource="{Binding Devices}"
-                              SelectedItem="{Binding SelectedDevice}">
-                        <ListView.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding Name}"
-                                               Margin="0,0,10,0"
-                                               Background="Transparent"
-                                               FontSize="15"
-                                               Foreground="White" />
-                                    <TextBlock Text="{Binding IsConnectedText}"
-                                               Foreground="{StaticResource LightCustomColorBrush}"
-                                               VerticalAlignment="Bottom" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListView.ItemTemplate>
-                    </ListView>
-
-                    <Button Content="Connect All"
-                            Margin="20,10"
-                            Command="{Binding ConnectAllCommand}"
-                            Style="{StaticResource customButtonStyle}" />
-                </StackPanel>
-            </Border>
-        </StackPanel>
-
-        <Grid Grid.Column="2"
-              Grid.Row="1"
-              Margin="0,5,50,0"
-              MaxWidth="800">
-            <Grid 
-                        
-                        DataContext="{Binding }">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                
-                <Border Grid.Row="0"
-                        Margin="10,10"
-                        Padding="10"
-                        Style="{StaticResource parentBorder}">
-                    <StackPanel Orientation="Vertical">
-                        <StackPanel Orientation="Horizontal">
-                            <Label Content="Device Type: " />
-                            <TextBlock Text="{Binding SelectedDevice.DeviceType}"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <Label Content="Controller: " />
-                            <TextBlock Text="{Binding SelectedDevice.DeviceControllerName}"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal"
-                                    Margin="0,10,0,0">
-                            <Button HorizontalAlignment="Left"
-                                    Content="Connect"
-                                    Command="{Binding ConnectCommand}"
-                                    Style="{StaticResource customButtonStyle}" />
-                        </StackPanel>
+                        <Button Content="Connect All"
+                                Margin="20,10"
+                                Command="{Binding ConnectAllCommand}"
+                                Style="{StaticResource customButtonStyle}" />
                     </StackPanel>
                 </Border>
 
-                <Border Grid.Row="1"
-                        Margin="10,10"
-                        Padding="10"
-                        Style="{StaticResource parentBorder}">
-                    
+                <!-- Spacer Between Border and Grid Content (Optional) -->
+                <Border Width="20" />
+                <!-- Adjust as needed -->
 
+                <!-- Grid Content -->
+                <Grid DataContext="{Binding }">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
 
+                    <!-- Device Information Border -->
+                    <Border Grid.Row="0"
+                            Margin="10,10"
+                            Padding="10"
+                            Style="{StaticResource parentBorder}">
+                        <StackPanel Orientation="Vertical">
+                            <StackPanel Orientation="Horizontal">
+                                <Label Content="Device Type: " />
+                                <TextBlock Text="{Binding SelectedDevice.DeviceType}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Label Content="Controller: " />
+                                <TextBlock Text="{Binding SelectedDevice.DeviceControllerName}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal"
+                                        Margin="0,10,0,0">
+                                <Button HorizontalAlignment="Left"
+                                        Content="Connect"
+                                        Command="{Binding ConnectCommand}"
+                                        Style="{StaticResource customButtonStyle}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
 
+                    <!-- Device Properties Border -->
+                    <Border Grid.Row="1"
+                            Margin="10,10"
+                            Padding="10"
+                            Style="{StaticResource parentBorder}">
                         <ListView ItemsSource="{Binding DeviceProperties}"
                                   HorizontalAlignment="Stretch"
                                   VerticalAlignment="Stretch"
                                   ItemContainerStyle="{StaticResource butcheredLisViewItems}">
-
                             <ListView.View>
                                 <GridView>
                                     <GridViewColumn Header="Property Name"
                                                     DisplayMemberBinding="{Binding PropertyName}"
-                                                    Width="300" />
+                                                    Width="150" />
                                     <GridViewColumn Header="Value"
                                                     Width="150">
                                         <GridViewColumn.CellTemplate>
                                             <DataTemplate>
                                                 <ContentPresenter Content="{Binding}"
-                                                                  Width="auto"
-                                                                  MinWidth="0"
+                                                                  Width="Auto"
+                                                                  MinWidth="125"
                                                                   IsEnabled="{Binding isDynamic}"
                                                                   ContentTemplateSelector="{StaticResource PropertyDataTemplateSelector}" />
-                                            </DataTemplate>
-                                        </GridViewColumn.CellTemplate>
-                                    </GridViewColumn>
-                                    <GridViewColumn Header="Error Message"
-                                                    Width="300">
-                                        <GridViewColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding PropertyMessage}"
-                                                           TextWrapping="Wrap" />
-                                                <!-- You can adjust the width as needed -->
                                             </DataTemplate>
                                         </GridViewColumn.CellTemplate>
                                     </GridViewColumn>
                                 </GridView>
                             </ListView.View>
                         </ListView>
-                    
-                </Border>
-            </Grid>
-
+                    </Border>
+                </Grid>
+            </StackPanel>
         </Grid>
     </Grid>
 </UserControl>

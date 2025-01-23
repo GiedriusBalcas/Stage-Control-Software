@@ -35,7 +35,7 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
             _lineCollection.AddLine(new Vector3(0, 0, 0), new Vector3(0, 1, 0), new Vector4(0, 1, 0, 1));
             _lineCollection.AddLine(new Vector3(0, 0, 0), new Vector3(0, 0, 1), new Vector4(0, 0, 1, 1));
 
-            _vertexShader = "#version 330 core\r\nlayout (location = 0) in vec3 aPosition;\r\nlayout (location = 1) in vec4 aColor;\r\n\r\nout vec4 vertexColor;\r\n\r\nuniform mat4 view;\r\nuniform mat4 projection;\r\nmat4 translation = mat4(\r\n    1.0, 0.0, 0.0, 0.0, // Column 1\r\n    0.0, 1.0, 0.0, 0.0, // Column 2\r\n    0.0, 0.0, 1.0, 0.0, // Column 3\r\n    -0.9, -0.85, 0.0, 1.0  // Column 4 (Translation)\r\n);\r\n\r\nvoid main()\r\n{\r\n    gl_Position = translation * projection * view * vec4(aPosition, 1.0);\r\n    vertexColor = aColor;\r\n}";
+            _vertexShader = "#version 330 core\r\nlayout (location = 0) in vec3 aPosition;\r\nlayout (location = 1) in vec4 aColor;\r\n\r\nout vec4 vertexColor;\r\n\r\nuniform mat4 view;\r\nuniform mat4 projection;\r\nmat4 translation = mat4(\r\n    1.0, 0.0, 0.0, 0.0, // Column 1\r\n    0.0, 1.0, 0.0, 0.0, // Column 2\r\n    0.0, 0.0, 1.0, 0.0, // Column 3\r\n    0.9, -0.85, 0.0, 1.0  // Column 4 (Translation)\r\n);\r\n\r\nvoid main()\r\n{\r\n    gl_Position = translation * projection * view * vec4(aPosition, 1.0);\r\n    vertexColor = aColor;\r\n}";
             _fragmentShader = "#version 330 core\r\nin vec4 vertexColor;\r\n\r\nout vec4 FragColor;\r\n\r\nvoid main()\r\n{\r\n    FragColor = vertexColor;\r\n}";
 
             _viewUniform = new UniformMatrix4("view", _camera.GetViewMatrix());

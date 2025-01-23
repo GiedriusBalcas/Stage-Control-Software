@@ -16,208 +16,192 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Border Grid.Row="0"
-                Background="{StaticResource DarkCustomColorBrush}"
                 Margin="5"
                 Padding="8"
-                BorderBrush="AliceBlue"
-                BorderThickness="0"
                 Style="{StaticResource parentBorder}">
 
             <Label Content="User configuration properties" />
         </Border>
         <Border Grid.Row="1"
-                Background="{StaticResource DarkCustomColorBrush}"
-                Margin="5"
-                Padding="8"
-                BorderBrush="AliceBlue"
-                BorderThickness="0"
+                Margin="5 0"
+                Padding="8 8 8 8"
                 Style="{StaticResource parentBorder}">
 
             <ScrollViewer VerticalScrollBarVisibility="Auto">
-                
-            <StackPanel Margin="5,20"
-                        Orientation="Vertical"
-                        Grid.IsSharedSizeScope="True">
 
-                <Grid IsEnabled="{Binding IsEnabled}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
-                        <ColumnDefinition SharedSizeGroup="PropertySpacerGroup"
-                                          Width="30" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Label Grid.Column="0"
-                           VerticalAlignment="Center"
-                           Content="Name:" />
-                    <TextBox Grid.Column="2"
-                             VerticalAlignment="Center"
-                             HorizontalAlignment="Left"
-                             MinWidth="200"
-                             Width="auto"
-                             Text="{Binding Name, UpdateSourceTrigger=LostFocus}" />
-                </Grid>
+                <StackPanel Margin="0"
+                            Orientation="Vertical"
+                            Grid.IsSharedSizeScope="True">
 
-                <Grid  IsEnabled="{Binding IsEnabled}"
-                       Margin="0,20,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
-                        <ColumnDefinition SharedSizeGroup="PropertySpacerGroup" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Label Grid.Column="0"
-                           VerticalAlignment="Center"
-                           Content="Dependancies for tool position" />
+                    <Grid IsEnabled="{Binding IsEnabled}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
+                            <ColumnDefinition SharedSizeGroup="PropertySpacerGroup"
+                                              Width="30" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Label Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Content="Name:" />
+                        <TextBox Grid.Column="2"
+                                 VerticalAlignment="Center"
+                                 HorizontalAlignment="Left"
+                                 Width="auto"
+                                 Text="{Binding Name, UpdateSourceTrigger=LostFocus}" />
+                    </Grid>
 
-                </Grid>
+                    <Grid  IsEnabled="{Binding IsEnabled}"
+                           Margin="0,20,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
+                            <ColumnDefinition SharedSizeGroup="PropertySpacerGroup" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Label Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Content="Dependancies for tool position" />
 
-                <Grid IsEnabled="{Binding IsEnabled}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
-                        <ColumnDefinition SharedSizeGroup="PropertySpacerGroup" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Label Grid.Column="0"
-                           VerticalAlignment="Center"
-                           Content="X Coordinate:" />
-                    <TextBox Grid.Column="2"
-                             VerticalAlignment="Center"
-                             HorizontalAlignment="Left"
-                             MinWidth="200"
-                             Width="auto"
-                             Text="{Binding XToolDependancy}" />
-                </Grid>
-                <Grid IsEnabled="{Binding IsEnabled}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
-                        <ColumnDefinition SharedSizeGroup="PropertySpacerGroup" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Label Grid.Column="0"
-                           VerticalAlignment="Center"
-                           Content="Y Coordinate:" />
-                    <TextBox Grid.Column="2"
-                             VerticalAlignment="Center"
-                             HorizontalAlignment="Left"
-                             MinWidth="200"
-                             Width="auto"
-                             Text="{Binding YToolDependancy}" />
-                </Grid>
-                <Grid IsEnabled="{Binding IsEnabled}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
-                        <ColumnDefinition SharedSizeGroup="PropertySpacerGroup" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Label Grid.Column="0"
-                           VerticalAlignment="Center"
-                           Content="Z Coordinate:" />
-                    <TextBox Grid.Column="2"
-                             VerticalAlignment="Center"
-                             HorizontalAlignment="Left"
-                             MinWidth="200"
-                             Width="auto"
-                             Text="{Binding ZToolDependancy}" />
-                </Grid>
+                    </Grid>
 
-                <Grid IsEnabled="{Binding IsEnabled}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
-                        <ColumnDefinition SharedSizeGroup="PropertySpacerGroup" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Label Grid.Column="0"
-                           VerticalAlignment="Center"
-                           Content="Minumum X coordinate:" />
-                    <TextBox Grid.Column="2"
-                             VerticalAlignment="Center"
-                             HorizontalAlignment="Left"
-                             MinWidth="200"
-                             Width="auto"
-                             Text="{Binding MinimumPositionX}" />
-                </Grid>
-                <Grid IsEnabled="{Binding IsEnabled}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
-                        <ColumnDefinition SharedSizeGroup="PropertySpacerGroup" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Label Grid.Column="0"
-                           VerticalAlignment="Center"
-                           Content="Maximum X coordinate:" />
-                    <TextBox Grid.Column="2"
-                             VerticalAlignment="Center"
-                             HorizontalAlignment="Left"
-                             MinWidth="200"
-                             Width="auto"
-                             Text="{Binding MaximumPositionX}" />
-                </Grid>
+                    <Grid IsEnabled="{Binding IsEnabled}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
+                            <ColumnDefinition SharedSizeGroup="PropertySpacerGroup" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Label Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Content="X Coordinate:" />
+                        <TextBox Grid.Column="2"
+                                 VerticalAlignment="Center"
+                                 HorizontalAlignment="Left"
+                                 Width="auto"
+                                 Text="{Binding XToolDependancy}" />
+                    </Grid>
+                    <Grid IsEnabled="{Binding IsEnabled}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
+                            <ColumnDefinition SharedSizeGroup="PropertySpacerGroup" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Label Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Content="Y Coordinate:" />
+                        <TextBox Grid.Column="2"
+                                 VerticalAlignment="Center"
+                                 HorizontalAlignment="Left"
+                                 Width="auto"
+                                 Text="{Binding YToolDependancy}" />
+                    </Grid>
+                    <Grid IsEnabled="{Binding IsEnabled}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
+                            <ColumnDefinition SharedSizeGroup="PropertySpacerGroup" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Label Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Content="Z Coordinate:" />
+                        <TextBox Grid.Column="2"
+                                 VerticalAlignment="Center"
+                                 HorizontalAlignment="Left"
+                                 Width="auto"
+                                 Text="{Binding ZToolDependancy}" />
+                    </Grid>
 
-                <Grid IsEnabled="{Binding IsEnabled}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
-                        <ColumnDefinition SharedSizeGroup="PropertySpacerGroup" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Label Grid.Column="0"
-                           VerticalAlignment="Center"
-                           Content="Minumum Y coordinate:" />
-                    <TextBox Grid.Column="2"
-                             VerticalAlignment="Center"
-                             HorizontalAlignment="Left"
-                             MinWidth="200"
-                             Width="auto"
-                             Text="{Binding MinimumPositionY}" />
-                </Grid>
-                <Grid IsEnabled="{Binding IsEnabled}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
-                        <ColumnDefinition SharedSizeGroup="PropertySpacerGroup" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Label Grid.Column="0"
-                           VerticalAlignment="Center"
-                           Content="Maximum Y coordinate:" />
-                    <TextBox Grid.Column="2"
-                             VerticalAlignment="Center"
-                             HorizontalAlignment="Left"
-                             MinWidth="200"
-                             Width="auto"
-                             Text="{Binding MaximumPositionY}" />
-                </Grid>
+                    <Grid IsEnabled="{Binding IsEnabled}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
+                            <ColumnDefinition SharedSizeGroup="PropertySpacerGroup" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Label Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Content="Minumum X coordinate:" />
+                        <TextBox Grid.Column="2"
+                                 VerticalAlignment="Center"
+                                 HorizontalAlignment="Left"
+                                 Width="auto"
+                                 Text="{Binding MinimumPositionX}" />
+                    </Grid>
+                    <Grid IsEnabled="{Binding IsEnabled}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
+                            <ColumnDefinition SharedSizeGroup="PropertySpacerGroup" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Label Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Content="Maximum X coordinate:" />
+                        <TextBox Grid.Column="2"
+                                 VerticalAlignment="Center"
+                                 HorizontalAlignment="Left"
+                                 Width="auto"
+                                 Text="{Binding MaximumPositionX}" />
+                    </Grid>
 
-                <Grid IsEnabled="{Binding IsEnabled}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
-                        <ColumnDefinition SharedSizeGroup="PropertySpacerGroup" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Label Grid.Column="0"
-                           VerticalAlignment="Center"
-                           Content="Minumum Z coordinate:" />
-                    <TextBox Grid.Column="2"
-                             VerticalAlignment="Center"
-                             HorizontalAlignment="Left"
-                             MinWidth="200"
-                             Width="auto"
-                             Text="{Binding MinimumPositionZ}" />
-                </Grid>
-                <Grid IsEnabled="{Binding IsEnabled}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
-                        <ColumnDefinition SharedSizeGroup="PropertySpacerGroup" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Label Grid.Column="0"
-                           VerticalAlignment="Center"
-                           Content="Maximum Z coordinate:" />
-                    <TextBox Grid.Column="2"
-                             VerticalAlignment="Center"
-                             HorizontalAlignment="Left"
-                             MinWidth="200"
-                             Width="auto"
-                             Text="{Binding MaximumPositionZ}" />
-                </Grid>
-            </StackPanel>
+                    <Grid IsEnabled="{Binding IsEnabled}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
+                            <ColumnDefinition SharedSizeGroup="PropertySpacerGroup" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Label Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Content="Minumum Y coordinate:" />
+                        <TextBox Grid.Column="2"
+                                 VerticalAlignment="Center"
+                                 HorizontalAlignment="Left"
+                                 Width="auto"
+                                 Text="{Binding MinimumPositionY}" />
+                    </Grid>
+                    <Grid IsEnabled="{Binding IsEnabled}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
+                            <ColumnDefinition SharedSizeGroup="PropertySpacerGroup" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Label Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Content="Maximum Y coordinate:" />
+                        <TextBox Grid.Column="2"
+                                 VerticalAlignment="Center"
+                                 HorizontalAlignment="Left"
+                                 Width="auto"
+                                 Text="{Binding MaximumPositionY}" />
+                    </Grid>
+
+                    <Grid IsEnabled="{Binding IsEnabled}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
+                            <ColumnDefinition SharedSizeGroup="PropertySpacerGroup" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Label Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Content="Minumum Z coordinate:" />
+                        <TextBox Grid.Column="2"
+                                 VerticalAlignment="Center"
+                                 HorizontalAlignment="Left"
+                                 Width="auto"
+                                 Text="{Binding MinimumPositionZ}" />
+                    </Grid>
+                    <Grid IsEnabled="{Binding IsEnabled}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition SharedSizeGroup="PropertyNameGroup" />
+                            <ColumnDefinition SharedSizeGroup="PropertySpacerGroup" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Label Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Content="Maximum Z coordinate:" />
+                        <TextBox Grid.Column="2"
+                                 VerticalAlignment="Center"
+                                 HorizontalAlignment="Left"
+                                 Width="auto"
+                                 Text="{Binding MaximumPositionZ}" />
+                    </Grid>
+                </StackPanel>
             </ScrollViewer>
 
         </Border>
