@@ -53,7 +53,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             };
             foreach (var (deviceName, device) in Devices)
             {
-                virtualCopy.AddDevice(device);
+                virtualCopy.AddDevice(device.GetCopy());
             }
             return virtualCopy;
         }

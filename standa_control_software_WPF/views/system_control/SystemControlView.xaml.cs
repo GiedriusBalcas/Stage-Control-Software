@@ -136,8 +136,8 @@ namespace standa_control_software_WPF.views.system_control
                 float dx = (float)(pos.X - _lastPos.X);
                 float dy = (float)(pos.Y - _lastPos.Y);
 
-                _cameraViewModel.Yaw += dx * 0.1f;
-                _cameraViewModel.Pitch += dy * 0.1f;
+                _cameraViewModel.Yaw += dx * 0.3f;
+                _cameraViewModel.Pitch += dy * 0.3f;
             }
 
             else if (e.Button == MouseButtons.Right)

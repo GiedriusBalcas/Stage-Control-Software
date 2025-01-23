@@ -68,7 +68,10 @@ namespace text_parser_library
             // Fire the event
             LineVisited?.Invoke(lineNum, _currentFileName);
 
-            return base.VisitLine(context);
+            if (State.CurrentState != ParserState.States.Error)
+                return base.VisitLine(context);
+            else
+                throw new Exception();
         }
 
         public override object? Visit([Antlr4.Runtime.Misc.NotNull] IParseTree tree)

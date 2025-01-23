@@ -103,6 +103,8 @@ namespace standa_control_software_WPF.view_models.system_control
             }
         }
 
+        public bool IsParsingStatusMessageNotEmty => ParsingStatusMessage == "" ? false : true;
+
         private string _parsingStatusMessage = string.Empty;
         public string ParsingStatusMessage
         {
@@ -111,6 +113,7 @@ namespace standa_control_software_WPF.view_models.system_control
             {
                 _parsingStatusMessage = value;
                 OnPropertyChanged(nameof(ParsingStatusMessage));
+                OnPropertyChanged(nameof(IsParsingStatusMessageNotEmty));
             }
         }
 
@@ -137,12 +140,14 @@ namespace standa_control_software_WPF.view_models.system_control
         }
 
         private string _currentStateMessage = "Idle";
+        private bool _isExecingCommandQueue;
+
         public string CurrentStateMessage
         {
             get => _currentStateMessage;
             set
             {
-                if(value != _currentStateMessage)
+                if (value != _currentStateMessage)
                 {
                     _currentStateMessage = value;
                     OnPropertyChanged(nameof(CurrentStateMessage));
@@ -186,12 +191,12 @@ namespace standa_control_software_WPF.view_models.system_control
             CancelCommandQueueParsing = new RelayCommand(ExecuteCancelCommandParsing);
 
             ExecuteCommandQueueCommand = new RelayCommand(async () => await ExecuteCommandsQueueAsync(), CanExecuteCommandQueue);
-            ForceStopCommand = new RelayCommand(async() => await ExecuteForceStopCommand());
+            ForceStopCommand = new RelayCommand(async () => await ExecuteForceStopCommand());
 
             ClearOutputMessageCommand = new RelayCommand(() => OutputMessage = "");
-            
+
             _commandManager.OnStateChanged += CommandManager_OnStateChanged;
-            _controllerManager.ToolInformation.OutOfBoundsChanged += async(value) => await Tool_OutOfBoundsChanged(value);
+            _controllerManager.ToolInformation.OutOfBoundsChanged += async (value) => await Tool_OutOfBoundsChanged(value);
 
         }
 
@@ -217,13 +222,15 @@ namespace standa_control_software_WPF.view_models.system_control
                 IsAllowedOutOfBounds = false;
             }
 
-            
+
         }
 
         private void CommandManager_OnStateChanged(CommandManagerState newState)
         {
             if (newState == CommandManagerState.Processing)
             {
+                ParsingStatusMessage = $"Executing movement";
+
                 // Start a new stopwatch
                 _executionStopwatch = new Stopwatch();
                 _executionStopwatch.Start();
@@ -239,6 +246,8 @@ namespace standa_control_software_WPF.view_models.system_control
             {
                 // Stop the stopwatch
                 _executionStopwatch?.Stop();
+                ParsingStatusMessage = "";
+
             }
         }
         private async Task UpdateExecutionTimerLoop()
@@ -249,9 +258,12 @@ namespace standa_control_software_WPF.view_models.system_control
                 {
                     if (_executionStopwatch != null)
                     {
-                        var currentTime = _executionStopwatch.Elapsed.ToString(@"hh\:mm\:ss");
-                        var allocatedTime = _allocatedTime.ToString(@"hh\:mm\:ss");
-                        ParsingStatusMessage = $"Estimated time: {allocatedTime} | Time elapsed: {currentTime}";
+                        if (_isExecingCommandQueue)
+                        {
+                            var currentTime = _executionStopwatch.Elapsed.ToString(@"hh\:mm\:ss");
+                            var allocatedTime = _allocatedTime.ToString(@"hh\:mm\:ss");
+                            ParsingStatusMessage = $"Estimated time: {allocatedTime} | Time elapsed: {currentTime}";
+                        }
                     }
                     await Task.Delay(1000);
                 }
@@ -276,7 +288,7 @@ namespace standa_control_software_WPF.view_models.system_control
             if (_commandManager.CurrentState != CommandManagerState.Waiting)
                 return false;
 
-            if(_functionDefinitionLibrary.ExtractCommands().Count() <= 0)
+            if (_functionDefinitionLibrary.ExtractCommands().Count() <= 0)
                 return false;
 
             return true;
@@ -331,6 +343,7 @@ namespace standa_control_software_WPF.view_models.system_control
 
             if (_commandManager.CurrentState != CommandManagerState.Processing)
             {
+                _isExecingCommandQueue = true;
                 CurrentStateMessage = "Executing Commands";
                 _commandManager.ClearQueue();
                 foreach (var commandLine in _functionDefinitionLibrary.ExtractCommands())
@@ -343,6 +356,7 @@ namespace standa_control_software_WPF.view_models.system_control
                 await Task.Run(() => _commandManager.ProcessQueue());
                 OutputMessage += $"\nExecution of commands finalized.";
                 CurrentStateMessage = "Idle";
+                _isExecingCommandQueue = false;
             }
 
         }
@@ -364,7 +378,6 @@ namespace standa_control_software_WPF.view_models.system_control
                 _functionDefinitionLibrary.ClearCommandQueue();
                 _functionDefinitionLibrary.InitializeDefinitions();
                 _textInterpreter.DefinitionLibrary = _functionDefinitionLibrary.Definitions;
-
                 // Actually do the parse on background thread
                 await Task.Run(() =>
                 {
@@ -385,7 +398,7 @@ namespace standa_control_software_WPF.view_models.system_control
 
                 CurrentStateMessage = "Rendering Commands";
                 await PainterManager.PaintCommandQueue(commandList);
-                
+
                 ParsingStatusMessage = $"Estimated time: {_allocatedTime.ToString("hh':'mm':'ss")}";
             }
             catch (OperationCanceledException)
@@ -395,17 +408,21 @@ namespace standa_control_software_WPF.view_models.system_control
             catch (Exception ex)
             {
                 _logger.LogError(ex.Message);
-                OutputMessage += $"\n{ex.Message}";
                 if (_textInterpreter.State.CurrentState == ParserState.States.Error)
                 {
-                    OutputMessage += $"\n{_textInterpreter.State.Message}";
+                    //OutputMessage += $"\n{_textInterpreter.State.Message}";
                     HighlightedLineNumber = _textInterpreter.State.LineNumber;
+                    ParsingStatusMessage = "Fault Encountered While Parsing.";
+                    OutputMessage += $"\nFault Encountered While Parsing. Line: {_textInterpreter.State.LineNumber}. Message: {_textInterpreter.State.Message}.";
+
                 }
             }
             finally
             {
                 IsParsing = false;
                 CurrentStateMessage = "Idle";
+                _textInterpreter.State.ClearMessage();
+                _textInterpreter.State.Reset();
                 ((RelayCommand)ExecuteCommandQueueCommand).RaiseCanExecuteChanged();
             }
         }

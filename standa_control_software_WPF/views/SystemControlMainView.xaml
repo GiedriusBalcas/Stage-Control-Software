@@ -9,7 +9,7 @@
              xmlns:helpers="clr-namespace:standa_control_software_WPF.views.helpers"
              mc:Ignorable="d"
              d:DesignHeight="450"
-             d:DesignWidth="800">
+             d:DesignWidth="1400">
 
     <UserControl.Resources>
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
@@ -34,225 +34,19 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition Height="auto" />
+            <RowDefinition Height="auto" MinHeight="60"/>
             <RowDefinition Height="auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="20" />
         </Grid.RowDefinitions>
 
-        <!--<Border Grid.Column="0"
-                Grid.Row="0"
-                Grid.ColumnSpan="3"
-                Style="{StaticResource parentBorder}"
-                BorderThickness="0"
-                DataContext="{Binding CurrentCompilerViewModel}">
-            <StackPanel Orientation="Horizontal"
-                        MinHeight="30">
-
-                <Button Content="Open"
-                        Command="{Binding OpenDocumentCommand}"
-                        Style="{StaticResource customButtonStyleForBar}" />
-                <Button Content="New"
-                        Command="{Binding AddNewDocumentCommand}"
-                        Style="{StaticResource customButtonStyleForBar}" />
-                <Button Content="Save"
-                        Style="{StaticResource customButtonStyleForBar}" />
-                <Button Content="Save All"
-                        Style="{StaticResource customButtonStyleForBar}" />
-
-                <Separator BorderThickness="0.5"
-                           Margin="10 0 10 0"
-                           BorderBrush="{StaticResource MidCustomColorBrush}"
-                           Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
-                
-                <Label Content="Active document:"
-                       FontSize="12"
-                       VerticalAlignment="Center" />
-                <Label Content="{Binding SelectedDocument.Name, FallbackValue=None}"
-                       FontSize="12"
-                       VerticalAlignment="Center"
-                       Margin="0 0 0 0"
-                       Padding="0" />
-                
-                <Separator BorderThickness="0.5"
-                           Margin="10 0 10 0"
-                           BorderBrush="{StaticResource MidCustomColorBrush}"
-                           Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
-
-
-                <Button Command="{Binding CreateCommandQueueFromInput}"
-                        Style="{StaticResource customButtonStyleForBar}">
-                    <StackPanel Orientation="Horizontal">
-                        <Path Width="20"
-                              Height="15"
-                              Fill="{StaticResource FontColorBrush}"
-                              Data="{StaticResource parseIconPath}"
-                              Stretch="Uniform" />
-                        <TextBlock Text="Parse"
-                                   VerticalAlignment="Center"
-                                   Margin="5,0,0,0" />
-                    </StackPanel>
-                </Button>
-
-
-                <Button Command="{Binding ExecuteCommandQueueCommand}"
-                        Style="{StaticResource customButtonStyleForBar}">
-                    <StackPanel Orientation="Horizontal">
-                        <Path Width="20"
-                              Height="15"
-                              Fill="{StaticResource FontColorBrush}"
-                              Data="{StaticResource executeIcontPath}"
-                              Stretch="Uniform" />
-                        <TextBlock Text="Execute"
-                                   VerticalAlignment="Center"
-                                   Margin="5,0,0,0" />
-                    </StackPanel>
-                </Button>
-
-                <Button Command="{Binding ForceStopCommand}"
-                        Style="{StaticResource customButtonStyleForBar}">
-                    <StackPanel Orientation="Horizontal">
-                        <Path Width="20"
-                              Height="15"
-                              Fill="{StaticResource FontColorBrush}"
-                              Data="{StaticResource stopIconPath}"
-                              Stretch="Uniform" />
-                        <TextBlock Text="Stop"
-                                   VerticalAlignment="Center"
-                                   Margin="5,0,0,0" />
-                    </StackPanel>
-                </Button>
-
-                <Separator BorderThickness="0.5"
-                           Margin="10 0 10 0"
-                           BorderBrush="{StaticResource MidCustomColorBrush}"
-                           Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
-
-            </StackPanel>
-        </Border>
-
-        <Border Grid.Column="0"
-                Grid.Row="1"
-                Grid.ColumnSpan="3"
-                Style="{StaticResource parentBorder}"
-                BorderThickness="0"
-                DataContext="{Binding CurrentCompilerViewModel}">
-
-            <StackPanel Grid.Row="2"
-                        Orientation="Horizontal"
-                        MinHeight="30">
-
-
-
-
-                <Separator BorderThickness="0.5"
-                           Margin="10 0 10 0"
-                           BorderBrush="{StaticResource MidCustomColorBrush}"
-                           Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
-
-                <TextBlock Text="State: "
-                           VerticalAlignment="Center" />
-                <TextBlock Text="{Binding CurrentStateMessage, 
-                              NotifyOnTargetUpdated=True, 
-                              Mode=OneWay, FallbackValue='Idle'}"
-                           VerticalAlignment="Center"
-                           MinWidth="50"
-                           TextAlignment="Center"
-                           HorizontalAlignment="Right"
-                           Foreground="{StaticResource FontColorDisabledBrush}">
-                    <TextBlock.Style>
-                        <Style TargetType="TextBlock">
-                            -->
-        <!-- Start with a transparent background -->
-        <!--
-                            <Setter Property="Background"
-                                    Value="Transparent" />
-
-                            <Style.Triggers>
-                                -->
-        <!-- Listen for when the binding updates -->
-        <!--
-                                <EventTrigger RoutedEvent="Binding.TargetUpdated">
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            -->
-        <!-- Animate the background color from Transparent to Yellow
-                                 over 0.15s, then automatically reverse back to Transparent. -->
-        <!--
-                                            <ColorAnimation Storyboard.TargetProperty="(TextBlock.Background).(SolidColorBrush.Color)"
-                                                            From="{StaticResource DarkCustomColor}"
-                                                            To="{StaticResource AccenColor}"
-                                                            Duration="0:0:0.15"
-                                                            AutoReverse="True" />
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </EventTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </TextBlock.Style>
-                </TextBlock>
-
-                <Separator BorderThickness="0.5"
-                           Margin="10 0 10 0"
-                           BorderBrush="{StaticResource MidCustomColorBrush}"
-                           Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
-
-
-                <TextBlock Text="{Binding ParsingStatusMessage, FallbackValue= 'Estimated time: 12:0:0 | Time: 12:0:0'}"
-                           VerticalAlignment="Center"
-                           TextWrapping="Wrap" />
-
-                <Separator BorderThickness="0.5"
-                           Margin="10 0 10 0"
-                           BorderBrush="{StaticResource MidCustomColorBrush}"
-                           Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
-
-                <ProgressBar Height="20"
-                             MaxWidth="200"
-                             Width="100"
-                             IsIndeterminate="{Binding IsParsing}"
-                             Margin="10 0 10 0"
-                             Visibility="{Binding IsParsing, Converter={StaticResource BoolToVisibilityConverter}}"
-                             VerticalAlignment="Center" />
-
-                <Button Content="Cancel"
-                        Style="{StaticResource customButtonStyle}"
-                        Command="{Binding CancelCommandQueueParsing}"
-                        IsEnabled="{Binding IsParsing}"
-                        Visibility="{Binding IsParsing, Converter={StaticResource BoolToVisibilityConverter}}" />
-
-                <Separator BorderThickness="0.5"
-                           Margin="10 0 10 0"
-                           BorderBrush="{StaticResource MidCustomColorBrush}"
-                           Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
-                           Visibility="{Binding IsOutOfBounds, Converter={StaticResource BoolToVisibilityConverter}}" />
-
-
-                <CheckBox Content="Allow out of Bounds"
-                          IsChecked="{Binding IsAllowedOutOfBounds}"
-                          VerticalAlignment="Center"
-                          Visibility="{Binding IsOutOfBounds, Converter={StaticResource BoolToVisibilityConverter}}" />
-
-                <Separator BorderThickness="0.5"
-                           Margin="10 0 10 0"
-                           BorderBrush="{StaticResource MidCustomColorBrush}"
-                           Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
-                           Visibility="{Binding IsOutOfBounds, Converter={StaticResource BoolToVisibilityConverter}}" />
-
-
-
-
-
-            </StackPanel>
-
-        </Border>-->
-
         <Border Grid.Column="0"
                 Grid.Row="0"
                 Grid.ColumnSpan="3"
                 Style="{StaticResource parentBorder}"
                 BorderThickness="0"
-                Margin="0 0 0 10"
+                Height="auto"
+                VerticalAlignment="Top"
                 DataContext="{Binding CurrentCompilerViewModel}">
             <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto">
@@ -352,7 +146,8 @@
 
                     <!-- Group 4: State and Parsing Status -->
                     <StackPanel Orientation="Horizontal"
-                                Margin="5,0">
+                                Margin="5,0"
+                                MinHeight="30">
                         <TextBlock Text="State: "
                                    VerticalAlignment="Center" />
                         <TextBlock Text="{Binding CurrentStateMessage, 
@@ -390,19 +185,23 @@
                                BorderBrush="{StaticResource MidCustomColorBrush}"
                                Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
 
-                    <Grid Margin="5,0"
+                    <StackPanel Margin="5,0"
                           VerticalAlignment="Center"
-                          Height="30">
+                                Orientation="Horizontal"
+                          Height="30"
+                          Visibility="{Binding IsParsingStatusMessageNotEmty, Converter={StaticResource BoolToVisibilityConverter}}">
                         <TextBlock Text="{Binding ParsingStatusMessage, FallbackValue='Estimated time: 12:0:0 | Time: 12:0:0'}"
                                    VerticalAlignment="Center"
                                    TextAlignment="Left"
                                    HorizontalAlignment="Left" />
-                    </Grid>
+                        
+                        <Separator BorderThickness="0.5"
+                                   Margin="10 0"
+                                   BorderBrush="{StaticResource MidCustomColorBrush}"
+                                   Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
+                    </StackPanel>
 
-                    <Separator BorderThickness="0.5"
-                               Margin="10 0"
-                               BorderBrush="{StaticResource MidCustomColorBrush}"
-                               Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
+                    
 
                     <StackPanel Orientation="Horizontal"
                                 Margin="5,0"

@@ -47,7 +47,7 @@
                     </Ellipse.Style>
                 </Ellipse>
                 <TextBlock Grid.Column="1"
-                           Text="{Binding Name}"
+                           Text="{Binding Name, FallbackValue= Name}"
                            VerticalAlignment="Center"
                            FontSize="15" />
 
