@@ -36,11 +36,11 @@ namespace standa_control_software_WPF.view_models.system_control.control
 
                     if (_isTrackingTool)
                     {
-                        _controllerManager.ToolInformation.PositionChanged += ToolInformation_PositionChanged;
+                        _controllerManager.ToolInformation!.PositionChanged += ToolInformation_PositionChanged;
                     }
                     else
                     {
-                        _controllerManager.ToolInformation.PositionChanged -= ToolInformation_PositionChanged;
+                        _controllerManager.ToolInformation!.PositionChanged -= ToolInformation_PositionChanged;
                     }
                     OnPropertyChanged(nameof(IsTrackingTool));
                 }

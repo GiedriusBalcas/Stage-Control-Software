@@ -27,8 +27,6 @@ namespace standa_controller_software.device_manager.devices.positioning
         }
         public float ConvertFromPositionToPower(float position)
         {
-            // theta_lambda = PI/(position_max - position_min)* (position-position_min)
-
             var theta = Math.PI / 2 / (PositionForMin - PositionForMax) * (position - PositionForMax);
             var power = PowerAmplitude * Math.Pow(Math.Cos(theta), 2);
 

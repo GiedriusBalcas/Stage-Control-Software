@@ -2,16 +2,9 @@
 using standa_controller_software.command_manager.command_parameter_library.Common;
 using standa_controller_software.device_manager;
 using standa_controller_software.device_manager.controller_interfaces;
-using standa_controller_software.device_manager.controller_interfaces.shutter;
 using standa_controller_software.device_manager.devices;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Configuration;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using text_parser_library;
 
 namespace standa_controller_software.custom_functions.definitions
@@ -30,10 +23,13 @@ namespace standa_controller_software.custom_functions.definitions
 
         public override object? Execute(params object[] args)
         {
-            if (!TryParseArguments(args, out char[] deviceNames, out string secondArg, out object restArgs))
+            if (!TryParseArguments(args, out char[] deviceNames, out string propertyName, out object? propertyValue))
                 throw new ArgumentException("Argument pasrsing was unsuccesfull. Wrong types.");
 
-            ExecuteCore(deviceNames, secondArg, restArgs);
+            if (propertyValue is null)
+                throw new ArgumentNullException("Property value can not be null.");
+
+            ExecuteCore(deviceNames, propertyName, propertyValue);
 
             return null;
         }
@@ -52,7 +48,7 @@ namespace standa_controller_software.custom_functions.definitions
                 Type deviceType = device.GetType();
 
                 // Try to get the property by name
-                PropertyInfo propertyInfo = device.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
+                var propertyInfo = device.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
                 if (propertyInfo == null)
                 {
                     throw new Exception($"Property {propertyName} not found on device {device.GetType().Name}.");
@@ -61,7 +57,7 @@ namespace standa_controller_software.custom_functions.definitions
                 try
                 {
                     Type propertyType = propertyInfo.PropertyType;
-                    object convertedValue = null;
+                    object? convertedValue = null;
 
                     // Handle known type conversions manually
                     if (propertyType == typeof(float) && propertyValue.GetType() == typeof(int))
@@ -122,7 +118,7 @@ namespace standa_controller_software.custom_functions.definitions
                     }
                     
                 }
-                catch (Exception ex)
+                catch
                 {
                     throw;
                 }
@@ -137,11 +133,11 @@ namespace standa_controller_software.custom_functions.definitions
 
 
 
-        public bool TryParseArguments(object?[] arguments, out char[] deviceNames, out string propertyName, out object propertyValue)
+        public bool TryParseArguments(object?[] arguments, out char[] deviceNames, out string propertyName, out object? propertyValue)
         {
             deviceNames = Array.Empty<char>(); // Default value
             propertyName = string.Empty;
-            propertyValue = Array.Empty<object>(); // Default value
+            propertyValue = null;
 
             if (arguments == null || arguments.Length == 0)
             {
@@ -167,17 +163,8 @@ namespace standa_controller_software.custom_functions.definitions
                 return false; // First argument is not a string or is null
             }
 
-            // Initialize the rest of the arguments as a float array
-            // Start with an empty list to collect the float values
-            var objectList = new List<object>();
-
-            // Start from index 1 since index 0 is the string argument
-            for (int i = 2; i < arguments.Length; i++)
-            {
-                objectList.Add(arguments[i]);
-            }
-
-            propertyValue = objectList.ToArray()[0]; // Convert the list to an array
+            propertyValue = arguments[2];
+            
             return true; // Successfully parsed all arguments
         }
 

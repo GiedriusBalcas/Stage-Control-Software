@@ -5,24 +5,12 @@ using standa_controller_software.command_manager.command_parameter_library.Posit
 using standa_controller_software.command_manager.command_parameter_library.Synchronization;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.controller_interfaces.sync;
-using standa_controller_software.device_manager.devices;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.ComponentModel.Design;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace standa_controller_software.device_manager.controller_interfaces.master_controller
 {
     public abstract class BaseMasterPositionerAndShutterController : BaseMasterController, IQuableController
     {
-
-
-        //public int NumberOfItemsInQueue { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        //public Action NumberOfItemsInQueueChanged { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public struct PositionerSyncItemInfo
         {
             public char[] Devices;
@@ -49,8 +37,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         protected ConcurrentQueue<MovementInformation> _buffer;
         protected Command[]? _updateMoveSettingsCommands = null;
         protected bool _launchPending = true;
-        protected TaskCompletionSource<bool> _processingCompletionSource;
-        protected TaskCompletionSource<bool> _processingLastItemTakenSource;
+        protected TaskCompletionSource<bool>? _processingCompletionSource;
+        protected TaskCompletionSource<bool>? _processingLastItemTakenSource;
 
 
         public BaseMasterPositionerAndShutterController(string name, ILoggerFactory loggerFactory) : base(name, loggerFactory)
@@ -179,7 +167,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     return false;
             });
 
-            if (isUpdateNeeded = true)
+            if (true)
             {
                 _logger.LogInformation("update move settings. update is needed.");
 
@@ -217,7 +205,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             }
 
         }
-        protected async Task SendBufferItemToControllers(Dictionary<string, PositionerSyncItemInfo>? PosInfoControllerGroups, ExecutionInformation execInfo)
+        protected async Task SendBufferItemToControllers(Dictionary<string, PositionerSyncItemInfo> PosInfoControllerGroups, ExecutionInformation execInfo)
         {
             foreach (var (controllerName, posInfoList) in PosInfoControllerGroups)
             {

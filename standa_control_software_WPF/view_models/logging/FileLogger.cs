@@ -32,7 +32,9 @@ namespace standa_control_software_WPF.view_models.logging
         /// <summary>
         /// Begins a logical operation scope. Not implemented.
         /// </summary>
-        public IDisposable BeginScope<TState>(TState state) => null;
+        IDisposable ILogger.BeginScope<TState>(TState state) => NullDisposable.Instance;
+
+
         public bool IsEnabled(LogLevel logLevel)
         {
             return logLevel >= _minLevel;
@@ -89,5 +91,20 @@ namespace standa_control_software_WPF.view_models.logging
             }
         }
 
+
+        private class NullDisposable : IDisposable
+        {
+            // Singleton instance to avoid multiple allocations
+            public static readonly NullDisposable Instance = new NullDisposable();
+
+            // Private constructor to prevent external instantiation
+            private NullDisposable() { }
+
+            // Dispose method does nothing
+            public void Dispose() { }
+        }
+
     }
+
+
 }

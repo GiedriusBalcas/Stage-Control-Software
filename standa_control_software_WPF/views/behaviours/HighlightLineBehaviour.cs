@@ -7,7 +7,7 @@ namespace standa_control_software_WPF.views.behaviours
 {
     public class HighlightLineBehavior : Behavior<TextEditor>
     {
-        private HighlightCurrentLineBackgroundRenderer _lineRenderer;
+        private HighlightCurrentLineBackgroundRenderer? _lineRenderer;
 
         protected override void OnAttached()
         {
@@ -32,7 +32,7 @@ namespace standa_control_software_WPF.views.behaviours
             }
         }
 
-        private void CaretOnPositionChanged(object sender, EventArgs e)
+        private void CaretOnPositionChanged(object? sender, EventArgs e)
         {
             AssociatedObject.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Selection);
         }

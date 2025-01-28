@@ -14,14 +14,11 @@ namespace standa_controller_software.device_manager
     {
         private readonly ILogger<ToolInformation> _logger;
         private readonly ControllerManager _controllerManager;
-        private readonly CommandManager _commandManager;
-
-        public Func<Dictionary<char, float>, Vector3> PositionCalcFunctions {  get; private set; }
         private readonly BaseShutterDevice _shutterDevice;
         private List<BasePositionerDevice> _positionerDevices = new List<BasePositionerDevice>();
         private Vector3 _position;
-
         private bool _isOutOfBounds = false;
+
         public bool IsOutOfBounds { get => _isOutOfBounds; private set 
             {
                 if (value != _isOutOfBounds || value is true)
@@ -32,14 +29,11 @@ namespace standa_controller_software.device_manager
                 }
             }
         }
-
+        public Func<Dictionary<char, float>, Vector3> PositionCalcFunctions {  get; private set; }
         public event Action<Vector3>? PositionChanged;
         public event Action? EngagedStateChanged;
-
         public char Name { get => _shutterDevice.Name;}
-
         private Vector3 _minimumCoordinates;
-
         public Vector3 MinimumCoordinates
         {
             get { return _minimumCoordinates; }
@@ -48,9 +42,7 @@ namespace standa_controller_software.device_manager
                 _minimumCoordinates = value; 
             }
         }
-
         private Vector3 _maximumCoordinates;
-
         public Vector3 MaximumCoordinates
         {
             get { return _maximumCoordinates; }
@@ -59,7 +51,6 @@ namespace standa_controller_software.device_manager
                 _maximumCoordinates = value;
             }
         }
-
         public Vector3 Position
         {
             get => _position;
@@ -81,10 +72,6 @@ namespace standa_controller_software.device_manager
                 PositionChanged?.Invoke(_position);
             }
         }
-
-        private bool _isOn;
-        private Vector3 _lastCoordinate;
-
         public bool IsOn
         {
             get 
@@ -93,12 +80,10 @@ namespace standa_controller_software.device_manager
             }
             private set
             {
-                _isOn = value;
                 EngagedStateChanged?.Invoke();
             }
         }
-
-        public event Action<bool> OutOfBoundsChanged;
+        public event Action<bool>? OutOfBoundsChanged;
 
         public ToolInformation(ControllerManager controllerManager, BaseShutterDevice shutterDevice, Func<Dictionary<char, float>, Vector3> positionCalculationFunctions, ILogger<ToolInformation> logger)
         {
@@ -120,13 +105,11 @@ namespace standa_controller_software.device_manager
         {
             RecalculateToolPosition();
         }
-
         private void OnShutterStateChanged(object? sender, EventArgs e)
         {
             IsOn = _shutterDevice.IsOn;
 
         }
-
         public void RecalculateToolPosition()
         {
             var devicePositions = new Dictionary<char, float>();
@@ -134,8 +117,7 @@ namespace standa_controller_software.device_manager
 
             Position = PositionCalcFunctions(devicePositions);
         }
-
-        public Vector3 CalculateToolPositionUpdate(Dictionary<char, float> newPositions = null)
+        public Vector3 CalculateToolPositionUpdate(Dictionary<char, float>? newPositions = null)
         {
             var devicePositions = new Dictionary<char, float>();
             _positionerDevices.ForEach(device => devicePositions[device.Name] = device.CurrentPosition);
@@ -150,7 +132,6 @@ namespace standa_controller_software.device_manager
 
             return positionResult;
         }
-
         public Vector3 CalculateToolPosition(Dictionary<char, float> newPositions)
         {
             var devicePositions = new Dictionary<char, float>();

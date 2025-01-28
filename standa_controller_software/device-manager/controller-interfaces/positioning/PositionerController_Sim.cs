@@ -1,15 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
 using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
-using standa_controller_software.command_manager.command_parameter_library.Common;
-using standa_controller_software.device_manager.attributes;
 using standa_controller_software.device_manager.devices;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace standa_controller_software.device_manager.controller_interfaces.positioning
 {
@@ -72,7 +65,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         private ConcurrentDictionary<char, SemaphoreSlim> _deviceLocks = new ConcurrentDictionary<char, SemaphoreSlim>();
 
         // Events
-        public event Action<char> OnSyncOut;
+        public event Action<char>? OnSyncOut;
         public event Func<char, Task> OnSyncIn;
 
         // Constructor
@@ -283,6 +276,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
             var movementParameters = command.Parameters as MoveAbsoluteParameters;
+            
+            if (movementParameters is null)
+                throw new Exception("Wrong parameter set provided for Move Absolute command.");
 
             for (int i = 0; i < devices.Length; i++)
             {
@@ -384,6 +380,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
             var movementParams = command.Parameters as UpdateMovementSettingsParameters;
 
+            if (movementParams == null)
+                throw new Exception("Wrong parameeter set provided for Update Move Settings command.");
+
             for (int i = 0; i < devices.Length; i++)
             {
                 var device = devices[i];
@@ -473,7 +472,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             {
                 char deviceName = positioningDevice.Name; // Assuming Name is a single char
 
-                if (_deviceInfo.TryGetValue(deviceName, out DeviceInformation deviceInfo))
+                if (_deviceInfo.TryGetValue(deviceName, out var deviceInfo))
                 {
                     deviceInfo.MaxSpeed = positioningDevice.MaxSpeed;
                     positioningDevice.Speed = positioningDevice.DefaultSpeed;
@@ -532,6 +531,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         {
             var deviceNames = command.TargetDevices;
             var parameters = command.Parameters as AddSyncInActionParameters;
+
+            if (parameters is null)
+                throw new Exception("Wrong parameter set provided for Add Sync In Action command.");
 
             for (int i = 0; i < deviceNames.Length; i++)
             {

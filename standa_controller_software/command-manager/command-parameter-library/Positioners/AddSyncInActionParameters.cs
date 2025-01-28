@@ -8,7 +8,7 @@ namespace standa_controller_software.command_manager.command_parameter_library
 {
     public class AddSyncInActionParameters
     {
-        public Dictionary<char, PositionTimePair> MovementInformation {  get; set; }
+        public required Dictionary<char, PositionTimePair> MovementInformation {  get; set; }
 
     }
 

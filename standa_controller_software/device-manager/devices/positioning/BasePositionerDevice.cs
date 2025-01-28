@@ -11,10 +11,8 @@ namespace standa_controller_software.device_manager.devices
 {
     public abstract class BasePositionerDevice : BaseDevice
     {
-        protected BasePositionerDevice(char name, string id) : base(name, id)
-        {
-        }
-
+        private float _currentPosition = 0f;
+        
         [DisplayPropertyAttribute]
         [DynamicPropertyAttribute]
         public virtual float MaxSpeed 
@@ -37,10 +35,7 @@ namespace standa_controller_software.device_manager.devices
         public virtual float MaxDeceleration { get; set; }
         [DisplayPropertyAttribute]
         public float StepSize { get; set; }
-
-        public event EventHandler PositionChanged;
-        
-        private float _currentPosition = 0f;
+        public event EventHandler? PositionChanged;
         public virtual float CurrentPosition
         {
             get
@@ -56,12 +51,15 @@ namespace standa_controller_software.device_manager.devices
                 }
             }
         }
-
         public virtual float CurrentSpeed { get; set; }
         public virtual float Acceleration { get; set; }
         public virtual float Deceleration { get; set; }
         public virtual float Speed { get; set; }
-
         public bool UpdatePending { get; set; } = false;
+
+        protected BasePositionerDevice(char name, string id) : base(name, id)
+        {
+        }
+
     }
 }

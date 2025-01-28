@@ -23,7 +23,6 @@ namespace standa_controller_software.custom_functions.definitions
         public string Message { get; set; } = "";
         private readonly CommandManager _commandManager;
         private readonly ControllerManager _controllerManager;
-        private readonly JumpAbsoluteFunction _jumpAbsoluteFunction;
 
         public ChangeShutterStateForIntervalFunction(CommandManager commandManager, ControllerManager controllerManager)
         {

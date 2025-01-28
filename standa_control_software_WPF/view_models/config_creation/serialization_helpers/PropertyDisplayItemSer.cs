@@ -2,7 +2,7 @@
 {
     public class PropertyDisplayItemSer
     {
-        public string PropertyName { get; set; }
-        public object PropertyValue { get; set; }
+        public required string PropertyName { get; set; }
+        public object? PropertyValue { get; set; }
     }
 }

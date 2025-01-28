@@ -17,11 +17,11 @@ namespace standa_control_software_WPF
 {
     public partial class App : Application
     {
-        private IHost _host;
-        public IHost HostHandle { get => _host;}
+        private IHost? _host;
+        public IHost? HostHandle { get => _host;}
 
-        private MainNavigationStore _mainNavigationStore; // top-level store
-        private LSCNavigationStore _lscNavigationStore;   // child-level store
+        private MainNavigationStore? _mainNavigationStore; // top-level store
+        private LSCNavigationStore? _lscNavigationStore;   // child-level store
 
         protected override async void OnStartup(StartupEventArgs e)
         {
@@ -142,8 +142,11 @@ namespace standa_control_software_WPF
 
         protected override async void OnExit(ExitEventArgs e)
         {
-            await _host.StopAsync();
-            _host.Dispose();
+            if(_host is not null)
+            {
+                await _host.StopAsync();
+                _host.Dispose();
+            }
             base.OnExit(e);
         }
 
@@ -154,29 +157,35 @@ namespace standa_control_software_WPF
         {
             try
             {
-                // The manager is now fully configured by the wizard
-                var kaka = _host.Services.GetRequiredService<ControllerManager>();
+                if (_host is not null && _lscNavigationStore is not null && _mainNavigationStore is not null)
+                {
+                    // The manager is now fully configured by the wizard
+                    var kaka = _host.Services.GetRequiredService<ControllerManager>();
 
-                var controllerStateUpdater = _host.Services.GetRequiredService<ControllerStateUpdater>();
-                var systemControlMainVM = _host.Services.GetRequiredService<SystemControlMainViewModel>();
+                    var controllerStateUpdater = _host.Services.GetRequiredService<ControllerStateUpdater>();
+                    var systemControlMainVM = _host.Services.GetRequiredService<SystemControlMainViewModel>();
 
-                // 1) The child store (lsc) can show one of the child viewmodels, e.g. SystemPropertiesVM:
-                // _lscNavigationStore.CurrentViewModel = _host.Services.GetRequiredService<SystemPropertiesViewModel>();
-                // or whichever child you want to show first:
-                _lscNavigationStore.CurrentViewModel = _host.Services.GetRequiredService<SystemPropertiesViewModel>();
+                    // 1) The child store (lsc) can show one of the child viewmodels, e.g. SystemPropertiesVM:
+                    // _lscNavigationStore.CurrentViewModel = _host.Services.GetRequiredService<SystemPropertiesViewModel>();
+                    // or whichever child you want to show first:
+                    _lscNavigationStore.CurrentViewModel = _host.Services.GetRequiredService<SystemPropertiesViewModel>();
 
-                // 2) Now switch the top-level store from the wizard to SystemControlMainViewModel
-                _mainNavigationStore.CurrentViewModel = systemControlMainVM;
+                    // 2) Now switch the top-level store from the wizard to SystemControlMainViewModel
+                    _mainNavigationStore.CurrentViewModel = systemControlMainVM;
 
-                // 3) Start background updates
-                _ = controllerStateUpdater.UpdateStatesAsync();
+                    // 3) Start background updates
+                    _ = controllerStateUpdater.UpdateStatesAsync();
+                }
             }
             catch (Exception ex)
             {
-                var loggerFactory = _host.Services.GetRequiredService<ILoggerFactory>();
-                var logger = loggerFactory.CreateLogger("General");
-                logger.LogError("Fatal error encountered in System Control Window");
-                logger.LogError($"{ex.Message} | {ex.StackTrace}");
+                if(_host is not null)
+                {
+                    var loggerFactory = _host.Services.GetRequiredService<ILoggerFactory>();
+                    var logger = loggerFactory.CreateLogger("General");
+                    logger.LogError("Fatal error encountered in System Control Window");
+                    logger.LogError($"{ex.Message} | {ex.StackTrace}");
+                }
                 MessageBox.Show(ex.Message);
 
             }

@@ -15,7 +15,7 @@ namespace standa_controller_software.device_manager.devices
         [DisplayPropertyAttribute]
         public string ID { get; }
 
-        public event EventHandler ConnectionStateChanged;
+        public event EventHandler? ConnectionStateChanged;
         private bool _isConnected = false;
         public bool IsConnected
         {

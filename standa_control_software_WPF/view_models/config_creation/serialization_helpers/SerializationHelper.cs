@@ -40,6 +40,9 @@ namespace standa_control_software_WPF.view_models.config_creation.serialization_
 
             foreach (var controller in config.Controllers)
             {
+                if (controller.SelectedControllerType is null)
+                    throw new Exception($"Controller {controller.Name} doesnt have specified type.");
+
                 var controllerSer = new ControllerSer()
                 {
                     Name = controller.Name,
@@ -57,6 +60,10 @@ namespace standa_control_software_WPF.view_models.config_creation.serialization_
 
                 foreach (var device in controller.Devices)
                 {
+
+                    if (device.SelectedDeviceType is null)
+                        throw new Exception($"Device {device.Name} doesnt have specified type.");
+
                     var deviceSer = new DeviceSer()
                     {
                         Name = device.Name,

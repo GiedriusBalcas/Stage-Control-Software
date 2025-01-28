@@ -1,10 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace standa_control_software_WPF.view_models.logging
 {
@@ -12,7 +10,8 @@ namespace standa_control_software_WPF.view_models.logging
     {
         private readonly string _filePath;
         private readonly LogLevel _minLevel;
-        private FileLogger _fileLogger;
+        private readonly ConcurrentBag<FileLogger> _loggers = new ConcurrentBag<FileLogger>();
+        private bool _disposed = false;
 
         public FileLoggerProvider(string filePath, LogLevel minLevel, bool clearOnLaunch = true)
         {
@@ -27,12 +26,21 @@ namespace standa_control_software_WPF.view_models.logging
 
         public ILogger CreateLogger(string categoryName)
         {
-            return new FileLogger(categoryName, _filePath, _minLevel); ;
+            var logger = new FileLogger(categoryName, _filePath, _minLevel);
+            _loggers.Add(logger);
+            return logger;
         }
 
         public void Dispose()
         {
-            _fileLogger.Flush();
+            if (_disposed) return;
+
+            foreach (var logger in _loggers)
+            {
+                logger.Flush();
+            }
+
+            _disposed = true;
         }
     }
 }

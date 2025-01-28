@@ -49,13 +49,13 @@ namespace standa_control_software_WPF.view_models.config_creation
             }
         }
 
-        public Type DeviceType { get; set; }
+        public Type? DeviceType { get; set; }
 
-        public string _selectedDeviceType;
+        public string? _selectedDeviceType;
 
         private ControllerConfigViewModel _controller;
 
-        public string SelectedDeviceType
+        public string? SelectedDeviceType
         {
             get => _selectedDeviceType;
             set
@@ -134,7 +134,7 @@ namespace standa_control_software_WPF.view_models.config_creation
             }
         }
 
-        public bool UpdatePropertyValue(string propertyName, object newValue)
+        public bool UpdatePropertyValue(string propertyName, object? newValue)
         {
             var propertyItem = DeviceProperties.FirstOrDefault(p => p.PropertyName == propertyName);
             if (propertyItem != null && propertyItem.PropertyType != null)

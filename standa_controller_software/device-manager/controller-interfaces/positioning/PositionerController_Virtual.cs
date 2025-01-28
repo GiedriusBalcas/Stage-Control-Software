@@ -2,14 +2,7 @@
 using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.device_manager.devices;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 
 namespace standa_controller_software.device_manager.controller_interfaces.positioning
 {
@@ -74,18 +67,20 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         protected override Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore)
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
-            var movementParams = command.Parameters as UpdateMovementSettingsParameters;
-            for (int i = 0; i < devices.Length; i++)
+            if (command.Parameters is UpdateMovementSettingsParameters movementParams) 
             {
-                var device = devices[i];
+                for (int i = 0; i < devices.Length; i++)
+                {
+                    var device = devices[i];
 
-                float speedValue = movementParams.MovementSettingsInformation[device.Name].TargetSpeed;
-                float accelValue = movementParams.MovementSettingsInformation[device.Name].TargetAcceleration;
-                float decelValue = movementParams.MovementSettingsInformation[device.Name].TargetDeceleration;
+                    float speedValue = movementParams.MovementSettingsInformation[device.Name].TargetSpeed;
+                    float accelValue = movementParams.MovementSettingsInformation[device.Name].TargetAcceleration;
+                    float decelValue = movementParams.MovementSettingsInformation[device.Name].TargetDeceleration;
 
-                device.Speed = Math.Min(speedValue, device.MaxSpeed);
-                device.Acceleration = Math.Min(accelValue, device.MaxAcceleration);
-                device.Deceleration = Math.Min(decelValue, device.MaxDeceleration);
+                    device.Speed = Math.Min(speedValue, device.MaxSpeed);
+                    device.Acceleration = Math.Min(accelValue, device.MaxAcceleration);
+                    device.Deceleration = Math.Min(decelValue, device.MaxDeceleration);
+                }
             }
 
             return Task.CompletedTask;
@@ -103,6 +98,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
             var movementParams = command.Parameters as MoveAbsoluteParameters;
+
+            if (movementParams is null)
+                throw new Exception("Wrong parameter set provided for Move Absolute command.");
 
             if (movementParams.WaitUntilTime != null && movementParams.PositionerInfo.First().Value.WaitUntilPosition == null && false)
             {
@@ -276,6 +274,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                             }
                             accelDecelDistance = totalDistance;
                         }
+                        if (posInfo.WaitUntilPosition is null)
+                            throw new Exception("Null reference while wait until position condiftion met.");
 
                         float distanceToWaitUntilPosition = (float)Math.Abs((double)(posInfo.WaitUntilPosition - device.CurrentPosition));
 
@@ -310,6 +310,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 }
                 catch (Exception ex)
                 {
+                    _logger.LogError(ex.Message);
                     throw;
                 }
             }

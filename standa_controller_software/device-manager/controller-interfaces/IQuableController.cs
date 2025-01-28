@@ -9,10 +9,6 @@ namespace standa_controller_software.device_manager.controller_interfaces
 {
     public interface IQuableController
     {
-        //public int NumberOfItemsInQueue { get; set; }
-        //public Action NumberOfItemsInQueueChanged { get; set; }
         public Task AwaitQueuedItems(SemaphoreSlim semaphore);
-
-        
     }
 }

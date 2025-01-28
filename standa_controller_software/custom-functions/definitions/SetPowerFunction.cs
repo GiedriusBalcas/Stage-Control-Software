@@ -1,20 +1,7 @@
 ﻿using standa_controller_software.command_manager;
 using standa_controller_software.device_manager;
-using standa_controller_software.device_manager.controller_interfaces;
-using standa_controller_software.custom_functions.helpers;
-using text_parser_library;
-using standa_controller_software.device_manager.devices;
-using standa_controller_software.device_manager.controller_interfaces.positioning;
-using standa_controller_software.device_manager.controller_interfaces.shutter;
-using System.ComponentModel;
-using System.Xml.Linq;
-using standa_controller_software.command_manager.command_parameter_library;
-using System.Reflection;
-using standa_controller_software.device_manager.devices.shutter;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using standa_controller_software.device_manager.devices.positioning;
+using text_parser_library;
 
 namespace standa_controller_software.custom_functions.definitions
 {
@@ -46,7 +33,8 @@ namespace standa_controller_software.custom_functions.definitions
 
             if (!TryGetProperty("Accuracy", out var accuracyObj))
                 throw new Exception("Failed to get 'Accuracy' property.");
-            var accuracy = (float)accuracyObj;
+            if (!TryConvertToFloat(accuracyObj, out float accuracy))
+                throw new Exception("Failed to get 'Speed' property.");
 
 
             ExecutionCore(parsedDeviceNames, parsedPositions, accuracy);

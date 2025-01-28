@@ -27,9 +27,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         private const byte RESP_CMD_SUCCESS = 0x02;
         private const byte RESP_CMD_ERROR = 0x03;
 
-        private SerialPort serialPort;
+        private SerialPort? _serialPort;
 
-        
         public ShutterController_Arduino(string name, ILoggerFactory loggerFactory) : base(name, loggerFactory)
         {
             _logger = _loggerFactory.CreateLogger<ShutterController_Arduino>();
@@ -44,18 +43,18 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         {
             await base.InitializeController(command, semaphore);
 
-            serialPort = new SerialPort(this.ID, 9600, Parity.None, 8, StopBits.One)
+            _serialPort = new SerialPort(this.ID, 9600, Parity.None, 8, StopBits.One)
             {
                 DtrEnable = true,
                 RtsEnable = true,
                 ReadTimeout = 2000, // Adjust as necessary
                 WriteTimeout = 500
             };
-            serialPort.Open();
+            _serialPort.Open();
 
             // Flush any existing data
-            serialPort.DiscardInBuffer();
-            serialPort.DiscardOutBuffer();
+            _serialPort.DiscardInBuffer();
+            _serialPort.DiscardOutBuffer();
         }
         protected override Task UpdateStatesAsync(Command command, SemaphoreSlim semaphore)
         {
@@ -73,7 +72,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             byte[] packet = ConstructPacket(CMD_CHANGE_SHUTTER_STATE, payload);
 
             // Send the packet
-            serialPort.Write(packet, 0, packet.Length);
+            _serialPort!.Write(packet, 0, packet.Length);
 
             // Read and process the response
             ResponsePacket response = await ReadResponse();
@@ -91,7 +90,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             byte[] packet = ConstructPacket(CMD_CHANGE_STATE_FOR_INTERVAL, payload);
 
             // Send the packet
-            serialPort.Write(packet, 0, packet.Length);
+            _serialPort!.Write(packet, 0, packet.Length);
 
             // Read and process the response
             ResponsePacket response = await ReadResponse();
@@ -117,7 +116,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             byte[] packet = ConstructPacket(CMD_GET_SHUTTER_STATE, null);
 
             // Send the packet
-            serialPort.Write(packet, 0, packet.Length);
+            _serialPort!.Write(packet, 0, packet.Length);
 
             // Read and process the response
             ResponsePacket response = ReadResponse().GetAwaiter().GetResult();
@@ -138,10 +137,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         }
         private void EnsurePortIsOpen()
         {
-            if (serialPort == null || !serialPort.IsOpen)
+            if (_serialPort == null || !_serialPort.IsOpen)
                 throw new InvalidOperationException("Serial port is not open.");
         }
-        private byte[] ConstructPacket(byte commandId, byte[] payload)
+        private byte[] ConstructPacket(byte commandId, byte[]? payload)
         {
             payload ??= new byte[0];
             byte payloadLength = (byte)payload.Length;
@@ -160,29 +159,30 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         }
         private async Task<ResponsePacket> ReadResponse()
         {
-            int timeout = serialPort.ReadTimeout;
+            EnsurePortIsOpen();
+            int timeout = _serialPort!.ReadTimeout;
             DateTime startTime = DateTime.Now;
 
             while ((DateTime.Now - startTime).TotalMilliseconds < timeout)
             {
-                if (serialPort.BytesToRead > 0)
+                if (_serialPort.BytesToRead > 0)
                 {
-                    int firstByte = serialPort.ReadByte();
+                    int firstByte = _serialPort.ReadByte();
                     if (firstByte == RESPONSE_START_BYTE)
                     {
                         // Read response code and payload length
-                        byte responseCode = (byte)serialPort.ReadByte();
-                        byte payloadLength = (byte)serialPort.ReadByte();
+                        byte responseCode = (byte)_serialPort.ReadByte();
+                        byte payloadLength = (byte)_serialPort.ReadByte();
 
                         // Read payload
                         byte[] payload = new byte[payloadLength];
                         if (payloadLength > 0)
                         {
-                            serialPort.Read(payload, 0, payloadLength);
+                            _serialPort.Read(payload, 0, payloadLength);
                         }
 
                         // Read checksum
-                        byte checksum = (byte)serialPort.ReadByte();
+                        byte checksum = (byte)_serialPort.ReadByte();
 
                         // Validate checksum
                         byte calculatedChecksum = CalculateChecksum(responseCode, payloadLength, payload);

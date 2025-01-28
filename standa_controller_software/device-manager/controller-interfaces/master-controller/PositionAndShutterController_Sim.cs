@@ -1,19 +1,16 @@
 ﻿using Microsoft.Extensions.Logging;
 using standa_controller_software.command_manager;
-using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.controller_interfaces.shutter;
 using standa_controller_software.device_manager.controller_interfaces.sync;
 using standa_controller_software.device_manager.devices;
-using System.Collections.Concurrent;
-using System.Threading;
 
 namespace standa_controller_software.device_manager.controller_interfaces.master_controller
 {
     public partial class PositionAndShutterController_Sim : BaseMasterPositionerAndShutterController
     {
 
-        private SyncController_Sim _syncController;
+        private SyncController_Sim? _syncController;
 
         public PositionAndShutterController_Sim(string name, ILoggerFactory loggerFactory) : base(name, loggerFactory)
         {
@@ -28,7 +25,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 SlaveControllersLocks.Add(shutterController.Name, controllerLock);
                 if (_syncController is not null)
                 {
-                    _syncController._shutterChangeState = (bool wantedState) =>
+                    _syncController.ShutterChangeState = (bool wantedState) =>
                     {
                         //_ = shutterController.ChangeStatePublic(wantedState);
                         var device = shutterController.GetDevices().FirstOrDefault();
@@ -51,7 +48,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     char deviceName = device.Name;
                     if (_syncController is not null)
                     {
-                        _syncController._positionerSyncInMap[deviceName] = () => positionerController.InvokeSyncIn(deviceName);
+                        _syncController.PositionerSyncInMap[deviceName] = () => positionerController.InvokeSyncIn(deviceName);
                         positionerController.OnSyncOut += _syncController.GotSyncOut;
                     }
                 }
@@ -73,7 +70,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                             char deviceName = device.Name;
                             if (_syncController is not null)
                             {
-                                _syncController._positionerSyncInMap[deviceName] = () => slavePositionerController.InvokeSyncIn(deviceName);
+                                _syncController.PositionerSyncInMap[deviceName] = () => slavePositionerController.InvokeSyncIn(deviceName);
                                 slavePositionerController.OnSyncOut += _syncController.GotSyncOut;
                             }
                         }
@@ -81,7 +78,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
 
                     if (slaveController is ShutterController_Sim slaveShutterController)
                     {
-                        _syncController!._shutterChangeState = (bool wantedState) =>
+                        _syncController!.ShutterChangeState = (bool wantedState) =>
                         {
                             var device = slaveShutterController.GetDevices().FirstOrDefault();
                             if (device is BaseShutterDevice shutterDevice)
@@ -103,14 +100,14 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             }
             else if (Message == "0x02") // Arduino signaled execution end
             {
-                _processingCompletionSource.TrySetResult(true);
-                _processingLastItemTakenSource.TrySetResult(true);
+                _processingCompletionSource?.TrySetResult(true);
+                _processingLastItemTakenSource?.TrySetResult(true);
 
                 _logger.LogInformation("Sync controller signaled execution completed");
             }
             else if (Message == "0x03") // Arduino signaled buffer is empty
             {
-                _processingLastItemTakenSource.TrySetResult(true);
+                _processingLastItemTakenSource?.TrySetResult(true);
 
                 _logger.LogInformation("Sync controller signaled las item taken");
             }
@@ -119,21 +116,23 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         {
             _buffer.Clear();
 
-            var stopCommand = new Command
+            if(_syncController is not null)
             {
-                TargetController = _syncController.Name,
-                TargetDevices = _syncController.GetDevices().Select(device => device.Name).ToArray(),
-                Parameters = _syncController.Name,
-                Action = CommandDefinitions.Stop,
-                Await = true,
-            };
+                var stopCommand = new Command
+                {
+                    TargetController = _syncController.Name,
+                    TargetDevices = _syncController.GetDevices().Select(device => device.Name).ToArray(),
+                    Parameters = _syncController.Name,
+                    Action = CommandDefinitions.Stop,
+                    Await = true,
+                };
 
-            await ExecuteSlaveCommand(stopCommand);
+                await ExecuteSlaveCommand(stopCommand);
+            }
 
             _launchPending = true;
             _processingCompletionSource?.TrySetResult(true);
             _processingLastItemTakenSource?.TrySetResult(true);
-
         }
 
 

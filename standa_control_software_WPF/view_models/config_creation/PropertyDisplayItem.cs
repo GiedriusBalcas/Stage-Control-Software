@@ -5,9 +5,9 @@ namespace standa_control_software_WPF.view_models.config_creation
 {
     public class PropertyDisplayItem : ViewModelBase
     {
-        private object _propertyValue;
-        public string PropertyName { get; set; }
-        public object PropertyValue
+        private object? _propertyValue;
+        public required string PropertyName { get; set; }
+        public object? PropertyValue
         {
             get => _propertyValue;
             set
@@ -60,7 +60,7 @@ namespace standa_control_software_WPF.view_models.config_creation
             }
         }
 
-        public Type PropertyType { get; set; }
+        public Type? PropertyType { get; set; }
         private string _propertyMessage = string.Empty;
         public string PropertyMessage
         {
@@ -71,7 +71,7 @@ namespace standa_control_software_WPF.view_models.config_creation
                 OnPropertyChanged(nameof(PropertyMessage));
             }
         }
-        public Action OnNamePropertyChanged { get; set; }
+        public Action? OnNamePropertyChanged { get; set; }
     }
 
 }

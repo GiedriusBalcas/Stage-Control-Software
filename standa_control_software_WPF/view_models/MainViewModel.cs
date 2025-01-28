@@ -10,7 +10,7 @@ namespace standa_control_software_WPF.view_models
         /// </summary>
         private readonly NavigationStore _navigationStore;
 
-        public ViewModelBase CurrentViewModel => _navigationStore.CurrentViewModel;
+        public ViewModelBase? CurrentViewModel => _navigationStore.CurrentViewModel;
 
         public MainViewModel(NavigationStore navigationStore)
         {

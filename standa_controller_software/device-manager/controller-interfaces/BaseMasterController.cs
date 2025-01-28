@@ -43,7 +43,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     if (groupsCommands.Any(groupsCommand => groupsCommand.Await))
                         await method.InvokeAsync(commands, semaphore);
                     else
-                        _ = method.MethodHandle(commands, semaphore);
+                        _ = method.InvokeAsync(commands, semaphore);
                 }
                 else
                 {
@@ -82,7 +82,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             foreach (var controllerName in controllerNames)
             {
                 var controller = SlaveControllers[controllerName];
-                if (SlaveControllersLocks.TryGetValue(controllerName, out SemaphoreSlim semaphore))
+                if (SlaveControllersLocks.TryGetValue(controllerName, out var semaphore))
                 {
                     await semaphore.WaitAsync();
                     ackquiredSemaphores[controllerName] = semaphore;

@@ -1,24 +1,19 @@
 ﻿using standa_controller_software.device_manager.devices;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace standa_control_software_WPF.view_models.config_creation.system_properties
 {
     public class DevicePropertyDisplayItem : ViewModelBase
     {
-        private object _propertyValue;
+        private object? _propertyValue;
 
         public bool isDynamic { get; set; }
-        public PropertyInfo PropertyInformation { get; set; } // Represents the actual property info
-        public BaseDevice DeviceReference { get; set; } // Reference to the _device object
+        public required PropertyInfo PropertyInformation { get; set; } // Represents the actual property info
+        public required BaseDevice DeviceReference { get; set; } // Reference to the _device object
 
-        public string PropertyName { get; set; }
-        public object PropertyValue
+        public required string PropertyName { get; set; }
+        public object? PropertyValue
         {
             get 
             {
@@ -77,7 +72,7 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
             }
         }
 
-        public Type PropertyType { get; set; }
+        public required Type PropertyType { get; set; }
         private string _propertyMessage = string.Empty;
         public string PropertyMessage
         {

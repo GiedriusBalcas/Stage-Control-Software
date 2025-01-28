@@ -9,24 +9,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
     public class SyncController_Sim : BaseSyncController
     {
         private Queue<ExecutionInformation> _buffer = new Queue<ExecutionInformation>();
-        public Dictionary<char, Action> _positionerSyncInMap = new Dictionary<char, Action>();
-        public Action<bool> _shutterChangeState;
         private ConcurrentBag<char> _gotSyncOutFrom = new ConcurrentBag<char>();
-
-        public List<char> _sendSyncInTo = new List<char>();
-        Stopwatch millis = new Stopwatch();
-        private QueueState _queueState = QueueState.Waiting;
-        private bool _movementFlag;
-        private bool _relaunchFlag = true;
         private int _maxBufferSize = 6;
         private bool _allowedToRun = true;
 
-        public event Action<string> SendMessage;
-        public enum QueueState
-        {
-            Running,
-            Waiting
-        }
+        public Dictionary<char, Action> PositionerSyncInMap = new Dictionary<char, Action>();
+        public Action<bool>? ShutterChangeState;
+        public event Action<string>? SendMessage;
 
         public SyncController_Sim(string name, ILoggerFactory loggerFactory) : base(name, loggerFactory)
         {
@@ -43,7 +32,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         {
             _buffer.Clear();
             _allowedToRun = false;
-            _queueState = QueueState.Waiting;
             return Task.CompletedTask;
         }
 
@@ -51,7 +39,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         {
             _buffer.Clear();
             _allowedToRun = false;
-            _queueState = QueueState.Waiting;
             return Task.CompletedTask;
         }
         protected override Task AddSyncBufferItem_implementation(char[] Devices, bool Launch, float Rethrow, bool Shutter, float Shutter_delay_on, float Shutter_delay_off)
@@ -86,19 +73,18 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
             return Task.CompletedTask;
         }
-        protected override async Task<int> GetBufferCount(Command command, SemaphoreSlim semaphore)
+        protected override Task<int> GetBufferCount(Command command, SemaphoreSlim semaphore)
         {
             int currentSize = _buffer.Count;
             var result = _maxBufferSize - currentSize;
             _logger.LogDebug($"buffer count: {result}.");
 
-            return result;
+            return Task.FromResult(result);
         }
         protected override Task ConnectDevice_implementation(BaseDevice device)
         {
             return Task.CompletedTask;
         }
-
 
         private async Task ExecuteQueue()
         {
@@ -163,7 +149,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                         {
                             _logger.LogDebug($"Execute queue. shutter on.");
 
-                            _shutterChangeState?.Invoke(true);
+                            ShutterChangeState?.Invoke(true);
                             shutter_pending_on = false;
                         }
 
@@ -171,7 +157,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                         {
                             _logger.LogDebug($"Execute queue. shutter off.");
 
-                            _shutterChangeState?.Invoke(false);
+                            ShutterChangeState?.Invoke(false);
                             shutter_pending_off = false;
                         }
 
@@ -188,7 +174,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
                     if (shutter_pending_off)
                     {
                         _logger.LogDebug($"Execute queue. shutter off.");
-                        _shutterChangeState?.Invoke(false);
+                        ShutterChangeState?.Invoke(false);
                     }
 
                     waitingForSyncOutsFrom = new List<char>();
@@ -217,18 +203,15 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
             _ = Task.Run(() => SendMessage?.Invoke("0x02"));
         }
-
         private Task SendPulse(char[] devices)
         {
             foreach (var device in devices)
             {
-                Task.Run(() => _positionerSyncInMap[device].Invoke());
+                Task.Run(() => PositionerSyncInMap[device].Invoke());
             }
             _logger.LogDebug($"Send pulse encountered. Devices: {string.Join(',', devices)}.");
 
             return Task.CompletedTask;
         }
-
-
     }
 }

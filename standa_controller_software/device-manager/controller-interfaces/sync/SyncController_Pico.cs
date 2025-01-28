@@ -2,20 +2,18 @@
 using standa_controller_software.command_manager;
 using standa_controller_software.device_manager.attributes;
 using standa_controller_software.device_manager.devices;
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO.Ports;
-using System.Linq;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace standa_controller_software.device_manager.controller_interfaces.sync
 {
     public class SyncController_Pico : BaseSyncController
     {
-
+        private class PendingCommand
+        {
+            public byte CommandId { get; set; }
+            public TaskCompletionSource<bool>? Tcs { get; set; }
+        }
         // Define constants
         const byte START_BYTE = 0xAA; // Command start byte
         const byte RESPONSE_START_BYTE = 0xAB; // Response start byte
@@ -34,43 +32,29 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         const byte BUFFER_STATUS_LAST_ITEM = 0x11;
         const byte EXECUTION_STATUS_END = 0x20;
 
+        private SerialPort? _serialPort;
+        private Dictionary<char, byte> _deviceToPinMap = new Dictionary<char, byte>();
+        private readonly SemaphoreSlim _commandSemaphore = new SemaphoreSlim(1, 1);
+        private PendingCommand? _pendingCommand;
+        private TaskCompletionSource<int>? _bufferItemCountTcs;
+        private readonly object _responseLock = new object();
+        // Buffer for incoming data
+        private readonly List<byte> _dataBuffer = new List<byte>();
+        private CancellationTokenSource? _readCancellationTokenSource;
+
         [DisplayPropertyAttribute]
         public char FirstDevice { get; set; }
-
         [DisplayPropertyAttribute]
         public char SecondDevice { get; set; }
-
         [DisplayPropertyAttribute]
         public char ThirdDevice { get; set; }
-
         [DisplayPropertyAttribute]
         public char FourthDevice { get; set; }
 
-        private SerialPort serialPort;
-        private Dictionary<char, byte> _deviceToPinMap = new Dictionary<char, byte>();
-
-        private readonly SemaphoreSlim commandSemaphore = new SemaphoreSlim(1, 1);
-
-        // Replace commandResponseTcs with pendingCommand
-        private PendingCommand pendingCommand;
-        private TaskCompletionSource<int> bufferItemCountTcs;
-        private readonly object responseLock = new object();
-
         // Events to notify subscribers
-        public event Action ExecutionCompleted;
-        public event Action BufferHasFreeSpace;
-        public event Action LastBufferItemTaken;
-
-        // Buffer for incoming data
-        private readonly List<byte> dataBuffer = new List<byte>();
-        private CancellationTokenSource readCancellationTokenSource;
-
-        // Define the PendingCommand class
-        private class PendingCommand
-        {
-            public byte CommandId { get; set; }
-            public TaskCompletionSource<bool> Tcs { get; set; }
-        }
+        public event Action? ExecutionCompleted;
+        public event Action? BufferHasFreeSpace;
+        public event Action? LastBufferItemTaken;
 
         public SyncController_Pico(string name, ILoggerFactory loggerFactory) : base(name, loggerFactory)
         {
@@ -87,10 +71,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             {
                 _logger.LogInformation($"{DateTime.Now:HH:mm:ss.fff}: Exception during Stop: {ex.Message}");
             }
-            finally
-            {
-                // Do not close the serial port or cancel the reading task
-            }
         }
         protected override Task InitializeController(Command command, SemaphoreSlim semaphore)
         {
@@ -102,20 +82,23 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             _deviceToPinMap[FourthDevice] = 0x09;
 
             // Initialize the serial port
-            serialPort = new SerialPort(this.ID, 115200, Parity.None, 8, StopBits.One);
-            serialPort.DtrEnable = true;
-            serialPort.RtsEnable = true;
-            serialPort.Open();
+            _serialPort = new SerialPort(this.ID, 115200, Parity.None, 8, StopBits.One);
+            _serialPort.DtrEnable = true;
+            _serialPort.RtsEnable = true;
+            _serialPort.Open();
 
             // Start asynchronous reading
-            readCancellationTokenSource = new CancellationTokenSource();
-            Task.Run(() => ReadSerialDataAsync(readCancellationTokenSource.Token));
+            _readCancellationTokenSource = new CancellationTokenSource();
+            Task.Run(() => ReadSerialDataAsync(_readCancellationTokenSource.Token));
 
             return Task.CompletedTask;
         }
         protected override async Task AddSyncBufferItem_implementation(char[] Devices, bool Launch, float Rethrow, bool Shutter, float Shutter_delay_on, float Shutter_delay_off)
         {
-            await commandSemaphore.WaitAsync();
+            if(_serialPort is null)
+                return;
+
+            await _commandSemaphore.WaitAsync();
 
             try
             {
@@ -134,21 +117,21 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
                 // Initialize the TaskCompletionSource
                 var tcs = new TaskCompletionSource<bool>();
-                lock (responseLock)
+                lock (_responseLock)
                 {
-                    if (pendingCommand != null)
+                    if (_pendingCommand != null)
                     {
                         throw new InvalidOperationException("Another command is already being processed.");
                     }
-                    pendingCommand = new PendingCommand { CommandId = CMD_ADD_BUFFER_ITEM, Tcs = tcs };
+                    _pendingCommand = new PendingCommand { CommandId = CMD_ADD_BUFFER_ITEM, Tcs = tcs };
                 }
 
                 // Send the packet
-                if (!serialPort.IsOpen)
+                if (!_serialPort.IsOpen)
                 {
                     throw new InvalidOperationException("Serial port is closed.");
                 }
-                serialPort.Write(packet, 0, packet.Length);
+                _serialPort.Write(packet, 0, packet.Length);
                 _logger.LogInformation($"picoWrapper: Packet Sent: \nDevices = {string.Join(' ', Devices)} \nLaunch = {Launch}\nRethrow = {Rethrow / 1000}\nShutter_on = {Shutter_delay_on}\nShutter_off = {Shutter_delay_off}");
                 _logger.LogInformation($"pico: sending packet: [{string.Join(' ', packet)}]");
 
@@ -167,20 +150,23 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             }
             finally
             {
-                lock (responseLock)
+                lock (_responseLock)
                 {
-                    pendingCommand = null;
+                    _pendingCommand = null;
                 }
-                commandSemaphore.Release();
+                _commandSemaphore.Release();
             }
         }
         protected override async Task StartQueueExecution(Command command, SemaphoreSlim semaphore) 
         {
-            _ = ExecuteQueue();
+            await ExecuteQueue();
         }
         protected override async Task<int> GetBufferCount(Command command, SemaphoreSlim semaphore)
         {
-            await commandSemaphore.WaitAsync();
+            if (_serialPort is null)
+                throw new Exception("Serial port has not been initialized.");
+
+            await _commandSemaphore.WaitAsync();
             try
             {
                 // Construct the packet
@@ -188,21 +174,21 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
                 // Initialize the TaskCompletionSource
                 var tcs = new TaskCompletionSource<int>();
-                lock (responseLock)
+                lock (_responseLock)
                 {
-                    if (bufferItemCountTcs != null)
+                    if (_bufferItemCountTcs != null)
                     {
                         throw new InvalidOperationException("picoWrapper: Another command is already being processed.");
                     }
-                    bufferItemCountTcs = tcs;
+                    _bufferItemCountTcs = tcs;
                 }
 
                 // Send the packet
-                if (!serialPort.IsOpen)
+                if (!_serialPort.IsOpen)
                 {
                     throw new InvalidOperationException("picoWrapper: Serial port is closed.");
                 }
-                serialPort.Write(packet, 0, packet.Length);
+                _serialPort.Write(packet, 0, packet.Length);
 
                 // Wait for the response with timeout
                 int count = await WaitForResponseAsync(tcs.Task, timeoutMilliseconds: 1000);
@@ -215,11 +201,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             }
             finally
             {
-                lock (responseLock)
+                lock (_responseLock)
                 {
-                    bufferItemCountTcs = null;
+                    _bufferItemCountTcs = null;
                 }
-                commandSemaphore.Release();
+                _commandSemaphore.Release();
             }
         }
 
@@ -250,7 +236,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         
         private async Task ExecuteQueue()
         {
-            await commandSemaphore.WaitAsync();
+            if (_serialPort is null)
+                return;
+
+            await _commandSemaphore.WaitAsync();
 
             try
             {
@@ -259,21 +248,21 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
                 // Initialize the TaskCompletionSource
                 var tcs = new TaskCompletionSource<bool>();
-                lock (responseLock)
+                lock (_responseLock)
                 {
-                    if (pendingCommand != null)
+                    if (_pendingCommand != null)
                     {
                         throw new InvalidOperationException("picoWrapper: Another command is already being processed.");
                     }
-                    pendingCommand = new PendingCommand { CommandId = CMD_START_EXECUTION, Tcs = tcs };
+                    _pendingCommand = new PendingCommand { CommandId = CMD_START_EXECUTION, Tcs = tcs };
                 }
 
                 // Send the packet
-                if (!serialPort.IsOpen)
+                if (!_serialPort.IsOpen)
                 {
                     throw new InvalidOperationException("picoWrapper: Serial port is closed.");
                 }
-                serialPort.Write(packet, 0, packet.Length);
+                _serialPort.Write(packet, 0, packet.Length);
 
                 // Wait for the response with timeout
                 bool success = await WaitForResponseAsync(tcs.Task, timeoutMilliseconds: 1000);
@@ -290,11 +279,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             }
             finally
             {
-                lock (responseLock)
+                lock (_responseLock)
                 {
-                    pendingCommand = null;
+                    _pendingCommand = null;
                 }
-                commandSemaphore.Release();
+                _commandSemaphore.Release();
             }
         }
         // Helper method to construct simple command packets
@@ -395,20 +384,23 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         // Asynchronous method to read serial data
         private async Task ReadSerialDataAsync(CancellationToken cancellationToken)
         {
+            if (_serialPort is null)
+                return;
+
             try
             {
                 byte[] buffer = new byte[1024];
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    int bytesRead = await serialPort.BaseStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
+                    int bytesRead = await _serialPort.BaseStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
                     if (bytesRead > 0)
                     {
                         byte[] receivedData = buffer.Take(bytesRead).ToArray();
                         //_logger.LogInformation($"{DateTime.Now:HH:mm:ss.fff}: picoWrapper: Raw Data Received: [{string.Join(", ", receivedData.Select(b => $"0x{b:X2}"))}]");
                         //ProcessTextData(receivedData);
-                        lock (dataBuffer)
+                        lock (_dataBuffer)
                         {
-                            dataBuffer.AddRange(receivedData);
+                            _dataBuffer.AddRange(receivedData);
                         }
 
                         // Process received data
@@ -428,32 +420,32 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         // Updated ProcessReceivedData method
         private void ProcessReceivedData()
         {
-            lock (dataBuffer)
+            lock (_dataBuffer)
             {
-                while (dataBuffer.Count > 0)
+                while (_dataBuffer.Count > 0)
                 {
-                    int startIndex = dataBuffer.FindIndex(b => b == RESPONSE_START_BYTE);
+                    int startIndex = _dataBuffer.FindIndex(b => b == RESPONSE_START_BYTE);
 
                     if (startIndex == -1)
                     {
                         // No RESPONSE_START_BYTE found, process all data as text
-                        ProcessTextData(dataBuffer.ToArray());
-                        dataBuffer.Clear();
+                        ProcessTextData(_dataBuffer.ToArray());
+                        _dataBuffer.Clear();
                         return;
                     }
                     else if (startIndex > 0)
                     {
                         // Process data before RESPONSE_START_BYTE as text
-                        byte[] textData = dataBuffer.GetRange(0, startIndex).ToArray();
+                        byte[] textData = _dataBuffer.GetRange(0, startIndex).ToArray();
                         ProcessTextData(textData);
-                        dataBuffer.RemoveRange(0, startIndex);
+                        _dataBuffer.RemoveRange(0, startIndex);
                     }
 
                     // Now dataBuffer[0] == RESPONSE_START_BYTE
-                    if (TryParseProtocolMessage(dataBuffer, out int messageLength, out int responseCode, out byte[] payload))
+                    if (TryParseProtocolMessage(_dataBuffer, out int messageLength, out int responseCode, out byte[] payload))
                     {
                         // Remove the message bytes from dataBuffer
-                        dataBuffer.RemoveRange(0, messageLength);
+                        _dataBuffer.RemoveRange(0, messageLength);
                         HandleResponse(responseCode, payload);
                     }
                     else
@@ -480,7 +472,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         {
             messageLength = 0;
             responseCode = 0;
-            payload = null;
+            payload = [];
 
             // Need at least 4 bytes for header and checksum
             if (buffer.Count < 4)
@@ -541,18 +533,18 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             {
                 case RESP_CMD_SUCCESS:
                     {
-                        PendingCommand cmd = null;
-                        lock (responseLock)
+                        PendingCommand? cmd = null;
+                        lock (_responseLock)
                         {
-                            cmd = pendingCommand;
-                            pendingCommand = null;
+                            cmd = _pendingCommand;
+                            _pendingCommand = null;
                         }
 
                         if (cmd != null)
                         {
                             string commandName = GetCommandName(cmd.CommandId);
                             _logger.LogInformation($"{DateTime.Now:HH:mm:ss.fff}: picoWrapper: Command '{commandName}' executed successfully.");
-                            cmd.Tcs.SetResult(true);
+                            cmd.Tcs?.SetResult(true);
                         }
                         else
                         {
@@ -563,18 +555,18 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
                 case RESP_CMD_ERROR:
                     {
-                        PendingCommand cmd = null;
-                        lock (responseLock)
+                        PendingCommand? cmd = null;
+                        lock (_responseLock)
                         {
-                            cmd = pendingCommand;
-                            pendingCommand = null;
+                            cmd = _pendingCommand;
+                            _pendingCommand = null;
                         }
 
                         if (cmd != null)
                         {
                             string commandName = GetCommandName(cmd.CommandId);
                             _logger.LogInformation($"{DateTime.Now:HH:mm:ss.fff}: picoWrapper: Command '{commandName}' failed.");
-                            cmd.Tcs.SetResult(false);
+                            cmd.Tcs?.SetResult(false);
                         }
                         else
                         {
@@ -585,11 +577,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
                 case RESP_BUFFER_ITEM_COUNT:
                     {
-                        TaskCompletionSource<int> countTcs = null;
-                        lock (responseLock)
+                        TaskCompletionSource<int>? countTcs = null;
+                        lock (_responseLock)
                         {
-                            countTcs = bufferItemCountTcs;
-                            bufferItemCountTcs = null;
+                            countTcs = _bufferItemCountTcs;
+                            _bufferItemCountTcs = null;
                         }
 
                         if (countTcs != null)
@@ -647,7 +639,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         }
         private async Task ClearBuffer()
         {
-            await commandSemaphore.WaitAsync();
+            if (_serialPort is null)
+                return;
+
+            await _commandSemaphore.WaitAsync();
 
             try
             {
@@ -656,21 +651,21 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
 
                 // Initialize the TaskCompletionSource
                 var tcs = new TaskCompletionSource<bool>();
-                lock (responseLock)
+                lock (_responseLock)
                 {
-                    if (pendingCommand != null)
+                    if (_pendingCommand != null)
                     {
                         throw new InvalidOperationException("Another command is already being processed.");
                     }
-                    pendingCommand = new PendingCommand { CommandId = CMD_CLEAR_BUFFER, Tcs = tcs };
+                    _pendingCommand = new PendingCommand { CommandId = CMD_CLEAR_BUFFER, Tcs = tcs };
                 }
 
                 // Send the packet
-                if (!serialPort.IsOpen)
+                if (!_serialPort.IsOpen)
                 {
                     throw new InvalidOperationException("Serial port is closed.");
                 }
-                serialPort.Write(packet, 0, packet.Length);
+                _serialPort.Write(packet, 0, packet.Length);
 
                 // Wait for the response with timeout
                 bool success = await WaitForResponseAsync(tcs.Task, timeoutMilliseconds: 10000);
@@ -687,11 +682,11 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
             }
             finally
             {
-                lock (responseLock)
+                lock (_responseLock)
                 {
-                    pendingCommand = null;
+                    _pendingCommand = null;
                 }
-                commandSemaphore.Release();
+                _commandSemaphore.Release();
             }
         }
     }

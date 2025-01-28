@@ -1,18 +1,13 @@
 ﻿using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
-using OpenTK;
 using OpenTK.GLControl;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
-using OpenTK.Windowing.Common;
-using OpenTK.Wpf;
 using standa_control_software_WPF.view_models.system_control;
 using standa_control_software_WPF.view_models.system_control.control;
 using standa_control_software_WPF.views.behaviours;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Forms;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 
@@ -24,14 +19,11 @@ namespace standa_control_software_WPF.views.system_control
     public partial class SystemControlView : System.Windows.Controls.UserControl
     {
         private PainterManagerViewModel? _viewModel;
-        private CameraViewModel _cameraViewModel;
-        private LineBackgroundTransformer _highlighter;
-        private DispatcherTimer _updateTimer;
-        private int _pendingLineNumberUpdate;
+        private CameraViewModel? _cameraViewModel;
         private Color4 _backgroundColor = new Color4(0, 0, 0, 1);
 
-        private GLControl _glControl; // declare a field if you need to reference it later
-        private System.Windows.Forms.Timer _timer;
+        private GLControl? _glControl; // declare a field if you need to reference it later
+        private System.Windows.Forms.Timer? _timer;
         private System.Drawing.Point _lastPos;
 
         public SystemControlView()
@@ -51,9 +43,8 @@ namespace standa_control_software_WPF.views.system_control
 
             if (_glControl != null)
             {
-                _timer.Stop();
+                _timer?.Stop();
                 _glControl.SizeChanged -= glControl_SizeChanged; ;
-                _glControl.Paint -= glControl_Paint;
                 _glControl.MouseWheel -= glControl_MouseWheel;
                 _glControl.MouseMove -= glControl_MouseMove;
                 _glControl.Load -= glControl_Load;
@@ -111,8 +102,10 @@ namespace standa_control_software_WPF.views.system_control
 
         private void glControl_Load(object? sender, EventArgs e)
         {
+            if (_glControl is null)
+                return;
+
             _glControl.SizeChanged += glControl_SizeChanged; ;
-            _glControl.Paint += glControl_Paint;
             _glControl.MouseWheel += glControl_MouseWheel;
             _glControl.MouseMove += glControl_MouseMove;
             
@@ -129,7 +122,9 @@ namespace standa_control_software_WPF.views.system_control
 
         private void glControl_MouseMove(object? sender, System.Windows.Forms.MouseEventArgs e)
         {
-            
+            if (_cameraViewModel is null || _glControl is null)
+                return;
+
             if (e.Button == MouseButtons.Left)
             {
                 var pos = e.Location;
@@ -153,6 +148,9 @@ namespace standa_control_software_WPF.views.system_control
 
         private void glControl_MouseWheel(object? sender, System.Windows.Forms.MouseEventArgs e)
         {
+            if (_cameraViewModel is null || _glControl is null)
+                return;
+
             float delta = e.Delta;
             var dr = Math.Sign(delta) * 1;
 
@@ -174,21 +172,18 @@ namespace standa_control_software_WPF.views.system_control
 
                 GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
-                if (_viewModel is not null)
-                    _viewModel.DrawFrame();
+                _viewModel.DrawFrame();
 
                 _glControl.SwapBuffers();
             }
 
         }
 
-        private void glControl_Paint(object? sender, PaintEventArgs e)
-        {
-            //Render();
-        }
-
         private void glControl_SizeChanged(object? sender, EventArgs e)
         {
+            if (_glControl is null)
+                return;
+
             if (_glControl.Context is not null &&!_glControl.Context.IsCurrent)
                 _glControl.MakeCurrent();
 

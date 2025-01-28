@@ -19,13 +19,12 @@ namespace standa_controller_software.device_manager
         private ILogger<ControllerManager> _logger;
         private ILoggerFactory _loggerFactory;
 
-        public ToolInformation ToolInformation { get; set; }
-        public Action<Vector3> ToolPositionBoundExceeded;
-
+        public ToolInformation? ToolInformation { get; set; }
+        public Action<Vector3>? ToolPositionBoundExceeded;
         public Dictionary<string, BaseController> Controllers { get; private set; } = new Dictionary<string, BaseController>();
         public Dictionary<string, SemaphoreSlim> ControllerLocks { get; private set; } = new Dictionary<string, SemaphoreSlim>();
+        public string Name { get; set; } = "Undefined";
 
-        public string Name { get; set; }
         public ControllerManager(ILogger<ControllerManager> logger, ILoggerFactory loggerFactory)
         {
             _logger = logger;
@@ -99,10 +98,10 @@ namespace standa_controller_software.device_manager
             foreach (var controllerEntry in Controllers)
             {
                 var originalController = controllerEntry.Value;
-                
+
                 // Create a new instance of the replacement type or the original type
                 var newController = originalController.GetVirtualCopy(); // Assuming IController has a Clone method
-                
+
 
                 if (newController is not null)
                 {
@@ -122,6 +121,9 @@ namespace standa_controller_software.device_manager
             foreach (var masterController_copy in masterControllers_copy)
             {
                 var controllerToCopy = Controllers[masterController_copy.Name] as BaseMasterController;
+                if (controllerToCopy is null)
+                    throw new Exception($"Unexpected exception thrown. Unable to create a copy of Master Controller: {masterController_copy.Name}.");
+
                 foreach (var (slaveControllerName, slaveController) in controllerToCopy.SlaveControllers)
                 {
                     masterController_copy.AddSlaveController(controllerManager_copy.Controllers[slaveControllerName], controllerManager_copy.ControllerLocks[slaveControllerName]);
@@ -129,27 +131,30 @@ namespace standa_controller_software.device_manager
                 }
             }
 
-            var toolInfo = new ToolInformation(controllerManager_copy, new ShutterDevice('u', "undefined"), this.ToolInformation.PositionCalcFunctions, _loggerFactory.CreateLogger<ToolInformation>()) 
+            if(this.ToolInformation is not null)
             {
-                MinimumCoordinates = this.ToolInformation.MinimumCoordinates,
-                MaximumCoordinates = this.ToolInformation.MaximumCoordinates,
-            };
-            if (controllerManager_copy.TryGetDevice<BaseShutterDevice>(this.ToolInformation.Name, out BaseShutterDevice shutterDevice))
-            {
-                toolInfo = new ToolInformation(controllerManager_copy, shutterDevice, this.ToolInformation.PositionCalcFunctions, _loggerFactory.CreateLogger<ToolInformation>())
+                var toolInfo = new ToolInformation(controllerManager_copy, new ShutterDevice('u', "undefined"), this.ToolInformation.PositionCalcFunctions, _loggerFactory.CreateLogger<ToolInformation>())
                 {
                     MinimumCoordinates = this.ToolInformation.MinimumCoordinates,
                     MaximumCoordinates = this.ToolInformation.MaximumCoordinates,
                 };
+                if (controllerManager_copy.TryGetDevice<BaseShutterDevice>(this.ToolInformation.Name, out var shutterDevice) && shutterDevice is not null)
+                {
+                    toolInfo = new ToolInformation(controllerManager_copy, shutterDevice, this.ToolInformation.PositionCalcFunctions, _loggerFactory.CreateLogger<ToolInformation>())
+                    {
+                        MinimumCoordinates = this.ToolInformation.MinimumCoordinates,
+                        MaximumCoordinates = this.ToolInformation.MaximumCoordinates,
+                    };
+                }
+                controllerManager_copy.ToolInformation = toolInfo;
             }
-            controllerManager_copy.ToolInformation = toolInfo;
 
             return controllerManager_copy;
         }
 
         internal void ToolPositionExceedsBounds(Vector3 value)
         {
-            ToolPositionBoundExceeded.Invoke(value);
+            ToolPositionBoundExceeded?.Invoke(value);
         }
     }
 }

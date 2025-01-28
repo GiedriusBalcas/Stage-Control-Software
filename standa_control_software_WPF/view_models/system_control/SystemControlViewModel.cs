@@ -150,7 +150,7 @@ namespace standa_control_software_WPF.view_models.system_control
             ClearOutputMessageCommand = new RelayCommand(() => OutputMessage = "");
 
             _commandManager.OnStateChanged += CommandManager_OnStateChanged;
-            _controllerManager.ToolInformation.OutOfBoundsChanged += async (value) => await Tool_OutOfBoundsChanged(value);
+            _controllerManager.ToolInformation!.OutOfBoundsChanged += async (value) => await Tool_OutOfBoundsChanged(value);
 
         }
 

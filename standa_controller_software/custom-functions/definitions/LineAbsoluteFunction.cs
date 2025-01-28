@@ -1,18 +1,12 @@
 ﻿using standa_controller_software.command_manager;
-using standa_controller_software.device_manager;
-using standa_controller_software.device_manager.controller_interfaces;
-using standa_controller_software.device_manager.devices;
-using standa_controller_software.device_manager.controller_interfaces.positioning;
-using standa_controller_software.device_manager.controller_interfaces.shutter;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.custom_functions.helpers;
-using text_parser_library;
-using System.Xml.Linq;
+using standa_controller_software.device_manager;
+using standa_controller_software.device_manager.controller_interfaces.positioning;
+using standa_controller_software.device_manager.devices;
 using standa_controller_software.device_manager.devices.shutter;
 using System.Globalization;
+using text_parser_library;
 
 namespace standa_controller_software.custom_functions.definitions
 {
@@ -499,6 +493,9 @@ namespace standa_controller_software.custom_functions.definitions
             char[] deviceNames = [.. positionerMovementInfos.Keys];
             Dictionary<char, float> movementRatio = [];
 
+            if (_controllerManager.ToolInformation is null)
+                throw new Exception("Unable to fetch tool information.");
+
             //Calculate the initial and final tool positions
             var startToolPoint = _controllerManager.ToolInformation.CalculateToolPositionUpdate
                 (
@@ -585,6 +582,10 @@ namespace standa_controller_software.custom_functions.definitions
         {
             char[] deviceNames = [.. positionerMovementInfos.Keys];
             Dictionary<char, float> movementRatio = [];
+
+
+            if (_controllerManager.ToolInformation is null)
+                throw new Exception("Unable to fetch tool information.");
 
             //Calculate the initial and final tool positions
             var startToolPoint = _controllerManager.ToolInformation.CalculateToolPositionUpdate

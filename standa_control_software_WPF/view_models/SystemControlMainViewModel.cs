@@ -24,7 +24,7 @@ namespace standa_control_software_WPF.view_models
                 _navigationStore.CurrentViewModel = _selectedNavItem.GetViewModel();
             }
         }
-        public ViewModelBase CurrentViewModel => _navigationStore.CurrentViewModel;
+        public ViewModelBase? CurrentViewModel => _navigationStore.CurrentViewModel;
         public SystemControlViewModel CurrentCompilerViewModel { get; }
 
         // Initialize navigation commands with corresponding view model retrieval functions

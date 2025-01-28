@@ -19,7 +19,7 @@ namespace standa_controller_software.device_manager.devices
         [DynamicPropertyAttribute]
         public virtual int DelayOff { get; set; }
 
-        public event EventHandler StateChanged;
+        public event EventHandler? StateChanged;
         private bool _isOn = false;
         public bool IsOn
         {

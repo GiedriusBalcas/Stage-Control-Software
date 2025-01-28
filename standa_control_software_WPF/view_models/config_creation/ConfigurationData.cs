@@ -2,7 +2,7 @@
 {
     public class ConfigurationData
     {
-        public string Name { get; set; }
-        public string Filepath {  get; set; }
+        public string? Name { get; set; }
+        public string? Filepath {  get; set; }
     }
 }

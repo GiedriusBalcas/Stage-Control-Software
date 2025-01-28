@@ -24,7 +24,7 @@ namespace standa_control_software_WPF.view_models.system_control
 
         public Vector3 ToolPos
         {
-            get => _controllerManager.ToolInformation.Position;
+            get => _controllerManager.ToolInformation!.Position;
         }
         public double AcquisitionDuration
         {
@@ -72,7 +72,9 @@ namespace standa_control_software_WPF.view_models.system_control
                 if(deviceViewModel is not null)
                     Devices.Add(deviceViewModel);
             }
-
+            if (_controllerManager.ToolInformation is null)
+                throw new Exception("Configuration lacks tool information.");
+            
             ToolViewModel = new ToolViewModel(_controllerManager.ToolInformation);
         }
         /// <summary>

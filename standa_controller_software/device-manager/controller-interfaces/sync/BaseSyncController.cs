@@ -1,17 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using standa_controller_software.command_manager;
-using standa_controller_software.command_manager.command_parameter_library.Common;
 using standa_controller_software.command_manager.command_parameter_library.Synchronization;
-using standa_controller_software.device_manager.controller_interfaces.shutter;
 using standa_controller_software.device_manager.devices;
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace standa_controller_software.device_manager.controller_interfaces.sync
 {
@@ -89,7 +79,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.sync
         }
         protected abstract Task StartQueueExecution(Command command, SemaphoreSlim semaphore);
         protected abstract Task<int> GetBufferCount(Command command, SemaphoreSlim semaphore);
-
         protected abstract Task ConnectDevice_implementation(BaseDevice device);
         protected abstract Task AddSyncBufferItem_implementation(char[] Devices, bool Launch, float Rethrow, bool Shutter, float Shutter_delay_on, float Shutter_delay_off);
 

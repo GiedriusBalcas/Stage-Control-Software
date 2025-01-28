@@ -95,7 +95,7 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
 
             var controllerManager_virtual = _controllerManager.CreateAVirtualCopy();
 
-            var masterPainterController = new PositionAndShutterController_Painter("painter", _loggerFactory, _lineCollection, controllerManager_virtual.ToolInformation);
+            var masterPainterController = new PositionAndShutterController_Painter("painter", _loggerFactory, _lineCollection, controllerManager_virtual.ToolInformation!);
             controllerManager_virtual.AddController(masterPainterController);
             foreach (var (controllerName, controller) in controllerManager_virtual.Controllers)
             {

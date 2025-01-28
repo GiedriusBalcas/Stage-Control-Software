@@ -1,12 +1,10 @@
 ﻿
 using Microsoft.Extensions.Logging;
-using Microsoft.VisualBasic.Logging;
 using standa_control_software_WPF.view_models.commands;
 using standa_controller_software.device_manager;
 using standa_controller_software.device_manager.attributes;
 using standa_controller_software.device_manager.controller_interfaces;
 using standa_controller_software.device_manager.controller_interfaces.master_controller;
-using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Reflection;
 using System.Windows.Input;
@@ -16,12 +14,12 @@ namespace standa_control_software_WPF.view_models.config_creation
     public class ControllerConfigViewModel : ViewModelBase
     {
         private readonly ConfigurationViewModel _config;
-        private string _selectedControllerType;
-        private string _selectedMasterControllerName = string.Empty;
-        private bool _isEnabled = true;
-        private string _name;
         private readonly ILogger<ControllerConfigViewModel> _logger;
         private readonly ILoggerFactory _loggerFactory;
+        private string? _selectedControllerType;
+        private string? _selectedMasterControllerName = string.Empty;
+        private bool _isEnabled = true;
+        private string _name = "";
 
         public string Name
         {
@@ -55,7 +53,34 @@ namespace standa_control_software_WPF.view_models.config_creation
                     device.IsEnabled = _isEnabled;
             }
         }
-        public Type ControllerType { get; private set; }
+        public string SelectedMasterControllerName
+        {
+            get
+            {
+                if (_selectedMasterControllerName is null || !ConfigurationControllerNames.Contains(_selectedMasterControllerName))
+                    return "";
+                return _selectedMasterControllerName;
+            }
+            set 
+            {
+                if(value != null)
+                    _selectedMasterControllerName = value;
+                OnPropertyChanged(nameof(SelectedMasterControllerName));
+            }
+        }
+        public string? SelectedControllerType { 
+            get => _selectedControllerType; 
+            set 
+            {
+                _selectedControllerType = value;
+                if(_selectedControllerType != null)
+                    ControllerType = DeviceDefinitionLibrary.ControllerDefinitions.GetAllControllerTypes().First(controllerInfo => controllerInfo.Name == _selectedControllerType).Type;
+
+                OnPropertyChanged(nameof(SelectedControllerType));
+                GetProperties();
+            } 
+        }
+        public Type? ControllerType { get; private set; }
         public ObservableCollection<DeviceConfigViewModel> Devices { get; set; } = new ObservableCollection<DeviceConfigViewModel>();
         public ObservableCollection<PropertyDisplayItem> ControllerProperties { get; } = new ObservableCollection<PropertyDisplayItem>();
         public ObservableCollection<string> ConfigurationControllerNames => new ObservableCollection<string>(
@@ -72,39 +97,13 @@ namespace standa_control_software_WPF.view_models.config_creation
             .Where(controllerName => controllerName != this.Name)
             .ToList().Append("") ?? new List<string>().Append("")
         );
-        public string SelectedMasterControllerName
-        {
-            get
-            {
-                if (!ConfigurationControllerNames.Contains(_selectedMasterControllerName))
-                    return "";
-                return _selectedMasterControllerName;
-            }
-            set 
-            {
-                if(value != null)
-                    _selectedMasterControllerName = value;
-                OnPropertyChanged(nameof(SelectedMasterControllerName));
-            }
-        }
-        public string SelectedControllerType { 
-            get => _selectedControllerType; 
-            set 
-            {
-                _selectedControllerType = value;
-                if(_selectedControllerType != null)
-                    ControllerType = DeviceDefinitionLibrary.ControllerDefinitions.GetAllControllerTypes().First(controllerInfo => controllerInfo.Name == _selectedControllerType).Type;
-
-                OnPropertyChanged(nameof(SelectedControllerType));
-                GetProperties();
-            } 
-        }
         // List of available controller types are held in Model/definitions-library
         public ObservableCollection<string> ControllerTypes { get; } = new ObservableCollection<string>(
             DeviceDefinitionLibrary.ControllerDefinitions.GetAllControllerTypes()
             .Select(controllerInfo => controllerInfo.Name)
             .ToList()
         );
+
         public ICommand AddDeviceCommand { get; private set; }
         public ICommand RemoveControllerCommand { get; private set; }
 
@@ -133,9 +132,9 @@ namespace standa_control_software_WPF.view_models.config_creation
 
             // Assuming Name and ID are always required and available
             var nameProp = ControllerProperties.FirstOrDefault(p => p.PropertyName == "Name")?.PropertyValue;
-            
+            var convertedNameProp = Convert.ToString(nameProp);
             // Convert property values to expected types
-            string name = nameProp != null ? Convert.ToString(nameProp) : "undefined"; // Default to 'u' if not found
+            string name = convertedNameProp ?? "undefined"; // Default to 'u' if not found
 
 
             // Create the controller instance using reflection with parameters
@@ -178,7 +177,6 @@ namespace standa_control_software_WPF.view_models.config_creation
 
             return controllerInstance;
         }
-
         private bool CanExecuteAddDevice(ControllerConfigViewModel obj)
         {
             if(this.ControllerType is null)
@@ -224,7 +222,7 @@ namespace standa_control_software_WPF.view_models.config_creation
             }
 
         }
-        public bool UpdatePropertyValue(string propertyName, object newValue)
+        public bool UpdatePropertyValue(string propertyName, object? newValue)
         {
             var propertyItem = ControllerProperties.FirstOrDefault(p => p.PropertyName == propertyName);
             if (propertyItem != null && propertyItem.PropertyType != null)
@@ -252,7 +250,5 @@ namespace standa_control_software_WPF.view_models.config_creation
         {
             _config.Controllers.Remove(this);
         }
-
-
     }
 }

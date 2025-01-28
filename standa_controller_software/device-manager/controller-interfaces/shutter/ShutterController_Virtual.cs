@@ -1,19 +1,12 @@
 ﻿using Microsoft.Extensions.Logging;
 using standa_controller_software.command_manager;
 using standa_controller_software.device_manager.devices;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace standa_controller_software.device_manager.controller_interfaces.shutter
 {
     public class ShutterController_Virtual : BaseShutterController
     {
-
         private class DeviceInformation
         {
             public bool _isOn = false;

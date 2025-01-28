@@ -54,10 +54,10 @@ namespace standa_control_software_WPF.view_models.system_control.control
             CommandLayer = new CommandLayerViewModel(_controllerManager, _loggerFactory.CreateLogger<CommandLayerViewModel>(), _loggerFactory, _camera);
             RenderLayers.Add(CommandLayer);
 
-            var toolPointLayer = new ToolPointLayerViewModel(_camera, _controllerManager.ToolInformation);
+            var toolPointLayer = new ToolPointLayerViewModel(_camera, _controllerManager.ToolInformation!);
             RenderLayers.Add(toolPointLayer);
 
-            GridLayer = new GridLayerViewModel(_camera, _controllerManager.ToolInformation);
+            GridLayer = new GridLayerViewModel(_camera, _controllerManager.ToolInformation!);
             RenderLayers.Add(GridLayer);
 
             OrientationLayer = new OrientationArrowsLayerViewModel(_camera);

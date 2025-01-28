@@ -8,7 +8,6 @@ using System.Windows.Media;
 public class HighlightCurrentLineBackgroundRenderer : IBackgroundRenderer
 {
     private readonly TextEditor _editor;
-    private readonly Color4 _backgroundColor;
     private Pen _borderPen;
 
     public HighlightCurrentLineBackgroundRenderer(TextEditor editor)

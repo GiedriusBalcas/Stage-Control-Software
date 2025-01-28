@@ -27,7 +27,7 @@ namespace standa_controller_software.command_manager
         private readonly ILogger<CommandManager> _logger;
         private ConcurrentQueue<Command[]> _commandQueue = new ConcurrentQueue<Command[]>();
         private CommandManagerState _currentState = CommandManagerState.Waiting;
-        public event Action<CommandManagerState> OnStateChanged;
+        public event Action<CommandManagerState>? OnStateChanged;
         public CommandManagerState CurrentState
         {
             get => _currentState;
@@ -151,7 +151,7 @@ namespace standa_controller_software.command_manager
             CurrentState = CommandManagerState.Processing;
             while (_commandQueue.Count > 0 && _allowedToRun)
             {
-                if (_commandQueue.TryDequeue(out Command[] commandLine))
+                if (_commandQueue.TryDequeue(out var commandLine))
                 {
                     // Group commands by their target controller
 
@@ -202,13 +202,12 @@ namespace standa_controller_software.command_manager
             var controllerNames = commandsByController.Keys.ToList();
 
             var commandsByMasterController = commandLine
-                        .GroupBy
-                        (
-                        kvp =>
-                            _controllerManager.Controllers[kvp.TargetController].MasterController == null
-                                ? kvp.TargetController
-                                : _controllerManager.Controllers[kvp.TargetController].MasterController.Name
-                        )
+                        .GroupBy(kvp =>
+                        {
+                            var controller = _controllerManager.Controllers[kvp.TargetController];
+                            var masterController = controller.MasterController;
+                            return masterController == null ? kvp.TargetController : masterController.Name;
+                        })
                         .ToDictionary(g => g.Key, g => g.ToArray());
 
             // check if theres a queued controller
@@ -301,7 +300,7 @@ namespace standa_controller_software.command_manager
             foreach (var controllerName in controllerNames)
             {
                 var controller = _controllerManager.Controllers[controllerName];
-                if (_controllerManager.ControllerLocks.TryGetValue(controllerName, out SemaphoreSlim semaphore))
+                if (_controllerManager.ControllerLocks.TryGetValue(controllerName, out var semaphore))
                 {
                     await semaphore.WaitAsync();
                     ackquiredSemaphores[controllerName] = semaphore;

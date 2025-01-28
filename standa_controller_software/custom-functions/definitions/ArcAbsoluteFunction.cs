@@ -51,7 +51,7 @@ namespace standa_controller_software.custom_functions.definitions
 
             if (!TryGetProperty("Shutter", out var isShutterUsedObj))
                 throw new Exception("Failed to get 'Shutter' property.");
-            var isShutterUsed = (bool)isShutterUsedObj;
+            var isShutterUsed = isShutterUsedObj is null ? false : (bool)isShutterUsedObj;
 
             if (!TryGetProperty("Accuracy", out var accuracyObj))
                 throw new Exception("Failed to get 'Accuracy' property.");
@@ -70,11 +70,11 @@ namespace standa_controller_software.custom_functions.definitions
 
             if (!TryGetProperty("LeadIn", out var leadInObj))
                 throw new Exception("Failed to get 'LeadIn' property.");
-            var leadIn = (bool)leadInObj;
+            var leadIn = leadInObj is null ? false : (bool)leadInObj;
 
             if (!TryGetProperty("LeadOut", out var leadOutObj))
                 throw new Exception("Failed to get 'LeadOut' property.");
-            var leadOut = (bool)leadOutObj;
+            var leadOut = leadOutObj is null ? false : (bool)leadOutObj;
 
 
 

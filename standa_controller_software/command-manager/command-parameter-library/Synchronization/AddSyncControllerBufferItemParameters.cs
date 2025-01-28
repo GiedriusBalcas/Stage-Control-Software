@@ -8,7 +8,7 @@ namespace standa_controller_software.command_manager.command_parameter_library.S
 {
     public class AddSyncControllerBufferItemParameters
     {
-        public char[] Devices { get; set; }
+        public required char[] Devices { get; set; }
         public bool Launch { get; set; }
         public bool Shutter { get; set; }
         public float Rethrow { get; set; }

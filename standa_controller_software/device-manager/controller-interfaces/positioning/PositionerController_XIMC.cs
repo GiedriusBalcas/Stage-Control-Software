@@ -1,21 +1,9 @@
 ﻿using Microsoft.Extensions.Logging;
-using OpenTK.Audio.OpenAL;
-using OpenTK.Compute.OpenCL;
 using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.command_manager.command_parameter_library.Positioners;
-using standa_controller_software.device_manager.attributes;
 using standa_controller_software.device_manager.devices;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Linq;
-using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Timers;
-using System.Xml.Linq;
 using ximcWrapper;
 
 namespace standa_controller_software.device_manager.controller_interfaces.positioning
@@ -57,7 +45,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
 
 
-        private static API.LoggingCallback callback;
+        private static API.LoggingCallback? callback;
         private void MyLog(API.LogLevel loglevel, string message, IntPtr user_data)
         {
             _logger.LogInformation(message);
@@ -117,7 +105,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         }
         protected override void ConnectDevice_implementation(BaseDevice device)
         {
-            if (device is BasePositionerDevice positioningDevice && _deviceInfo.TryGetValue(positioningDevice.Name, out DeviceInformation deviceInfo))
+            if (device is BasePositionerDevice positioningDevice && _deviceInfo.TryGetValue(positioningDevice.Name, out var deviceInfo))
             {
                 deviceInfo.maxDeceleration = positioningDevice.MaxDeceleration;
                 deviceInfo.maxAcceleration = positioningDevice.MaxAcceleration;
@@ -187,30 +175,33 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
         protected override Task UpdateMoveSettings(Command command, SemaphoreSlim semaphore)
         {
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
-            var movementParams = command.Parameters as UpdateMovementSettingsParameters;
-            
-            for (int i = 0; i < devices.Length; i++)
+            if(command.Parameters is UpdateMovementSettingsParameters movementParams)
             {
-                var device = devices[i];
-
-                float speedValue = movementParams.MovementSettingsInformation[device.Name].TargetSpeed;
-                float accelValue = movementParams.MovementSettingsInformation[device.Name].TargetAcceleration;
-                float decelValue = movementParams.MovementSettingsInformation[device.Name].TargetDeceleration;
-                _deviceInfo[device.Name].moveSettings_t.Speed = speedValue;
-                _deviceInfo[device.Name].moveSettings_t.Accel = accelValue;
-                _deviceInfo[device.Name].moveSettings_t.Decel = decelValue;
-
-                if(accelValue != 0 && decelValue != 0 && speedValue != 0)
+                for (int i = 0; i < devices.Length; i++)
                 {
-                    CallResponse = API.set_move_settings_calb(_deviceInfo[device.Name].id, ref _deviceInfo[device.Name].moveSettings_t, ref _deviceInfo[device.Name].calibration_t);
-                    _logger.LogInformation($"ximc: updated move settings on {device.Name}. Speed: {_deviceInfo[device.Name].moveSettings_t.Speed};   Accel: {_deviceInfo[device.Name].moveSettings_t.Accel};  Decel: {_deviceInfo[device.Name].moveSettings_t.Decel}");
-                }
-                else
-                {
-                    _logger.LogInformation($"ximc: ---------FAILED TO UPDATE move settings on {device.Name}. Speed: {_deviceInfo[device.Name].moveSettings_t.Speed};   Accel: {_deviceInfo[device.Name].moveSettings_t.Accel};  Decel: {_deviceInfo[device.Name].moveSettings_t.Decel}");
+                    var device = devices[i];
 
+                    float speedValue = movementParams.MovementSettingsInformation[device.Name].TargetSpeed;
+                    float accelValue = movementParams.MovementSettingsInformation[device.Name].TargetAcceleration;
+                    float decelValue = movementParams.MovementSettingsInformation[device.Name].TargetDeceleration;
+                    _deviceInfo[device.Name].moveSettings_t.Speed = speedValue;
+                    _deviceInfo[device.Name].moveSettings_t.Accel = accelValue;
+                    _deviceInfo[device.Name].moveSettings_t.Decel = decelValue;
+
+                    if(accelValue != 0 && decelValue != 0 && speedValue != 0)
+                    {
+                        CallResponse = API.set_move_settings_calb(_deviceInfo[device.Name].id, ref _deviceInfo[device.Name].moveSettings_t, ref _deviceInfo[device.Name].calibration_t);
+                        _logger.LogInformation($"ximc: updated move settings on {device.Name}. Speed: {_deviceInfo[device.Name].moveSettings_t.Speed};   Accel: {_deviceInfo[device.Name].moveSettings_t.Accel};  Decel: {_deviceInfo[device.Name].moveSettings_t.Decel}");
+                    }
+                    else
+                    {
+                        _logger.LogInformation($"ximc: ---------FAILED TO UPDATE move settings on {device.Name}. Speed: {_deviceInfo[device.Name].moveSettings_t.Speed};   Accel: {_deviceInfo[device.Name].moveSettings_t.Accel};  Decel: {_deviceInfo[device.Name].moveSettings_t.Decel}");
+
+                    }
                 }
+
             }
+
             return Task.CompletedTask;
         }
         protected override async Task MoveAbsolute(Command command, SemaphoreSlim semaphore)
@@ -218,6 +209,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             // log.Enqueue($"{DateTime.Now.ToString("HH:mm:ss.fff")}: move start");
             var devices = command.TargetDevices.Select(deviceName => Devices[deviceName]).ToArray();
             var movementParameters = command.Parameters as MoveAbsoluteParameters;
+
+            if (movementParameters is null)
+                throw new Exception("Wrong parameter set provided for Move Absolute command.");
 
             for (int i = 0; i < devices.Length; i++)
             {
@@ -248,24 +242,9 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             foreach (var deviceName in waitUntilPositions.Keys)
             {
                 var device = Devices[deviceName];
-                if (waitUntilPositions[deviceName] == null)
+
+                if(waitUntilPositions[deviceName] is float targetPosition)
                 {
-                    queuedItems.Add
-                        (
-                            async () =>
-                            {
-                                var deviceInfo = _deviceInfo[device.Name];
-                                CallResponse = API.get_status_calb(deviceInfo.id, out deviceInfo.statusCalibrated_t, ref deviceInfo.calibration_t);
-                                device.CurrentPosition = deviceInfo.statusCalibrated_t.CurPosition;
-                                bool boolCheck = (deviceInfo.statusCalibrated_t.MvCmdSts & MOVE_CMD_RUNNING) != 0;
-                                await Task.Delay(10);
-                                return boolCheck;
-                            }
-                        );
-                }
-                else
-                {
-                    float targetPosition = (float)(waitUntilPositions[deviceName]);
                     bool direction = (bool)(directions[deviceName]);
                     queuedItems.Add
                         (
@@ -278,6 +257,21 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                                 device.CurrentPosition = currentPosition;
 
                                 var boolCheck = moveStatus && (direction ? currentPosition < targetPosition : currentPosition > targetPosition);
+                                await Task.Delay(10);
+                                return boolCheck;
+                            }
+                        );
+                }
+                else
+                {
+                    queuedItems.Add
+                        (
+                            async () =>
+                            {
+                                var deviceInfo = _deviceInfo[device.Name];
+                                CallResponse = API.get_status_calb(deviceInfo.id, out deviceInfo.statusCalibrated_t, ref deviceInfo.calibration_t);
+                                device.CurrentPosition = deviceInfo.statusCalibrated_t.CurPosition;
+                                bool boolCheck = (deviceInfo.statusCalibrated_t.MvCmdSts & MOVE_CMD_RUNNING) != 0;
                                 await Task.Delay(10);
                                 return boolCheck;
                             }
@@ -308,7 +302,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             }
             catch (Exception ex)
             {
-                throw new Exception("Smth wrong with wait until in Virtual Positioner");
+                _logger.LogError(ex.Message);
+                throw;
             }
 
 

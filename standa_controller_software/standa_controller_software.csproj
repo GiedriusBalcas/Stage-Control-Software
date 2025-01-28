@@ -20,7 +20,6 @@
     <Compile Remove="custom-functions\definitions\WaitUntilFunction.cs" />
     <Compile Remove="device-manager\controller-interfaces\master-controller\InternalSyncExecuter.cs" />
     <Compile Remove="device-manager\controller-interfaces\positioning\PositionerController_XIMC_old.cs" />
-    <Compile Remove="painter\PainterManager.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -33,10 +32,6 @@
     <ProjectReference Include="..\openTK_painter\opentk_painter_library.csproj" />
     <ProjectReference Include="..\text_parser_library\text_parser_library.csproj" />
     <ProjectReference Include="..\ximcWrapperProject\ximcWrapperProject.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="painter\" />
   </ItemGroup>
 
 	

@@ -27,7 +27,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
         public string Name { get;}
 
         [DisplayPropertyAttribute]
-        public string ID { get; set; }
+        public string ID { get; set; } = string.Empty;
         protected BaseController(string name, ILoggerFactory loggerFactory)
         {
             Name = name;
@@ -77,7 +77,7 @@ namespace standa_controller_software.device_manager.controller_interfaces
                     throw new InvalidOperationException("Method returned null, but the expected return type is a non-nullable value type.");
                 }
 
-                return (T)result;
+                return (T)result!;
             }
             else
             {

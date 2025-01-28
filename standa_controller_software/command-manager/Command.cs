@@ -14,7 +14,6 @@ namespace standa_controller_software.command_manager
         public CommandDefinitions Action { get; set; }
         public required object Parameters { get; set; }
         public bool Await { get; set; } = true;
-        public DateTime Timestamp { get; set; }
         public float EstimatedTime { get; set; } = 0f;
     }
 }

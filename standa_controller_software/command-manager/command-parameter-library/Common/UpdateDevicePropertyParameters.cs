@@ -9,8 +9,8 @@ namespace standa_controller_software.command_manager.command_parameter_library.C
     public class UpdateDevicePropertyParameters
     {
         public char DeviceName { get; set; }
-        public string PropertyName { get; set; }
-        public object PropertyValue { get; set; }
+        public required string PropertyName { get; set; }
+        public required object PropertyValue { get; set; }
 
         public override string ToString()
         {

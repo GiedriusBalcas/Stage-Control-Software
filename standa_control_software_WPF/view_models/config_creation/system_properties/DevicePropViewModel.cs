@@ -9,7 +9,6 @@ using standa_controller_software.device_manager.devices;
 using System.Collections.ObjectModel;
 using System.Reflection;
 using System.Windows;
-using System.Windows.Input;
 
 namespace standa_control_software_WPF.view_models.config_creation.system_properties
 {

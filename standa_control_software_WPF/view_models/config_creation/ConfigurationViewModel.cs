@@ -1,7 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
-using Microsoft.VisualBasic.Logging;
 using standa_control_software_WPF.view_models.commands;
-using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 
@@ -11,13 +9,19 @@ namespace standa_control_software_WPF.view_models.config_creation
     {
         public readonly ConfigurationCreationViewModel ConfigManager;
 
-        private string _name;
-        private string _xToolDependancy;
-        private string _yToolDependancy;
-        private string _zToolDependancy;
         private readonly ILogger<ConfigurationViewModel> _logger;
         private readonly ILoggerFactory _loggerFactory;
-
+        private string _name = "Undefined";
+        private string _xToolDependancy = "";
+        private string _yToolDependancy = "";
+        private string _zToolDependancy = "";
+        private float _minimumPositionX;
+        private float _maximumPositionX;
+        private float _minimumPositionY;
+        private float _maximumPositionY;
+        private float _minimumPositionZ;
+        private float _maximumPositionZ;
+        
         public string Name
         {
             get
@@ -50,7 +54,6 @@ namespace standa_control_software_WPF.view_models.config_creation
                 }
             }
         }
-
         public string YToolDependancy
         {
             get
@@ -66,7 +69,6 @@ namespace standa_control_software_WPF.view_models.config_creation
                 }
             }
         }
-
         public string ZToolDependancy
         {
             get
@@ -82,14 +84,6 @@ namespace standa_control_software_WPF.view_models.config_creation
                 }
             }
         }
-
-        private float _minimumPositionX;
-        private float _maximumPositionX;
-        private float _minimumPositionY;
-        private float _maximumPositionY;
-        private float _minimumPositionZ;
-        private float _maximumPositionZ;
-
         public float MinimumPositionX
         {
             get { return _minimumPositionX; }
@@ -99,8 +93,6 @@ namespace standa_control_software_WPF.view_models.config_creation
                 OnPropertyChanged(nameof(MinimumPositionX));
             }
         }
-
-
         public float MaximumPositionX
         {
             get { return _maximumPositionX; }
@@ -110,7 +102,6 @@ namespace standa_control_software_WPF.view_models.config_creation
                 OnPropertyChanged(nameof(MaximumPositionX));
             }
         }
-
         public float MinimumPositionY
         {
             get { return _minimumPositionY; }
@@ -120,7 +111,6 @@ namespace standa_control_software_WPF.view_models.config_creation
                 OnPropertyChanged(nameof(MinimumPositionY));
             }
         }
-
         public float MaximumPositionY
         {
             get { return _maximumPositionY; }
@@ -130,8 +120,6 @@ namespace standa_control_software_WPF.view_models.config_creation
                 OnPropertyChanged(nameof(MaximumPositionY));
             }
         }
-
-
         public float MinimumPositionZ
         {
             get { return _minimumPositionZ; }
@@ -141,8 +129,6 @@ namespace standa_control_software_WPF.view_models.config_creation
                 OnPropertyChanged(nameof(MinimumPositionZ));
             }
         }
-
-
         public float MaximumPositionZ
         {
             get { return _maximumPositionZ; }
@@ -152,8 +138,6 @@ namespace standa_control_software_WPF.view_models.config_creation
                 OnPropertyChanged(nameof(MaximumPositionZ));
             }
         }
-
-
 
         public ObservableCollection<ControllerConfigViewModel> Controllers { get; set; } = new ObservableCollection<ControllerConfigViewModel>();
 
@@ -165,8 +149,6 @@ namespace standa_control_software_WPF.view_models.config_creation
             _logger = logger;
             _loggerFactory = loggerFactory;
             
-            Name = string.Empty;
-
             ConfigManager = systemConfigurations;
 
             ClearConfigurationCommand = new RelayCommand<ConfigurationViewModel>(ExecuteClearConfiguration);
@@ -177,7 +159,6 @@ namespace standa_control_software_WPF.view_models.config_creation
         {
             Controllers.Add(new ControllerConfigViewModel(this, _loggerFactory) { Name = "new Controller" });
         }
-
         private void ExecuteClearConfiguration(ConfigurationViewModel configuration)
         {
             ConfigManager.ClearConfiguration();

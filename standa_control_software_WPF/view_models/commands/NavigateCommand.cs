@@ -16,7 +16,7 @@ namespace standa_control_software_WPF.view_models.commands
             _getViewModel = getViewModel;
         }
 
-        public override void Execute(object parameter = null)
+        public override void Execute(object? parameter = null)
         {
             _navigateStore.CurrentViewModel = _getViewModel();
         }

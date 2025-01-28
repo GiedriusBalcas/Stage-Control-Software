@@ -5,7 +5,6 @@ using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.controller_interfaces.shutter;
 using standa_controller_software.device_manager.devices;
-using System.Collections.Concurrent;
 using System.Numerics;
 
 namespace standa_controller_software.device_manager.controller_interfaces.master_controller
@@ -66,7 +65,13 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
         {
             var startPositions = _toolInformation.CalculateToolPositionUpdate();
 
-            var parameters = commands.Select(command => command.Parameters as MoveAbsoluteParameters).ToList();
+            var parameters = commands.Select(command => 
+                {
+                    if (command.Parameters is MoveAbsoluteParameters moveAbsoluteParameters)
+                        return moveAbsoluteParameters;
+                    else
+                        throw new Exception("Wrong parameter type provided in Move Absolute command.");
+                }).ToList();
 
             bool isLeadIn = parameters.Any(parameter => parameter.IsLeadInUsed);
             bool isLeadOut = parameters.Any(parameter => parameter.IsLeadOutUsed);
@@ -84,9 +89,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                         var posInformations = new Dictionary<char, PositionerInfo>();
                         foreach (char deviceName in command.TargetDevices)
                         {
+                            if (controllerParameters.PositionerInfo[deviceName].LeadInformation is null)
+                                throw new Exception("Lead Information is null, even when leadIn flag is true");
+
                             posInformations[deviceName] = new PositionerInfo
                             {
-                                TargetPosition = controllerParameters.PositionerInfo[deviceName].LeadInformation.LeadInEndPos,
+                                TargetPosition = controllerParameters.PositionerInfo[deviceName].LeadInformation!.LeadInEndPos,
                                 TargetSpeed = controllerParameters.PositionerInfo[deviceName].TargetSpeed
                             };
                         }
@@ -118,9 +126,12 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     var posInformations = new Dictionary<char, PositionerInfo>();
                     foreach (char deviceName in command.TargetDevices)
                     {
+                        if (ControllerParameters is null || ControllerParameters.PositionerInfo[deviceName].LeadInformation is null)
+                            throw new Exception("Lead Information is null, even when leadIn and/or leadOut flag is true");
+
                         posInformations[deviceName] = new PositionerInfo
                         {
-                            TargetPosition = ControllerParameters.PositionerInfo[deviceName].LeadInformation.LeadOutStartPos,
+                            TargetPosition = ControllerParameters.PositionerInfo[deviceName].LeadInformation!.LeadOutStartPos,
                             TargetSpeed = ControllerParameters.PositionerInfo[deviceName].TargetSpeed
                         };
                     }

@@ -1,21 +1,16 @@
 ﻿using Microsoft.Extensions.Logging;
-using OpenTK.Graphics.ES11;
 using standa_controller_software.command_manager;
-using standa_controller_software.command_manager.command_parameter_library;
-using standa_controller_software.command_manager.command_parameter_library.Synchronization;
 using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.device_manager.controller_interfaces.shutter;
 using standa_controller_software.device_manager.controller_interfaces.sync;
-using standa_controller_software.device_manager.devices;
 using System.Collections.Concurrent;
-using System.Threading;
 
 namespace standa_controller_software.device_manager.controller_interfaces.master_controller
 {
     public partial class PositionAndShutterController_Pico : BaseMasterPositionerAndShutterController
     {
         
-        private SyncController_Pico _syncController;
+        private SyncController_Pico? _syncController;
         public PositionAndShutterController_Pico(string name, ILoggerFactory loggerFactory)  : base(name, loggerFactory)
         {
             
