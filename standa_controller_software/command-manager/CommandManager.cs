@@ -54,6 +54,8 @@ namespace standa_controller_software.command_manager
                 var initializeCommand = new Command
                 {
                     TargetController = controller.Name,
+                    TargetDevices = [],
+                    Parameters = controller.Name,
                     Action = CommandDefinitions.Initialize,
                 };
                 ExecuteControllerCommandWrapper(initializeCommand).GetAwaiter().GetResult();
@@ -113,7 +115,10 @@ namespace standa_controller_software.command_manager
                     var stopCommand = new Command
                     {
                         TargetController = controllerName,
+                        TargetDevices = controller.GetDevices().Select(device => device.Name).ToArray(),
+                        Parameters = controllerName,
                         Action = CommandDefinitions.Stop,
+
                     };
                     //await ExecuteControllerCommandWrapper(stopCommand);
                     await controller.ForceStop();
@@ -127,6 +132,8 @@ namespace standa_controller_software.command_manager
                     var stopCommand = new Command
                     {
                         TargetController = controllerName,
+                        TargetDevices = controller.GetDevices().Select(device => device.Name).ToArray(),
+                        Parameters = controllerName,
                         Action = CommandDefinitions.Stop,
                     };
                     await baseMasterController.ForceStop();

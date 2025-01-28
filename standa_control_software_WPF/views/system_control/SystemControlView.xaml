@@ -177,7 +177,8 @@
                                     Margin="5,0,0,5"
                                     FontWeight="SemiBold"
                                     VerticalAlignment="Top"
-                                    BorderBrush="Transparent" />
+                                    BorderBrush="Transparent" 
+                                    HorizontalAlignment="Right"/>
                         </DockPanel>
                     </DataTemplate>
                 </TabControl.ItemTemplate>

@@ -122,6 +122,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
             var stopCommand = new Command
             {
                 TargetController = _syncController.Name,
+                TargetDevices = _syncController.GetDevices().Select(device => device.Name).ToArray(),
+                Parameters = _syncController.Name,
                 Action = CommandDefinitions.Stop,
                 Await = true,
             };

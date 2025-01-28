@@ -1,0 +1,33 @@
+
+// negative - means will open up later
+set("s","DelayOn",0);
+// negative - means will close up later
+set("s","DelayOff",0);
+
+set("xy","MaxSpeed",2000);
+set("xy","MaxAcceleration",10000);
+set("xy","MaxDeceleration",10000);
+set("xy","DefaultSpeed",1000);
+
+width_value = 100;
+length_value = 100;
+height_value = 100;
+pitch_value = 10;
+layers = 10;
+centerX_value = 0;
+centerY_value = 0;
+floorHeight_value = 0;
+speed_value = 1000;
+
+Read("hatched rectangle function");
+
+rectangleFunction(
+width_value, 
+length_value, 
+height_value, 
+pitch_value, 
+layers, 
+centerX_value, 
+centerY_value, 
+floorHeight_value, 
+speed_value);

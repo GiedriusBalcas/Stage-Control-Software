@@ -26,7 +26,7 @@
                     <oxy:PlotView.Resources>
                         <Style TargetType="oxy:TrackerControl">
                             <Setter Property="Background"
-                                    Value="{StaticResource DarkBackgroundColorBrush}" />
+                                    Value="{StaticResource DarkCustomColorBrush}" />
                         </Style>
                     </oxy:PlotView.Resources>
                 </oxy:PlotView>

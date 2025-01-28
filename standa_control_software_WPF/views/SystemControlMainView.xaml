@@ -21,7 +21,7 @@
             <DataTemplate DataType="{x:Type vms:SystemPropertiesViewModel}">
                 <views:SystemPropertiesView />
             </DataTemplate>
-            <DataTemplate DataType="{x:Type vms:SystemInformtaionViewModel}">
+            <DataTemplate DataType="{x:Type vms:SystemInformationViewModel}">
                 <views:SystemInformationView />
             </DataTemplate>
             <DataTemplate DataType="{x:Type vms:SystemControlViewModel}">

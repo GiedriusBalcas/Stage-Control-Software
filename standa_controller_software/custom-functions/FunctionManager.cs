@@ -14,16 +14,14 @@ namespace standa_controller_software.custom_functions
     {
         private readonly ILoggerFactory _loggerFactory;
         private readonly ControllerManager _controllerManager;
-        private readonly CommandManager _commandManager;
-        private ControllerManager _controllerManager_virtual;
-        private CommandManager _commandManager_virtual;
-        private float _allocatedTime;
+        private ControllerManager? _controllerManager_virtual;
+        private CommandManager? _commandManager_virtual;
         public Definitions Definitions {  get; private set; }
-        public FunctionManager(ControllerManager controllerManager, CommandManager commandManager, ILoggerFactory loggerFactory)
+        public FunctionManager(ControllerManager controllerManager, ILoggerFactory loggerFactory)
         {
             _loggerFactory = loggerFactory;
             _controllerManager = controllerManager;
-            _commandManager = commandManager;
+            Definitions = new Definitions();
 
             InitializeDefinitions();
         }
@@ -37,7 +35,7 @@ namespace standa_controller_software.custom_functions
             Definitions = new Definitions();
             var changeShutterStateFunction = new ChangeShutterStateFunction(_commandManager_virtual, _controllerManager_virtual);
             var changeShutterStateForIntervalFunction = new ChangeShutterStateForIntervalFunction(_commandManager_virtual, _controllerManager_virtual);
-            var jumpFuntion = new JumpAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual, changeShutterStateFunction);
+            var jumpFuntion = new JumpAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual);
             var lineFunction = new LineAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual, jumpFuntion, changeShutterStateFunction);
             var arcFunction = new ArcAbsoluteFunction(_commandManager_virtual, _controllerManager_virtual, jumpFuntion, changeShutterStateFunction);
             var setPowerFunction = new SetPowerFunction(_commandManager_virtual, _controllerManager_virtual, jumpFuntion);
@@ -56,12 +54,15 @@ namespace standa_controller_software.custom_functions
 
         public IEnumerable<Command[]> ExtractCommands()
         {
-            return _commandManager_virtual.GetCommandQueueList();
+            if(_commandManager_virtual is not null)
+                return _commandManager_virtual.GetCommandQueueList();
+            else
+                return Enumerable.Empty<Command[]>();
         }
 
         public void ClearCommandQueue()
         {
-            _commandManager_virtual.ClearQueue();
+            _commandManager_virtual?.ClearQueue();
         }
     }
 }

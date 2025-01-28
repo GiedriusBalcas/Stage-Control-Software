@@ -1,30 +1,32 @@
-﻿using OxyPlot.Series;
-using OxyPlot;
-using standa_controller_software.device_manager.devices;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Input;
-using static ICSharpCode.AvalonEdit.Editing.CaretWeakEventManager;
-using System.Timers;
-using System.Windows.Forms;
+﻿using OxyPlot;
+using OxyPlot.Series;
 using standa_control_software_WPF.view_models.commands;
 using standa_controller_software.command_manager;
 using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.device_manager;
 using standa_controller_software.device_manager.controller_interfaces.shutter;
+using standa_controller_software.device_manager.devices;
+using System.Timers;
+using System.Windows.Input;
 
 namespace standa_control_software_WPF.view_models.system_control.information
 {
+    /// <summary>
+    /// ViewModel for managing and displaying the state and data of a shutter device.
+    /// Handles state changes, connection status, and data acquisition for plotting.
+    /// </summary>
     public class ShutterDeviceViewModel : DeviceViewModel
     {
-        private bool _state;
+        private readonly LineSeries _stateSeries;
         private readonly BaseShutterDevice _shutter;
-        private bool _needsToBeTracked;
-
+        private bool _state;
+        // PlotModel for OxyPlot
+        private PlotModel _plotModel;
+        private bool _isAcquiring;
+        private DateTime _acquisitionStartTime;
+        private double _timeElapsed;
+        private System.Timers.Timer? _plotUpdateTimer;
+        
         public bool State
         {
             get => _state;
@@ -37,15 +39,6 @@ namespace standa_control_software_WPF.view_models.system_control.information
             }
         }
         public string CurrentState { get => State ? "open" : "closed"; } 
-
-        // PlotModel for OxyPlot
-        private LineSeries _stateSeries;
-        private PlotModel _plotModel;
-        private bool _isAcquiring;
-        private DateTime _acquisitionStartTime;
-        private double _timeElapsed;
-        private System.Timers.Timer _plotUpdateTimer;
-
         public PlotModel PlotModel
         {
             get => _plotModel;
@@ -55,6 +48,7 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 OnPropertyChanged(nameof(PlotModel));
             }
         }
+
         public ICommand ToggleStateCommand { get; set; }
 
         public ShutterDeviceViewModel(BaseDevice device, standa_controller_software.command_manager.CommandManager commandManager, ControllerManager controllerManager) : base(device, commandManager, controllerManager)
@@ -67,10 +61,28 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 IsConnected = shutter.IsConnected;
                 shutter.ConnectionStateChanged += OnConnectionStateChanged;
                 ToggleStateCommand = new RelayCommand(() => Task.Run(async () => await ExecuteToggleShutterState()));
-                InitializePlotModel();
+
+                _plotModel = new PlotModel { Title = $"{Name} Position and Speed" };
+                _stateSeries = new LineSeries
+                {
+                    Title = "State",
+                    Color = OxyColors.Blue,
+                    MarkerType = MarkerType.Circle,
+                    MarkerSize = 2
+                };
+                PlotModel.Series.Add(_stateSeries);
+            }
+            else
+            {
+                throw new ArgumentException("Device must be a BaseShutterDevice", nameof(device));
             }
         }
 
+        /// <summary>
+        /// Asynchronously toggles the state of the shutter device.
+        /// Sends a command to change the shutter state to the opposite of its current state.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
         private async Task ExecuteToggleShutterState()
         {
             if (_shutter.IsConnected)
@@ -90,12 +102,22 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 await _commandManager.TryExecuteCommand(command);
             }
         }
-
+        /// <summary>
+        /// Handles changes in the connection state of the shutter device.
+        /// Updates the <see cref="IsConnected"/> property accordingly.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">Event data.</param>
         private void OnConnectionStateChanged(object? sender, EventArgs e)
         {
             IsConnected = _shutter.IsConnected;
         }
-
+        /// <summary>
+        /// Handles changes in the state of the shutter device.
+        /// Updates the state properties and logs the state change if data acquisition is active.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">Event data.</param>
         private void OnStateChanged(object? sender, EventArgs e)
         {
             var prevState = State;
@@ -108,7 +130,10 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 _stateSeries.Points.Add(new DataPoint(_timeElapsed, State? 1 : 0));
             }
         }
-
+        /// <summary>
+        /// Updates the ViewModel properties based on the latest data from the device.
+        /// </summary>
+        /// <param name="device">The device containing updated information.</param>
         public override void UpdateFromDevice(BaseDevice device)
         {
             if (device is BaseShutterDevice shutterDevice)
@@ -116,21 +141,10 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 State = shutterDevice.IsOn;
             }
         }
-
-        private void InitializePlotModel()
-        {
-            PlotModel = new PlotModel { Title = $"{Name} Position and Speed" };
-
-            _stateSeries = new LineSeries
-            {
-                Title = "State",
-                Color = OxyColors.Blue,
-                MarkerType = MarkerType.Circle,
-                MarkerSize = 2
-            };
-
-            PlotModel.Series.Add(_stateSeries);
-        }
+        /// <summary>
+        /// Starts the data acquisition process, initializing timing and plot data.
+        /// Sets up a timer to periodically refresh the plot.
+        /// </summary>
         public override void StartAcquisition()
         {
             _isAcquiring = true;
@@ -145,7 +159,13 @@ namespace standa_control_software_WPF.view_models.system_control.information
             }
             _plotUpdateTimer.Start();
         }
-        private void OnPlotUpdateTimerElapsed(object sender, ElapsedEventArgs e)
+        /// <summary>
+        /// Event handler for the plot update timer.
+        /// Refreshes the plot on the UI thread to reflect the latest data.
+        /// </summary>
+        /// <param name="sender">The source of the timer event.</param>
+        /// <param name="e">Event data.</param>
+        private void OnPlotUpdateTimerElapsed(object? sender, ElapsedEventArgs e)
         {
             // Refresh the plot on the UI thread
             App.Current.Dispatcher.Invoke(() =>
@@ -153,6 +173,9 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 PlotModel.InvalidatePlot(true);
             });
         }
+        /// <summary>
+        /// Stops the data acquisition process and halts plot updates.
+        /// </summary>
         public override void StopAcquisition()
         {
             _isAcquiring = false;

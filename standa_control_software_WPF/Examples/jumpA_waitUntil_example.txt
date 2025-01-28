@@ -1,0 +1,20 @@
+set("xy","DefaultSpeed", 100);
+
+lineCount = 3;
+for(i=0; i<lineCount; i++)
+{
+	jumpA.Blending = false;
+	x_pos = 0 + i * 50;
+	jumpA("x",x_pos);
+	
+	jumpA.WaitUntilTime = 0.2;
+	jumpA.Blending = true;
+	jumpA.Shutter= true;
+	jumpA("y",100);
+	
+	jumpA.Shutter= false;
+	jumpA.WaitUntilTime = null;
+	jumpA("y",0);
+	
+}
+

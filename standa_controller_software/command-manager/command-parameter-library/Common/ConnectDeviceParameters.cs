@@ -8,6 +8,6 @@ namespace standa_controller_software.command_manager.command_parameter_library.C
 {
     public class ConnectDevicesParameters
     {
-        public char[] Devices { get; set; }
+        public required char[] Devices { get; set; }
     }
 }

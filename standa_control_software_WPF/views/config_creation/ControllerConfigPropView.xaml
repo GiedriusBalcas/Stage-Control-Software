@@ -150,7 +150,7 @@
                                         DisplayMemberBinding="{Binding PropertyName}"
                                         Width="150" />
                         <GridViewColumn Header="Value"
-                                        Width="auto">
+                                        Width="220">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <ContentPresenter Content="{Binding}"

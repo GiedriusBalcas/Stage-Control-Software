@@ -272,6 +272,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                     ShutterDelayOn = execInfo.Shutter_delay_on,
                 },
                 TargetController = syncController.Name,
+                TargetDevices = execInfo.Devices
             };
 
             await ExecuteSlaveCommand(commandSync);
@@ -398,6 +399,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                             Await = true,
                             TargetController = targetController,
                             TargetDevices = targetDevices,
+                            Parameters = targetDevices,
                         };
 
                         await ExecuteSlaveCommand(waitUntilStopCommand);
@@ -462,6 +464,8 @@ namespace standa_controller_software.device_manager.controller_interfaces.master
                 Action = CommandDefinitions.StartQueueExecution,
                 Await = true,
                 TargetController = syncController.Name,
+                TargetDevices = [],
+                Parameters = syncController.Name,
             };
 
 

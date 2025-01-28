@@ -1,14 +1,22 @@
 ﻿
 using standa_control_software_WPF.view_models.commands;
 using System.IO;
+using System.Windows;
 using System.Windows.Input;
 
 namespace standa_control_software_WPF.view_models.system_control
 {
     public class DocumentViewModel : ViewModelBase
     {
-        // Include the HighlightedLineNumber property and other properties here
+        /// <summary>
+        /// Represents the view model for a document that's used for the user script handling.
+        /// Manages document properties, user interactions, and file operations.
+        /// </summary>
+
         private string _name;
+        private string _inputText;
+        private int _highlightedLineNumber = -1;
+
         public string Name
         {
             get => _name;
@@ -18,20 +26,15 @@ namespace standa_control_software_WPF.view_models.system_control
                 OnPropertyChanged(nameof(Name));
             }
         }
-        private string _commandText = "kakams mamakakas \n mamama \n kadasda \n asjdkaskdasd";
         public string InputText 
         {
-            get => _commandText; 
+            get => _inputText; 
             set 
             {
-                _commandText = value;
+                _inputText = value;
                 OnPropertyChanged(nameof(InputText));
             }
         }
-
-        private int _highlightedLineNumber = -1;
-        //private BreakpointsManager _breakpointsManager = new BreakpointsManager();
-
         public int HighlightedLineNumber 
         {
             get => _highlightedLineNumber;
@@ -41,25 +44,18 @@ namespace standa_control_software_WPF.view_models.system_control
                 OnPropertyChanged(nameof(HighlightedLineNumber));
             }
         }
+        public string? FilePath { get; internal set; }
 
-        public string FilePath { get; internal set; }
-
-        //public BreakpointsManager BreakpointsManager
-        //{
-        //    get => _breakpointsManager;
-        //    set
-        //    {
-        //        _breakpointsManager = value;
-        //        OnPropertyChanged(nameof(BreakpointsManager));
-        //    }
-        //}
         public ICommand CloseDocumentCommand { get; set; }
         public ICommand SaveFileCommand { get; set; }
         public ICommand SaveAsFileCommand { get; set; }
-        public event Action<DocumentViewModel> CloseDocumentRequested;
 
-        public DocumentViewModel()
+        public event Action<DocumentViewModel>? CloseDocumentRequested;
+
+        public DocumentViewModel(string name, string content)
         {
+            _name = name;
+            _inputText = content;
             CloseDocumentCommand = new RelayCommand( () => { CloseDocumentRequested?.Invoke(this); } );
             SaveFileCommand = new RelayCommand(SaveFile);
             SaveAsFileCommand = new RelayCommand(SaveAsFile);
@@ -68,16 +64,16 @@ namespace standa_control_software_WPF.view_models.system_control
         private void SaveFile()
         {
             // Check if the document has an associated file path
-            if (!string.IsNullOrEmpty(this.FilePath))
+            if (!string.IsNullOrEmpty(FilePath))
             {
                 // Save the document content to the file
                 try 
                 { 
-                    File.WriteAllText(this.FilePath, this.InputText);
+                    File.WriteAllText(FilePath, InputText);
                 }
                 catch(Exception e)
                 {
-                    //throw e;
+                    MessageBox.Show($"Failed to save a file: {Name} in {FilePath}. {e.Message}");
                 }
             }
             else

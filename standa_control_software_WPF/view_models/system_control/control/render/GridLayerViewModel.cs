@@ -14,20 +14,22 @@ using System.Xml.Serialization;
 
 namespace standa_control_software_WPF.view_models.system_control.control.render
 {
+    /// <summary>
+    /// ViewModel responsible for rendering and managing background grid lines and boundary box.
+    /// </summary>
     public class GridLayerViewModel : BaseRenderLayer, INotifyPropertyChanged
     {
         private readonly OrbitalCamera _camera;
         private readonly ToolInformation _toolInformation;
         private UniformMatrix4 _viewUniform;
         private UniformMatrix4 _projectionUniform;
-
         private LineObjectCollection _lineCollection;
         private Vector4 _gridColor = new Vector4(0.3f, 0.3f, 0.3f, 0.1f);
         private float _distanceToGrid = 1f;
         private double _gridSpacing;
 
         public double GridSpacing { get => _gridSpacing; private set { _gridSpacing = value; OnPropertyChanged(nameof(GridSpacing)); } }
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         public GridLayerViewModel(OrbitalCamera camera, ToolInformation toolInformation)
         {
@@ -35,8 +37,63 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
             _toolInformation = toolInformation;
             _lineCollection = new LineObjectCollection() { lineWidth = 1 };
 
-            _vertexShader = "#version 330 core\r\n\r\nlayout(location = 0) in vec3 aPosition;\r\nlayout(location = 1) in vec4 aColor;\r\n\r\nout vec4 vertexColor;\r\nout vec4 clipSpacePos; // Pass clip space position to fragment shader\r\n\r\nuniform mat4 projection;\r\nuniform mat4 view;\r\n\r\nvoid main()\r\n{\r\n    // Calculate world position (assuming model matrix is identity)\r\n    vec4 worldPosition = vec4(aPosition, 1.0);\r\n\r\n    // Calculate clip space position without the view matrix\r\n    clipSpacePos = projection * view * worldPosition;\r\n\r\n    // Compute final position with view matrix for correct rendering\r\n    gl_Position = projection * view * worldPosition;\r\n\r\n    // Pass the vertex color\r\n    vertexColor = aColor;\r\n}\r\n";
-            _fragmentShader = "#version 330 core\r\n\r\nin vec4 vertexColor;\r\nin vec4 clipSpacePos; // Received from vertex shader\r\n\r\nout vec4 FragColor;\r\n\r\nvoid main()\r\n{\r\n    // Perform perspective division to get NDC coordinates\r\n    vec3 ndc = clipSpacePos.xyz / clipSpacePos.w;\r\n\r\n    // Calculate the distance from the fragment to the closest edge in NDC\r\n    float distX = 1.0 - abs(ndc.x);\r\n    float distY = 1.0 - abs(ndc.y);\r\n    float edgeDist = min(distX, distY);\r\n\r\n    // Define the width of the fade effect in NDC space (0.0 to 1.0)\r\n    float fadeWidth = 0.2;\r\n\r\n    // Compute the alpha value based on edge distance\r\n    float alpha = clamp(edgeDist / fadeWidth * vertexColor.a, 0.0, 1);\r\n\r\n    // Set the fragment color with the computed alpha\r\n    FragColor = vec4(vertexColor.rgb, alpha);\r\n}\r\n";
+            _vertexShader = """
+                #version 330 core
+
+                layout(location = 0) in vec3 aPosition;
+                layout(location = 1) in vec4 aColor;
+
+                out vec4 vertexColor;
+                out vec4 clipSpacePos; // Pass clip space position to fragment shader
+
+                uniform mat4 projection;
+                uniform mat4 view;
+
+                void main()
+                {
+                    // Calculate world position (assuming model matrix is identity)
+                    vec4 worldPosition = vec4(aPosition, 1.0);
+
+                    // Calculate clip space position without the view matrix
+                    clipSpacePos = projection * view * worldPosition;
+
+                    // Compute final position with view matrix for correct rendering
+                    gl_Position = projection * view * worldPosition;
+
+                    // Pass the vertex color
+                    vertexColor = aColor;
+                }
+
+                """;
+            _fragmentShader = """
+                #version 330 core
+
+                in vec4 vertexColor;
+                in vec4 clipSpacePos; // Received from vertex shader
+
+                out vec4 FragColor;
+
+                void main()
+                {
+                    // Perform perspective division to get NDC coordinates
+                    vec3 ndc = clipSpacePos.xyz / clipSpacePos.w;
+
+                    // Calculate the distance from the fragment to the closest edge in NDC
+                    float distX = 1.0 - abs(ndc.x);
+                    float distY = 1.0 - abs(ndc.y);
+                    float edgeDist = min(distX, distY);
+
+                    // Define the width of the fade effect in NDC space (0.0 to 1.0)
+                    float fadeWidth = 0.2;
+
+                    // Compute the alpha value based on edge distance
+                    float alpha = clamp(edgeDist / fadeWidth * vertexColor.a, 0.0, 1);
+
+                    // Set the fragment color with the computed alpha
+                    FragColor = vec4(vertexColor.rgb, alpha);
+                }
+
+                """;
 
             _viewUniform = new UniformMatrix4("view", _camera.GetViewMatrix());
             _projectionUniform = new UniformMatrix4("projection", _camera.GetProjectionMatrix());
@@ -53,14 +110,10 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
         }
         public override void InitializeLayer()
         {
-
-            //UpdateGrid(100, 100, 10, 10, 0, 0);
             _gridColor = new Vector4(0.3f, 0.3f, 0.3f, 0.1f);
-            //_distanceToGrid = 0f;
 
             base.InitializeLayer();
         }
-
         private void UpdateGrid(float minX, float minY, float minZ, float maxX, float maxY, float maxZ, float dx, float dy)
         {
             if (minX > maxX || minY > maxY)
@@ -123,8 +176,7 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
             InitializeCollections();
 
         }
-        
-        public float ScaleValueInverse(float inputResult)
+        public static float ScaleValueInverse(float inputResult)
         {
             if (inputResult <= 0)
                 throw new ArgumentException("Result must be a positive number.");
@@ -133,12 +185,11 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
             float closestResult = FindClosestValidResult(inputResult, out int n, out int k);
             return closestResult;
         }
-
         /// <summary>
         /// Finds the closest valid result generated by ScaleValueInverse.
         /// Outputs the corresponding order (n) and k values.
         /// </summary>
-        private float FindClosestValidResult(float input, out int order, out int k)
+        private static float FindClosestValidResult(float input, out int order, out int k)
         {
             // Initialize variables
             order = 0;
@@ -157,15 +208,7 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
                 // Iterate k from 1 to 10
                 for (int currentK = 1; currentK <= 10; currentK++)
                 {
-                    float currentResult = (currentK * power) + power;
-
-                    // Adjust currentResult based on the original ScaleValueInverse logic
-                    // Note: In the original method, result = mult + power
-                    // where mult = mod * power, and mod = k -1 (since intValue = n*10 + (k-1))
-                    // Therefore, result = (k -1)*power + power = k*power
-
-                    // Correct calculation based on original method
-                    currentResult = (currentK - 1) * power + power; // Simplifies to k * power
+                    float currentResult = (currentK - 1) * power + power; // Simplifies to k * power
 
                     float difference = Math.Abs(currentResult - input);
 
@@ -187,30 +230,19 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
         }
         public override void OnRenderFrameStart()
         {
-           
             // check if camera Distance has changed.
             if (_distanceToGrid != _camera.Distance + Math.Abs(_camera.ReferencePosition.Y))
             {
-                var distance = _camera.Distance + Math.Abs(_camera.ReferencePosition.Y); // Math.Abs(CommandLayer.Camera.CameraPosition.Y) + 
+                var distance = _camera.Distance + Math.Abs(_camera.ReferencePosition.Y);
                 distance = Math.Max(1, distance);
                 distance = ScaleValueInverse((int)distance);
-                
                 distance = Math.Max(distance, 10);
-
-                var widthMax = Math.Min(distance * 100, 10000);
-
-                // let's make possible dx values of [0.1um .5um 1um 5um 10um 50um 100um 500 um 1mm]
-
                 GridSpacing = distance * 0.1;
-                int numberOfLines = (int)(widthMax / GridSpacing);
-
-                //UpdateGrid(widthMax, widthMax, numberOfLines, numberOfLines, 0, 0);
+                
                 UpdateGrid(_toolInformation.MinimumCoordinates.X, _toolInformation.MinimumCoordinates.Y, _toolInformation.MinimumCoordinates.Z, _toolInformation.MaximumCoordinates.X, _toolInformation.MaximumCoordinates.Y, _toolInformation.MaximumCoordinates.Z, (float)GridSpacing, (float)GridSpacing);
                 _distanceToGrid = _camera.Distance + Math.Abs(_camera.ReferencePosition.Y); ;
             }
-            
         }
-
         public override void UpdateUniforms()
         {
             _viewUniform.Value = _camera.GetViewMatrix();

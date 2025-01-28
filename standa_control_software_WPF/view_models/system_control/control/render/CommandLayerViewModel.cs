@@ -1,28 +1,27 @@
 ﻿
-using opentk_painter_library;
-using standa_controller_software.command_manager;
-using standa_controller_software.device_manager.controller_interfaces.master_controller;
-using standa_controller_software.device_manager;
-using opentk_painter_library.common;
-using System.Collections.Concurrent;
-using opentk_painter_library.render_objects;
 using Microsoft.Extensions.Logging;
-using standa_control_software_WPF.view_models.logging;
+using opentk_painter_library;
+using opentk_painter_library.common;
+using opentk_painter_library.render_objects;
+using standa_controller_software.command_manager;
+using standa_controller_software.device_manager;
+using standa_controller_software.device_manager.controller_interfaces.master_controller;
 
 namespace standa_control_software_WPF.view_models.system_control.control.render
 {
+    /// <summary>
+    /// ViewModel responsible for rendering and managing command-related graphical layers.
+    /// </summary>
     public class CommandLayerViewModel : BaseRenderLayer
     {
         private readonly ControllerManager _controllerManager;
         private readonly ILogger<CommandLayerViewModel> _logger;
         private readonly ILoggerFactory _loggerFactory;
         private readonly OrbitalCamera _camera;
-        
         private UniformMatrix4 _viewUniform;
         private UniformMatrix4 _projectionUniform;
-        
         private LineObjectCollection _lineCollection;
-
+        
         public CommandLayerViewModel(ControllerManager controllerManager, ILogger<CommandLayerViewModel> logger, ILoggerFactory loggerFactory, OrbitalCamera camera)
         {
             _controllerManager = controllerManager;
@@ -31,8 +30,33 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
             _camera = camera;
             _lineCollection = new LineObjectCollection(); 
             
-            _vertexShader = "#version 330 core\r\nlayout (location = 0) in vec3 aPosition;\r\nlayout (location = 1) in vec4 aColor;\r\n\r\nout vec4 vertexColor;\r\n\r\nuniform mat4 view;\r\nuniform mat4 projection;\r\n\r\nvoid main()\r\n{\r\n    gl_Position = projection * view * vec4(aPosition, 1.0);\r\n    vertexColor = aColor;\r\n}";
-            _fragmentShader = "#version 330 core\r\nin vec4 vertexColor;\r\n\r\nout vec4 FragColor;\r\n\r\nvoid main()\r\n{\r\n    FragColor = vertexColor;\r\n}";
+            _vertexShader = """
+                #version 330 core
+                layout (location = 0) in vec3 aPosition;
+                layout (location = 1) in vec4 aColor;
+
+                out vec4 vertexColor;
+
+                uniform mat4 view;
+                uniform mat4 projection;
+
+                void main()
+                {
+                    gl_Position = projection * view * vec4(aPosition, 1.0);
+                    vertexColor = aColor;
+                }
+                """;
+            _fragmentShader = """
+                #version 330 core
+                in vec4 vertexColor;
+
+                out vec4 FragColor;
+
+                void main()
+                {
+                    FragColor = vertexColor;
+                }
+                """;
 
             _viewUniform = new UniformMatrix4("view", _camera.GetViewMatrix());
             _projectionUniform = new UniformMatrix4("projection", _camera.GetProjectionMatrix());
@@ -59,6 +83,13 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
             _viewUniform.Value = _camera.GetViewMatrix();
             _projectionUniform.Value = _camera.GetProjectionMatrix();
         }
+        /// <summary>
+        /// Asynchronously processes and paints a queue of command lines.
+        /// It creates a virtual copy of the controller manager, sets up a master painter controller,
+        /// executes each command line, and introduces a delay every 100 command lines to prevent UI thread blockage.
+        /// </summary>
+        /// <param name="commandLines">An enumerable of command arrays to be painted.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
         public async Task PaintCommandQueue(IEnumerable<Command[]> commandLines) 
         {
 
@@ -85,11 +116,11 @@ namespace standa_control_software_WPF.view_models.system_control.control.render
                 counter++;
                 await commandManager_virtual.TryExecuteCommandLine(commandLine);
 
-                // Only every 10th line:
+                // Only every 100th line:
+                // We are forced to render on the ui thread, so giving some breathing room.
                 if (counter % 100 == 0)
                 {
-                    //InitializeCollections();
-                    await Task.Delay(1);
+                    await Task.Delay(10);
                 }
             }
             InitializeCollections();

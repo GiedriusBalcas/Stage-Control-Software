@@ -3,29 +3,29 @@
 using Microsoft.Extensions.Logging;
 using standa_control_software_WPF.view_models.commands;
 using standa_control_software_WPF.view_models.system_control.information;
-using standa_control_software_WPF.view_models.system_control.information;
-using standa_controller_software.command_manager;
 using standa_controller_software.device_manager;
 using standa_controller_software.device_manager.devices;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Numerics;
 using System.Windows.Input;
 
 namespace standa_control_software_WPF.view_models.system_control
 {
-    public class SystemInformtaionViewModel : ViewModelBase
+    /// <summary>
+    /// View model responsible for managing system information, including device acquisitions and tool position tracking.
+    /// </summary>
+    public class SystemInformationViewModel : ViewModelBase
     {
         private readonly ILoggerFactory _loggerFactory;
         private readonly ControllerManager _controllerManager;
         private readonly standa_controller_software.command_manager.CommandManager _commandManager;
         private double _acquisitionDuration;
+        private bool _isContiniousAcquisition;
 
         public Vector3 ToolPos
         {
             get => _controllerManager.ToolInformation.Position;
         }
-
         public double AcquisitionDuration
         {
             get => _acquisitionDuration;
@@ -35,9 +35,6 @@ namespace standa_control_software_WPF.view_models.system_control
                 OnPropertyChanged(nameof(AcquisitionDuration));
             }
         }
-
-        private bool _isContiniousAcquisition;
-
         public bool IsContiniousAcquisition
         {
             get { return _isContiniousAcquisition; }
@@ -57,15 +54,17 @@ namespace standa_control_software_WPF.view_models.system_control
                 }
             }
         }
-
         public ObservableCollection<DeviceViewModel> Devices { get; set; }
         public ToolViewModel ToolViewModel { get; set; }
-        public SystemInformtaionViewModel(ControllerManager controllerManager, standa_controller_software.command_manager.CommandManager commandManager, ILoggerFactory loggerFactory)
+
+        public ICommand AcquireCommand => new RelayCommand(StartAcquisition);
+
+        public SystemInformationViewModel(ControllerManager controllerManager, standa_controller_software.command_manager.CommandManager commandManager, ILoggerFactory loggerFactory)
         {
             _loggerFactory = loggerFactory;
             _controllerManager = controllerManager;
             _commandManager = commandManager;
-            Devices = new ObservableCollection<DeviceViewModel>();
+            Devices = [];
 
             foreach (BaseDevice device in _controllerManager.GetDevices<BaseDevice>())
             {
@@ -76,7 +75,9 @@ namespace standa_control_software_WPF.view_models.system_control
 
             ToolViewModel = new ToolViewModel(_controllerManager.ToolInformation);
         }
-
+        /// <summary>
+        /// Stops continuous data acquisition for all devices and the tool.
+        /// </summary>
         private void StopContiniousAcquisition()
         {
             foreach (var deviceViewModel in Devices)
@@ -86,7 +87,9 @@ namespace standa_control_software_WPF.view_models.system_control
     
             ToolViewModel.StopAcquisition();
         }
-
+        /// <summary>
+        /// Starts continuous data acquisition for all devices that require tracking and the tool.
+        /// </summary>
         private void StartContiniousAcquisition()
         {
             foreach (var deviceViewModel in Devices)
@@ -99,10 +102,10 @@ namespace standa_control_software_WPF.view_models.system_control
             if (ToolViewModel.NeedsToBeTracked)
                 ToolViewModel.StartAcquisition();
         }
-
-
-        public ICommand AcquireCommand => new RelayCommand(StartAcquisition);
-
+        /// <summary>
+        /// Starts a single data acquisition session for all devices that require tracking and the tool.
+        /// The acquisition stops automatically after the specified duration.
+        /// </summary>
         private void StartAcquisition()
         {
             foreach (var deviceViewModel in Devices.OfType<PositionerDeviceViewModel>())
@@ -126,10 +129,11 @@ namespace standa_control_software_WPF.view_models.system_control
                     ToolViewModel.StopAcquisition();
             });
         }
-        
-        
-
-        // Factory method to create a ViewModel based on the device type
+        /// <summary>
+        /// Factory method to create a ViewModel based on the device type
+        /// </summary>
+        /// <param name="device">The base device instance.</param>
+        /// <returns>A specialized <see cref="DeviceViewModel"/> if applicable; otherwise, <c>null</c>.</returns>
         private DeviceViewModel? CreateViewModelForDevice(BaseDevice device)
         {
             if (device is BasePositionerDevice positionerDevice)
@@ -142,13 +146,6 @@ namespace standa_control_software_WPF.view_models.system_control
             }
 
             return null;
-        }
-
-
-        public event PropertyChangedEventHandler PropertyChanged;
-        protected void OnPropertyChanged(string propertyName)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 

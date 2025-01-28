@@ -17,7 +17,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
     public abstract class BasePositionerController : BaseController
     {
 
-        protected ConcurrentDictionary<char, CancellationTokenSource> deviceCancellationTokens = new ConcurrentDictionary<char, CancellationTokenSource>();
+        protected ConcurrentDictionary<char, CancellationTokenSource> deviceCancellationTokens = new();
         protected Dictionary<char, BasePositionerDevice> Devices { get; }
 
 
@@ -51,7 +51,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
                 MethodHandle = GetBufferFreeSpace,
             };
 
-            Devices = new Dictionary<char, BasePositionerDevice>();
+            Devices = [];
             //methodMap["UpdateStates"] = UpdateStatesCall;
         }
 
@@ -84,16 +84,16 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
 
         protected override Task UpdateDeviceProperty(Command command, SemaphoreSlim slim) 
         {
-            if (command.Parameters is UpdateDevicePropertyParameters parameters && Devices.TryGetValue(parameters.DeviceName, out BasePositionerDevice device))
+            if (command.Parameters is UpdateDevicePropertyParameters parameters && Devices.TryGetValue(parameters.DeviceName, out var device))
             {
-                PropertyInfo propertyInfo = device.GetType().GetProperty(parameters.PropertyName, BindingFlags.Public | BindingFlags.Instance);
+                PropertyInfo? propertyInfo = device.GetType().GetProperty(parameters.PropertyName, BindingFlags.Public | BindingFlags.Instance);
                 if (propertyInfo == null)
                 {
                     throw new Exception($"Property {parameters.PropertyName} not found on device {device.GetType().Name}.");
                 }
 
                 Type propertyType = propertyInfo.PropertyType;
-                object convertedValue = null;
+                object? convertedValue = null;
                 var propertyValue = parameters.PropertyValue;
 
                 // Handle known type conversions manually
@@ -162,7 +162,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             var devicesToAwait = command.TargetDevices.ToList();
             while (devicesToAwait.Count > 0)
             {
-                List<char> devicesToRemove = new List<char>();
+                List<char> devicesToRemove = [];
                 foreach (var deviceName in devicesToAwait)
                 {
                     var device = Devices[deviceName];

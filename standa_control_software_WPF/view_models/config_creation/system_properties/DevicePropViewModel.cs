@@ -20,7 +20,7 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
         private readonly standa_controller_software.command_manager.CommandManager _commandManager;
         public readonly BaseDevice _device;
 
-        public ObservableCollection<DevicePropertyDisplayItem> DeviceProperties { get; } = new ObservableCollection<DevicePropertyDisplayItem>();
+        public ObservableCollection<DevicePropertyDisplayItem> DeviceProperties { get; } = [];
         public char Name { get; set; }
 
         public string IsConnectedText
@@ -49,8 +49,7 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
                         .AllowedDevices.FirstOrDefault(deviceinfo => deviceinfo.Type == _device.GetType())
                         .Name;
 
-                if (deviceType is null)
-                    deviceType = string.Empty;
+                deviceType ??= string.Empty;
 
                 return deviceType;
             }
@@ -105,7 +104,7 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
             OnPropertyChanged(nameof(Name));
         }
 
-        internal async void ConnectAsync()
+        internal async Task ConnectAsync()
         {
             if (!_device.IsConnected)
             {
@@ -115,6 +114,7 @@ namespace standa_control_software_WPF.view_models.config_creation.system_propert
                 {
                     Action = CommandDefinitions.ConnectDevice,
                     TargetController = controller.Name,
+                    TargetDevices = [_device.Name],
                     Parameters = new ConnectDevicesParameters
                     {
                         Devices = [_device.Name],

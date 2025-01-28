@@ -12,6 +12,7 @@ using standa_controller_software.custom_functions.helpers;
 using text_parser_library;
 using System.Xml.Linq;
 using standa_controller_software.device_manager.devices.shutter;
+using System.Globalization;
 
 namespace standa_controller_software.custom_functions.definitions
 {
@@ -24,14 +25,12 @@ namespace standa_controller_software.custom_functions.definitions
         }
 
 
-        private readonly float _jerkValue = 20000f;
-
         public string Message { get; set; } = "";
         private readonly CommandManager _commandManager;
         private readonly ControllerManager _controllerManager;
         private readonly JumpAbsoluteFunction _jumpAbsoluteFunction;
         private readonly ChangeShutterStateFunction changeShutterStateFunction;
-        private float JerkTime = 0.0000003f;
+        private readonly float JerkTime = 0.0000003f;
 
         public LineAbsoluteFunction(CommandManager commandManager, ControllerManager controllerManager, JumpAbsoluteFunction jumpFunction, ChangeShutterStateFunction changeShutterStateFunction)
         {
@@ -55,7 +54,7 @@ namespace standa_controller_software.custom_functions.definitions
 
             if (!TryGetProperty("Shutter", out var isShutterUsedObj))
                 throw new Exception("Failed to get 'Shutter' property.");
-            var isShutterUsed = (bool)isShutterUsedObj;
+            var isShutterUsed = isShutterUsedObj is null? false : (bool)isShutterUsedObj;
 
             if (!TryGetProperty("Accuracy", out var accuracyObj))
                 throw new Exception("Failed to get 'Accuracy' property.");
@@ -70,28 +69,13 @@ namespace standa_controller_software.custom_functions.definitions
 
             if (!TryGetProperty("LeadIn", out var leadInObj))
                 throw new Exception("Failed to get 'LeadIn' property.");
-            var leadIn = (bool)leadInObj;
+            var leadIn = leadInObj is null? false : (bool)leadInObj;
 
             if (!TryGetProperty("LeadOut", out var leadOutObj))
                 throw new Exception("Failed to get 'LeadOut' property.");
-            var leadOut = (bool)leadOutObj;
+            var leadOut = leadOutObj is null? false : (bool)leadOutObj;
 
-            WaitUntilCondition? waitUntilCondition = null;
-            if (!TryGetProperty("WaitUntilCondition", out var waitUntilConditionObj))
-                throw new Exception("Failed to get 'WaitUntilCondition' property.");
-            if (waitUntilConditionObj is not null)
-            {
-                if (Enum.TryParse(waitUntilConditionObj.ToString(), ignoreCase: true, out WaitUntilCondition parsedWaitUntilCondition))
-                {
-                    waitUntilCondition = parsedWaitUntilCondition;
-                }
-                else
-                {
-                    throw new ArgumentException($"Invalid 'WaitUntilCondition' property value: '{waitUntilConditionObj}'. Supported values are: {string.Join(", ", Enum.GetNames(typeof(WaitUntilCondition)))}");
-                }
-            }
-
-            ExecutionCore(parsedDeviceNames, parsedStartPositions, parsedEndPositions, trajectorySpeed, isShutterUsed, accuracy, leadIn, leadOut, waitUntilCondition);
+            ExecutionCore(parsedDeviceNames, parsedStartPositions, parsedEndPositions, trajectorySpeed, isShutterUsed, accuracy, leadIn, leadOut);
 
             return null;
         }
@@ -104,8 +88,7 @@ namespace standa_controller_software.custom_functions.definitions
             bool isShutterUsed,
             float accuracy,
             bool leadIn,
-            bool leadOut,
-        WaitUntilCondition? waitUntilCondition)
+            bool leadOut)
         {
             // STEP 1: Filter out devices that need to move
             var devicesToMove = new List<char>();
@@ -143,7 +126,7 @@ namespace standa_controller_software.custom_functions.definitions
             Dictionary<char, LeadInfo>? leadInfo = null;
             if (leadIn || leadOut)
             {
-                leadInfo = new Dictionary<char, LeadInfo>();
+                leadInfo = [];
                 foreach (char name in deviceNamesFiltered)
                 {
                     leadInfo[name] = new LeadInfo();
@@ -230,7 +213,7 @@ namespace standa_controller_software.custom_functions.definitions
                 float initialPos = info.StartingMovementParameters.Position;
 
                 // Adjust starting position for lead-in
-                if (leadIn)
+                if (leadIn && leadInfo is not null)
                 {
                     //info.TargetMovementParameters.TargetSpeed = trajectorySpeed;
                     // Calculate LeadIn offset using TargetAcceleration and TargetSpeed
@@ -247,7 +230,7 @@ namespace standa_controller_software.custom_functions.definitions
                 initialPositions[name] = initialPos;
                 info.StartingMovementParameters.Position = initialPos;
                 // Adjust target position for lead-out
-                if (leadOut)
+                if (leadOut && leadInfo is not null)
                 {
                     var leadOutOffset = CalculateLeadOutOffset(info, out float allocatedTime_leadOut);
                     var leadOutEndPosition = info.TargetMovementParameters.Position + leadOutOffset;
@@ -317,7 +300,7 @@ namespace standa_controller_software.custom_functions.definitions
             float allocatedTimeLeadIn = 0f;
             float allocatedTimeLeadOut = 0f;
 
-            if (leadIn)
+            if (leadIn && leadInfo is not null)
             {
                 foreach (var (name, leadInformation) in leadInfo)
                 {
@@ -326,7 +309,7 @@ namespace standa_controller_software.custom_functions.definitions
                 }
             }
 
-            if (leadOut)
+            if (leadOut && leadInfo is not null)
             {
                 foreach (var (name, leadInformation) in leadInfo)
                 {
@@ -342,10 +325,10 @@ namespace standa_controller_software.custom_functions.definitions
             // let's fill the kinematic parameter table
             foreach (var (name, posInformation) in positionerMovementInfos)
             {
-                posInformation.KinematicParameters.ConstantSpeedStartPosition = leadInfo[name].LeadInEndPos;
+                posInformation.KinematicParameters.ConstantSpeedStartPosition = leadInfo is not null? leadInfo[name].LeadInEndPos : posInformation.StartingMovementParameters.Position;
                 posInformation.KinematicParameters.ConstantSpeedStartTime = timeToAccel_recalc;
 
-                posInformation.KinematicParameters.ConstantSpeedEndPosition = leadInfo[name].LeadOutStartPos;
+                posInformation.KinematicParameters.ConstantSpeedEndPosition = leadInfo is not null ? leadInfo[name].LeadOutStartPos : posInformation.TargetMovementParameters.Position;
                 posInformation.KinematicParameters.ConstantSpeedEndTime= totalTime_recalc - timeToDecel_recalc;
 
                 posInformation.KinematicParameters.TotalTime = totalTime_recalc;
@@ -353,8 +336,8 @@ namespace standa_controller_software.custom_functions.definitions
             // STEP 9: Update movement settings if necessary
             List<Command> updateParametersCommandLine = CreateUpdateCommands(positionerMovementInfos, groupedDevicesByController);
 
-            _commandManager.EnqueueCommandLine(updateParametersCommandLine.ToArray());
-            _commandManager.TryExecuteCommandLine(updateParametersCommandLine.ToArray()).GetAwaiter().GetResult();
+            _commandManager.EnqueueCommandLine([.. updateParametersCommandLine]);
+            _commandManager.TryExecuteCommandLine([.. updateParametersCommandLine]).GetAwaiter().GetResult();
 
             // STEP 10: Create and execute movement commands
 
@@ -380,8 +363,8 @@ namespace standa_controller_software.custom_functions.definitions
                 changeShutterStateFunction.ExecutionCore([shutterDevice.Name], true);
             }
 
-            _commandManager.EnqueueCommandLine(movementCommandsLine.ToArray());
-            _commandManager.TryExecuteCommandLine(movementCommandsLine.ToArray()).GetAwaiter().GetResult();
+            _commandManager.EnqueueCommandLine([.. movementCommandsLine]);
+            _commandManager.TryExecuteCommandLine([.. movementCommandsLine]).GetAwaiter().GetResult();
 
             if (isShutterUsed)
             {
@@ -472,8 +455,6 @@ namespace standa_controller_software.custom_functions.definitions
             // Adjust offset based on direction
             offset *= directionMultiplier;
 
-            var kaka = Math.Pow(targetSpeed,2) / (2 * acceleration);
-
             return offset;
         }
 
@@ -515,8 +496,8 @@ namespace standa_controller_software.custom_functions.definitions
         ref Dictionary<char, PositionerMovementInformation> positionerMovementInfos,
         out float timeToAccel, out float timeToDecel, out float totalTime)
         {
-            char[] deviceNames = positionerMovementInfos.Keys.ToArray();
-            Dictionary<char, float> movementRatio = new Dictionary<char, float>();
+            char[] deviceNames = [.. positionerMovementInfos.Keys];
+            Dictionary<char, float> movementRatio = [];
 
             //Calculate the initial and final tool positions
             var startToolPoint = _controllerManager.ToolInformation.CalculateToolPositionUpdate
@@ -602,8 +583,8 @@ namespace standa_controller_software.custom_functions.definitions
         float trajectorySpeed,
         ref Dictionary<char, PositionerMovementInformation> positionerMovementInfos)
         {
-            char[] deviceNames = positionerMovementInfos.Keys.ToArray();
-            Dictionary<char, float> movementRatio = new Dictionary<char, float>();
+            char[] deviceNames = [.. positionerMovementInfos.Keys];
+            Dictionary<char, float> movementRatio = [];
 
             //Calculate the initial and final tool positions
             var startToolPoint = _controllerManager.ToolInformation.CalculateToolPositionUpdate
@@ -700,12 +681,12 @@ namespace standa_controller_software.custom_functions.definitions
                     var info = positionerMovementInfos[deviceName];
 
                     float? waitUntilPos = null;
-                    if (waitUntilPosDict is not null && waitUntilPosDict.ContainsKey(deviceName))
-                        waitUntilPos = waitUntilPosDict[deviceName];
+                    if (waitUntilPosDict is not null && waitUntilPosDict.TryGetValue(deviceName, out float value))
+                        waitUntilPos = value;
 
                     LeadInfo? leadInformation = null;
-                    if (leadInfo is not null && leadInfo.ContainsKey(deviceName))
-                        leadInformation = leadInfo[deviceName];
+                    if (leadInfo is not null && leadInfo.TryGetValue(deviceName, out LeadInfo? leadInfoValue))
+                        leadInformation = leadInfoValue;
 
                     positionerInfos[deviceName] = new PositionerInfo
                     {
@@ -728,7 +709,7 @@ namespace standa_controller_software.custom_functions.definitions
                 }
 
                 // Build ShutterInfo if shutter is used
-                ShutterInfo shutterInfo = new ShutterInfo();
+                ShutterInfo shutterInfo = new();
                 if (isShutterUsed)
                 {
                     var shutterDevice = _controllerManager.GetDevices<ShutterDevice>().First();
@@ -774,11 +755,11 @@ namespace standa_controller_software.custom_functions.definitions
             return commandsMovement;
         }
 
-        private bool TryParseArguments(object?[] arguments, out char[] devNames, out float[] startPositions, out float[] endPositions)
+        private static bool TryParseArguments(object?[] arguments, out char[] devNames, out float[] startPositions, out float[] endPositions)
         {
-            devNames = Array.Empty<char>();
-            startPositions = Array.Empty<float>();
-            endPositions = Array.Empty<float>();
+            devNames = [];
+            startPositions = [];
+            endPositions = [];
 
             if (arguments == null || arguments.Length == 0)
                 return false;
@@ -809,7 +790,7 @@ namespace standa_controller_software.custom_functions.definitions
             return true;
         }
 
-        private bool TryConvertToFloat(object? obj, out float value)
+        private static bool TryConvertToFloat(object? obj, out float value)
         {
             value = 0f;
             if (obj == null)
@@ -826,9 +807,12 @@ namespace standa_controller_software.custom_functions.definitions
                 case int i:
                     value = i;
                     return true;
+                case string s:
+                    return float.TryParse(s, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out value);
                 default:
-                    return float.TryParse(obj.ToString(), out value);
+                    return float.TryParse(obj.ToString(), NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out value);
             }
         }
     }
+
 }

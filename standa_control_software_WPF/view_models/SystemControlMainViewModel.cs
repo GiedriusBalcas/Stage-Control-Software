@@ -1,25 +1,20 @@
 ﻿using standa_control_software_WPF.view_models.commands;
 using standa_control_software_WPF.view_models.stores;
 using standa_control_software_WPF.view_models.system_control;
-using standa_controller_software.command_manager;
-using standa_controller_software.device_manager;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Input;
 
 namespace standa_control_software_WPF.view_models
 {
+    /// <summary>
+    /// Represents the main view model for system control, managing navigation between different system control pages.
+    /// </summary>
     public class SystemControlMainViewModel : ViewModelBase
     {
-        private readonly standa_controller_software.command_manager.CommandManager _commandManager;
         private readonly NavigationStore _navigationStore;
-        public ObservableCollection<NavItem> NavigationItems { get; set; }
-
         private NavItem _selectedNavItem;
+
+        public ObservableCollection<NavItem> NavigationItems { get; set; }
         public NavItem SelectedNavItem
         {
             get => _selectedNavItem;
@@ -29,22 +24,20 @@ namespace standa_control_software_WPF.view_models
                 _navigationStore.CurrentViewModel = _selectedNavItem.GetViewModel();
             }
         }
-
         public ViewModelBase CurrentViewModel => _navigationStore.CurrentViewModel;
+        public SystemControlViewModel CurrentCompilerViewModel { get; }
 
+        // Initialize navigation commands with corresponding view model retrieval functions
         public ICommand NavigateToInfoPageCommand { get; set; }
         public ICommand NavigateToConfigPageCommand { get; set; }
         public ICommand NavigateToCompilePageCommand { get; set; }
 
-        public SystemControlViewModel CurrentCompilerViewModel { get; }
-
-        public SystemControlMainViewModel(standa_controller_software.command_manager.CommandManager config, NavigationStore navigationStore,
+        public SystemControlMainViewModel(NavigationStore navigationStore,
             Func<SystemPropertiesViewModel> getConfigPageViewModel,
-            Func<SystemInformtaionViewModel> getInfoPageViewModel,
+            Func<SystemInformationViewModel> getInfoPageViewModel,
             Func<SystemControlViewModel> getCompPageViewModel
             )
         {
-            _commandManager = config;
             _navigationStore = navigationStore;
             _navigationStore.CurrentViewModelChanged += OnCurrentViewmodelChanged;
 
@@ -54,12 +47,12 @@ namespace standa_control_software_WPF.view_models
 
             CurrentCompilerViewModel = getCompPageViewModel();
 
-            NavigationItems = new ObservableCollection<NavItem>
-            {
+            NavigationItems =
+            [
                 new NavItem(){ Header= "Device Properties", GetViewModel= getConfigPageViewModel},
                 new NavItem(){ Header= "Information", GetViewModel= getInfoPageViewModel},
                 new NavItem(){ Header= "Command Window", GetViewModel= getCompPageViewModel},
-            };
+            ];
             _selectedNavItem = NavigationItems.First();
         }
 
@@ -69,9 +62,12 @@ namespace standa_control_software_WPF.view_models
         }
     }
 
+    /// <summary>
+    /// Represents a navigation item in the system control interface, including its display header and the associated view model.
+    /// </summary>
     public class NavItem
     {
-        public string Header { get; set; }
-        public Func<ViewModelBase> GetViewModel { get; set; }
+        public required string Header { get; set; }
+        public required Func<ViewModelBase> GetViewModel { get; set; }
     }
 }

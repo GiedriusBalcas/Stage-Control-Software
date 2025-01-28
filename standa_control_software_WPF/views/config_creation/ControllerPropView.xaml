@@ -73,23 +73,41 @@
                       VerticalAlignment="Center"/>
 
         </StackPanel>
-    
+
         <ListView Grid.Row="1"
-                  x:Name="PropertiesListView" 
+                  x:Name="PropertiesListView"
                   IsEnabled="{Binding IsEnabled}"
                   ItemsSource="{Binding ControllerProperties}">
+
+            <!-- Set ItemContainerStyle to stretch content horizontally -->
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="HorizontalContentAlignment"
+                            Value="Stretch" />
+                </Style>
+            </ListView.ItemContainerStyle>
+
             <ListView.View>
                 <GridView>
-                    <GridViewColumn Header="Property Name" DisplayMemberBinding="{Binding PropertyName}" Width="auto"/>
-                    <GridViewColumn Header="Value" Width="300">
+                    <GridViewColumn Header="Property Name"
+                                    DisplayMemberBinding="{Binding PropertyName}"
+                                    Width="Auto" />
+
+                    <GridViewColumn Header="Value"
+                                    Width="Auto">
+                        <!-- Allow dynamic width -->
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
-                                <ContentPresenter Content="{Binding}" Width="auto" MinWidth="150"
-                                  ContentTemplateSelector="{StaticResource PropertyDataTemplateSelector}" />
+                                <ContentPresenter Content="{Binding}"
+                                                  HorizontalAlignment="Stretch"
+                                                  ContentTemplateSelector="{StaticResource PropertyDataTemplateSelector}" />
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
-                    <GridViewColumn Header="Error Message" DisplayMemberBinding="{Binding PropertyMessage}" Width="auto"/>
+
+                    <GridViewColumn Header="Error Message"
+                                    DisplayMemberBinding="{Binding PropertyMessage}"
+                                    Width="Auto" />
                 </GridView>
             </ListView.View>
         </ListView>

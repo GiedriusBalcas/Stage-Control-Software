@@ -10,29 +10,13 @@ namespace text_parser_library
 {
     public class TextInterpreterWrapper
     {
-        public InputVisitor Visitor { get; set; } = new InputVisitor(new ParserState(), new Definitions(), "");
+        public InputVisitor Visitor { get; set; } = new InputVisitor(new ParserState(), new Definitions(), "", "");
         public Definitions DefinitionLibrary { get; set; } = new Definitions();
         public ParserState State { get; set; } = new ParserState();
-        public void ReadInput(string input, string fileName)
-        {
-            try
-            {
-                var inputStream = new AntlrInputStream(input);
-                var lexer = new GrammarSyntaxLexer(inputStream);
-                var tokenStream = new CommonTokenStream(lexer);
-                var parser = new GrammarSyntaxParser(tokenStream);
-                var _tree = parser.program();
-                Visitor = new InputVisitor(State, DefinitionLibrary, fileName);
-                Visitor.Visit(_tree);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception(Visitor.State.Message);
-            }
-        }
+       
 
         public void ReadInput(
-        string input, string fileName,
+        string input, string fileName, string filePath,
         CancellationToken cancelToken,
         Action<string> statusCallback)
         {
@@ -50,7 +34,7 @@ namespace text_parser_library
             var tree = parser.program();
 
             // Create and configure the visitor
-            Visitor = new InputVisitor(State, DefinitionLibrary, fileName);
+            Visitor = new InputVisitor(State, DefinitionLibrary, fileName, filePath);
 
             // Hook up line visited event for a textual update
             Visitor.LineVisited += (lineNumber, currentFileName) =>

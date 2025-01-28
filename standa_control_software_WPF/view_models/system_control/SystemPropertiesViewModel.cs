@@ -5,25 +5,24 @@ using standa_control_software_WPF.view_models.config_creation.system_properties;
 using standa_controller_software.device_manager;
 using standa_controller_software.device_manager.devices;
 using standa_controller_software.device_manager.controller_interfaces;
-using standa_controller_software.device_manager.controller_interfaces.positioning;
 using Microsoft.Extensions.Logging;
 
 namespace standa_control_software_WPF.view_models.system_control
 {
+    /// <summary>
+    /// View model responsible for managing system properties, including device connections and property displays.
+    /// </summary>
     public class SystemPropertiesViewModel : ViewModelBase
     {
 
         private readonly ControllerManager _controllerManager;
         private readonly standa_controller_software.command_manager.CommandManager _commandManager;
-        private ILogger<SystemPropertiesViewModel> _logger;
+        private readonly ILogger<SystemPropertiesViewModel> _logger;
         private readonly ILoggerFactory _loggerFactory;
-        private DevicePropViewModel _selectedDevice;
+        private DevicePropViewModel? _selectedDevice;
 
-
-        // Ill need once again DeviceVM.
         public List<DevicePropViewModel> Devices { get; set; }
-
-        public DevicePropViewModel SelectedDevice
+        public DevicePropViewModel? SelectedDevice
         {
             get => _selectedDevice;
             set
@@ -37,9 +36,7 @@ namespace standa_control_software_WPF.view_models.system_control
                 }
             }
         }
-
-        // This property is used to bind to the second ListView's ItemsSource
-        public IEnumerable<DevicePropertyDisplayItem> DeviceProperties => SelectedDevice?.DeviceProperties;
+        public IEnumerable<DevicePropertyDisplayItem> DeviceProperties => SelectedDevice is null? new List<DevicePropertyDisplayItem>() : SelectedDevice.DeviceProperties;
 
         public ICommand ConnectAllCommand { get; set; }
         public ICommand ConnectCommand { get; set; }
@@ -51,7 +48,7 @@ namespace standa_control_software_WPF.view_models.system_control
             _logger = logger;
             _loggerFactory = loggerFactory;
 
-            Devices = new List<DevicePropViewModel>();
+            Devices = [];
 
             foreach (var device in _controllerManager.GetDevices<BaseDevice>())
             {
@@ -64,12 +61,15 @@ namespace standa_control_software_WPF.view_models.system_control
             ConnectCommand = new RelayCommand( async () => await ExecuteConnectCommandAsync() );
 
         }
-
+        /// <summary>
+        /// Executes the connection process for the currently selected device.
+        /// </summary>
         private async Task ExecuteConnectCommandAsync()
         {
             try
             {
-                await ConnectDevice(SelectedDevice);
+                if(SelectedDevice is not null)
+                    await ConnectDevice(SelectedDevice);
             }
             catch (Exception ex)
             {
@@ -85,20 +85,21 @@ namespace standa_control_software_WPF.view_models.system_control
             {
                 try
                 {
-                    device.ConnectAsync();
+                    await device.ConnectAsync();
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError($"Error encountered when trying to connect {device.Name} device. \n{ex.Message}");
                     MessageBox.Show(ex.Message);
-
                 }
             }
             else
-                throw new Exception($"Unable to connect device: {SelectedDevice.Name}. Parent controller not found.");
+                throw new Exception($"Unable to connect device: {SelectedDevice?.Name}. Parent controller not found.");
 
         }
-
+        /// <summary>
+        /// Executes the connection process for all enabled devices.
+        /// </summary>
         private async Task ExecuteConnectAllCommand()
         {
             try

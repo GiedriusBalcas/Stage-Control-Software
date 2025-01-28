@@ -1,0 +1,36 @@
+rectangleFunction(width, length, height, pitch, layers, centerX, centerY, floorHeight, speed)
+{
+	
+	lineA.Speed = speed;
+	lineA.LeadIn = true;
+	lineA.LeadOut = true;
+	lineA.Shutter = true;
+	
+	for( k=0; k<layers; k++)
+	{
+		zas = floorHeight + height/layers*k;
+		direction_x = (-1)^k;
+		jumpA("z",zas);
+		for( i=0; i<width/pitch; i++)
+		{
+			direction_y = (-1)^i;
+			
+			if(direction_x == 1)
+			{
+				xas = centerX + i*pitch - width/2;
+			}
+			else
+			{
+				xas = centerX + width/2 - (i +1)*pitch;
+			}
+			
+			yasStart = centerY - direction_y*length/2;
+			yasEnd = centerY + direction_y*length/2;
+			
+			lineA("xy", xas, yasStart, xas, yasEnd);
+		}
+	}
+
+}
+
+

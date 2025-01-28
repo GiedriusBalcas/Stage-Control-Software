@@ -22,13 +22,11 @@ namespace standa_controller_software.custom_functions.definitions
         public string Message { get; set; } = "";
         private readonly CommandManager _commandManager;
         private readonly ControllerManager _controllerManager;
-        private readonly ChangeShutterStateFunction changeShutterStateFunction;
 
-        public JumpAbsoluteFunction(CommandManager commandManager, ControllerManager controllerManager, ChangeShutterStateFunction changeShutterStateFunction)
+        public JumpAbsoluteFunction(CommandManager commandManager, ControllerManager controllerManager )
         {
             _commandManager = commandManager;
             _controllerManager = controllerManager;
-            this.changeShutterStateFunction = changeShutterStateFunction;
             SetProperty("Shutter", false);
             SetProperty("Accuracy", 0.05f);
             SetProperty("LeadOut", false);
@@ -44,11 +42,11 @@ namespace standa_controller_software.custom_functions.definitions
 
             if (!TryGetProperty("Shutter", out var isShutterUsedObj))
                 throw new Exception("Failed to get 'Shutter' property.");
-            var isShutterUsed = (bool)isShutterUsedObj;
+            var isShutterUsed = isShutterUsedObj is null? false : (bool)isShutterUsedObj;
 
             if (!TryGetProperty("Blending", out var blendingObj))
                 throw new Exception("Failed to get 'Blending' property.");
-            var blending = (bool)blendingObj;
+            var blending = blendingObj is null? false : (bool)blendingObj;
 
             if (!TryGetProperty("Accuracy", out var accuracyObj))
                 throw new Exception("Failed to get 'Accuracy' property.");
@@ -205,8 +203,8 @@ namespace standa_controller_software.custom_functions.definitions
             {
                 List<Command> updateParametersCommandLine = CreateUpdateCommands(positionerMovementInfos, groupedDevicesByController, blending);
 
-                _commandManager.EnqueueCommandLine(updateParametersCommandLine.ToArray());
-                _commandManager.TryExecuteCommandLine(updateParametersCommandLine.ToArray()).GetAwaiter().GetResult();
+                _commandManager.EnqueueCommandLine([.. updateParametersCommandLine]);
+                _commandManager.TryExecuteCommandLine([.. updateParametersCommandLine]).GetAwaiter().GetResult();
                 foreach (var (name, device) in devices)
                 {
                     device.UpdatePending = false;
@@ -233,7 +231,7 @@ namespace standa_controller_software.custom_functions.definitions
                 /// 
                 // we must calculate the time needed to reach the condition
                 var timeToWaitUntilPosition = new Dictionary<char, float>();
-                waitUntilPosDict = new Dictionary<char, float>();
+                waitUntilPosDict = [];
                 for (int i = 0; i < deviceNames.Length; i++)
                 {
                     var name = deviceNames[i];
@@ -256,8 +254,8 @@ namespace standa_controller_software.custom_functions.definitions
             // Create the movement commands.
             List<Command> commandsMovement = CreateMovementCommands(isShutterUsed, groupedDevicesByController, positionerMovementInfos, allocatedTime, waitUntilTime, waitUntilPosDict);
 
-            _commandManager.EnqueueCommandLine(commandsMovement.ToArray());
-            _commandManager.TryExecuteCommandLine(commandsMovement.ToArray()).GetAwaiter().GetResult();
+            _commandManager.EnqueueCommandLine([.. commandsMovement]);
+            _commandManager.TryExecuteCommandLine([.. commandsMovement]).GetAwaiter().GetResult();
         }
 
 
@@ -350,7 +348,7 @@ namespace standa_controller_software.custom_functions.definitions
         //    return totalTime;
         //}
 
-        private float CalculateTimeToReachPosition(PositionerMovementInformation info, float waitUntilPosition)
+        private static float CalculateTimeToReachPosition(PositionerMovementInformation info, float waitUntilPosition)
         {
             // Extract movement parameters
             float x0 = info.StartingMovementParameters.Position;
@@ -390,8 +388,6 @@ namespace standa_controller_software.custom_functions.definitions
 
             // Adjust target position after initial deceleration
             deltaX_total = info.TargetMovementParameters.Position - x0;
-            float deltaX = x_target - x0;
-            float deltaX_dir = direction * deltaX;
 
             // Calculate times and distances for acceleration and deceleration
             float tAcc = (vt - v0_dir) / a;
@@ -479,7 +475,6 @@ namespace standa_controller_software.custom_functions.definitions
                 float dAccNew = v0_dir * tAccNew + 0.5f * a * tAccNew * tAccNew;
 
                 float tDecNew = vMax / d;
-                float dDecNew = vMax * tDecNew - 0.5f * d * tDecNew * tDecNew;
 
                 totalTime += tAccNew + tDecNew;
 
@@ -528,7 +523,7 @@ namespace standa_controller_software.custom_functions.definitions
             }
         }
 
-        private Dictionary<char, float> CalculateWaitUntilPosition(Dictionary<char, PositionerMovementInformation> positionerMovementInfos, float waitUntilTime)
+        private static Dictionary<char, float> CalculateWaitUntilPosition(Dictionary<char, PositionerMovementInformation> positionerMovementInfos, float waitUntilTime)
         {
             var positionsAtWaitTime = new Dictionary<char, float>();
 
@@ -600,7 +595,7 @@ namespace standa_controller_software.custom_functions.definitions
                     deviceName => deviceName,
                     deviceName => new PositionerInfo
                     {
-                        WaitUntilPosition = waitUntilPosDict is not null ? waitUntilPosDict[deviceName] : null,
+                        WaitUntilPosition = waitUntilPosDict?[deviceName],
                         TargetSpeed = positionerMovementInfos[deviceName].TargetMovementParameters.TargetSpeed,
                         Direction = positionerMovementInfos[deviceName].TargetMovementParameters.Direction,
                         TargetPosition = positionerMovementInfos[deviceName].TargetMovementParameters.Position,
@@ -698,11 +693,11 @@ namespace standa_controller_software.custom_functions.definitions
             return updateParametersCommandLine;
         }
 
-        private bool TryParseArguments(object?[] arguments, out char[] devNames, out float[] positions, out float[] waitUntil)
+        private static bool TryParseArguments(object?[] arguments, out char[] devNames, out float[] positions, out float[] waitUntil)
         {
-            devNames = Array.Empty<char>();
-            positions = Array.Empty<float>();
-            waitUntil = Array.Empty<float>();
+            devNames = [];
+            positions = [];
+            waitUntil = [];
 
             if (arguments == null || arguments.Length == 0)
                 return false;
@@ -734,7 +729,7 @@ namespace standa_controller_software.custom_functions.definitions
             return true;
         }
 
-        private bool TryConvertToFloat(object? obj, out float value)
+        private static bool TryConvertToFloat(object? obj, out float value)
         {
             value = 0f;
             if (obj == null)

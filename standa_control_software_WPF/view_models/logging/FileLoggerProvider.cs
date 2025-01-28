@@ -19,7 +19,6 @@ namespace standa_control_software_WPF.view_models.logging
             _filePath = filePath;
             _minLevel = minLevel;
 
-            // Delete or truncate the file if desired:
             if (clearOnLaunch && File.Exists(_filePath))
             {
                 File.Delete(_filePath);
@@ -28,14 +27,11 @@ namespace standa_control_software_WPF.view_models.logging
 
         public ILogger CreateLogger(string categoryName)
         {
-            // We don't distinguish by categoryName here,
-            // but you could if you want separate log files per category.
             return new FileLogger(categoryName, _filePath, _minLevel); ;
         }
 
         public void Dispose()
         {
-            // On disposal, flush any remaining logs
             _fileLogger.Flush();
         }
     }

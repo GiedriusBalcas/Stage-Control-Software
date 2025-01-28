@@ -1,49 +1,40 @@
-﻿using OxyPlot.Series;
-using OxyPlot;
-using standa_control_software_WPF.view_models.commands;
-using standa_controller_software.device_manager.devices;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Timers;
-using System.Windows.Input;
+﻿using OxyPlot;
+using OxyPlot.Series;
 using standa_controller_software.device_manager;
 using System.Numerics;
+using System.Timers;
 
 namespace standa_control_software_WPF.view_models.system_control.information
 {
+    /// <summary>
+    /// ViewModel for managing and displaying information related to a configurations tool.
+    /// Handles position tracking, speed calculation, and data acquisition for plotting.
+    /// </summary>
     public class ToolViewModel : ViewModelBase, IDisposable
     {
         private readonly ToolInformation _tool;
-        private Vector3 _position;
         private float _speed;
         private bool _needsToBeTracked;
         private bool _isAcquiring;
         private DateTime _acquisitionStartTime;
         private double _timeElapsed;
-        private LineSeries _positionSeriesX;
-        private LineSeries _positionSeriesY;
-        private LineSeries _positionSeriesZ;
-        private LineSeries _shutterSeries;
-        private LineSeries _speedSeries;
-        private System.Timers.Timer _plotUpdateTimer;
-
-
-        // Properties
+        private readonly LineSeries _positionSeriesX;
+        private readonly LineSeries _positionSeriesY;
+        private readonly LineSeries _positionSeriesZ;
+        private readonly LineSeries _shutterSeries;
+        private readonly LineSeries _speedSeries;
+        private System.Timers.Timer? _plotUpdateTimer;
         private DateTime _timeOfPrevUpdate;
-        private Vector3 PrevPosition;
+        private PlotModel _plotModel;
 
+        private Vector3 PrevPosition;
         public Vector3 Position
         {
             get => _tool.Position;
         }
-
         public float PositionX => Position.X;
         public float PositionY => Position.Y;
         public float PositionZ => Position.Z;
-
         public float Speed
         {
             get => _speed;
@@ -56,7 +47,6 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 }
             }
         }
-
         public bool NeedsToBeTracked
         {
             get => _needsToBeTracked;
@@ -69,9 +59,6 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 }
             }
         }
-
-        // PlotModel for OxyPlot
-        private PlotModel _plotModel;
         public PlotModel PlotModel
         {
             get => _plotModel;
@@ -82,20 +69,36 @@ namespace standa_control_software_WPF.view_models.system_control.information
             }
         }
 
-
         public ToolViewModel(ToolInformation toolInformation)
         {
-                _tool = toolInformation;
-                _tool.PositionChanged += _tool_PositionChanged; ;
-                
-                Speed = 0f;
+            _tool = toolInformation;
+            _tool.PositionChanged += Tool_PositionChanged; ;
 
-                InitializePlotModel();
+            Speed = 0f;
+
+            _plotModel = new PlotModel { Title = $"Tools Position and Speed" };
+
+            _positionSeriesX = new LineSeries { Title = "X", Color = OxyColors.Blue };
+            _positionSeriesY = new LineSeries { Title = "Y", Color = OxyColors.Green };
+            _positionSeriesZ = new LineSeries { Title = "Z", Color = OxyColors.RosyBrown };
+            _shutterSeries = new LineSeries { Title = "Shutter", Color = OxyColors.Red };
+            _speedSeries = new LineSeries { Title = "Speed", Color = OxyColors.LightGray };
+
+            PlotModel.Series.Add(_positionSeriesX);
+            PlotModel.Series.Add(_positionSeriesY);
+            PlotModel.Series.Add(_positionSeriesZ);
+            PlotModel.Series.Add(_shutterSeries);
+            PlotModel.Series.Add(_speedSeries);
         }
 
-        private void _tool_PositionChanged(Vector3 vector)
+        /// <summary>
+        /// Handles the event when the tool's position changes.
+        /// Updates position properties, calculates speed, and logs data if acquisition is active.
+        /// </summary>
+        /// <param name="vector">The new position vector of the tool.</param>
+        private void Tool_PositionChanged(Vector3 vector)
         {
-            if(vector != PrevPosition)
+            if (vector != PrevPosition)
             {
                 var currentTime = DateTime.Now;
                 OnPropertyChanged(nameof(Position));
@@ -104,7 +107,7 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 OnPropertyChanged(nameof(PositionZ));
 
                 var timeIntervalSinceSpeedUpdate = currentTime.Subtract(_timeOfPrevUpdate).TotalMilliseconds;
-                if(timeIntervalSinceSpeedUpdate > 100)
+                if (timeIntervalSinceSpeedUpdate > 100)
                 {
                     Speed = (float)((Position - PrevPosition).Length() / (timeIntervalSinceSpeedUpdate / 1000));
                     PrevPosition = Position;
@@ -124,27 +127,10 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 }
             }
         }
-
-
-        // Methods
-
-        private void InitializePlotModel()
-        {
-            PlotModel = new PlotModel { Title = $"Tools Position and Speed" };
-
-            _positionSeriesX = new LineSeries { Title = "X", Color = OxyColors.Blue };
-            _positionSeriesY = new LineSeries { Title = "Y", Color = OxyColors.Green };
-            _positionSeriesZ = new LineSeries { Title = "Z", Color = OxyColors.RosyBrown };
-            _shutterSeries = new LineSeries { Title = "Shutter", Color = OxyColors.Red };
-            _speedSeries = new LineSeries { Title = "Speed", Color = OxyColors.LightGray };
-
-            PlotModel.Series.Add(_positionSeriesX);
-            PlotModel.Series.Add(_positionSeriesY);
-            PlotModel.Series.Add(_positionSeriesZ);
-            PlotModel.Series.Add(_shutterSeries);
-            PlotModel.Series.Add(_speedSeries);
-        }
-
+        /// <summary>
+        /// Starts the data acquisition process, initializing timing and plot data.
+        /// Sets up a timer to periodically refresh the plot.
+        /// </summary>
         public void StartAcquisition()
         {
             _isAcquiring = true;
@@ -163,14 +149,21 @@ namespace standa_control_software_WPF.view_models.system_control.information
             }
             _plotUpdateTimer.Start();
         }
-
+        /// <summary>
+        /// Stops the data acquisition process and halts plot updates.
+        /// </summary>
         public void StopAcquisition()
         {
             _isAcquiring = false;
             _plotUpdateTimer?.Stop();
         }
-
-        private void OnPlotUpdateTimerElapsed(object sender, ElapsedEventArgs e)
+        /// <summary>
+        /// Event handler for the plot update timer.
+        /// Refreshes the plot on the UI thread to reflect the latest data.
+        /// </summary>
+        /// <param name="sender">The source of the timer event.</param>
+        /// <param name="e">Event data.</param>
+        private void OnPlotUpdateTimerElapsed(object? sender, ElapsedEventArgs e)
         {
             // Refresh the plot on the UI thread
             App.Current.Dispatcher.Invoke(() =>
@@ -178,9 +171,11 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 PlotModel.InvalidatePlot(true);
             });
         }
-
-        // IDisposable implementation
-        public void Dispose()
+        /// <summary>
+        /// Releases all resources used by the <see cref="ToolViewModel"/>.
+        /// Stops the plot update timer and unsubscribes from events.
+        /// </summary>
+        public override void Dispose()
         {
             if (_plotUpdateTimer != null)
             {
@@ -193,8 +188,9 @@ namespace standa_control_software_WPF.view_models.system_control.information
             // Unsubscribe from events
             if (_tool != null)
             {
-                _tool.PositionChanged -= _tool_PositionChanged;
+                _tool.PositionChanged -= Tool_PositionChanged;
             }
+            base.Dispose();
         }
     }
 }

@@ -4,7 +4,7 @@ namespace standa_control_software_WPF.view_models
 {
     public class ViewModelBase : INotifyPropertyChanged
     {
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         protected void OnPropertyChanged(string propertyName)
         {

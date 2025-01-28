@@ -1,22 +1,15 @@
 ﻿using Microsoft.Extensions.Logging;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Shapes;
 
 namespace standa_control_software_WPF.view_models.logging
 {
     public class FileLogger : ILogger, IFlushableLogger
     {
-        private string _categoryName;
+        private readonly string _categoryName;
         private readonly string _filePath;
         private readonly LogLevel _minLevel;
-
-        // We'll collect messages in a queue until someone calls Flush()
         private readonly ConcurrentQueue<string> _logQueue = new ConcurrentQueue<string>();
         private readonly object _fileLock = new object();
 
@@ -36,19 +29,20 @@ namespace standa_control_software_WPF.view_models.logging
             _minLevel = minLevel;
         }
 
+        /// <summary>
+        /// Begins a logical operation scope. Not implemented.
+        /// </summary>
         public IDisposable BeginScope<TState>(TState state) => null;
-
         public bool IsEnabled(LogLevel logLevel)
         {
             return logLevel >= _minLevel;
         }
-
         public void Log<TState>(
             LogLevel logLevel,
             EventId eventId,
             TState state,
-            Exception exception,
-            Func<TState, Exception, string> formatter
+            Exception? exception,
+            Func<TState, Exception?, string> formatter
         )
         {
             if (!IsEnabled(logLevel)) return;
@@ -65,7 +59,6 @@ namespace standa_control_software_WPF.view_models.logging
             _logQueue.Enqueue(logRecord);
             Flush();
         }
-
         /// <summary>
         /// Writes all queued logs to file, then clears the queue.
         /// </summary>
@@ -75,7 +68,7 @@ namespace standa_control_software_WPF.view_models.logging
 
             // Gather all queued messages into one big string
             var sb = new StringBuilder();
-            while (_logQueue.TryDequeue(out string line))
+            while (_logQueue.TryDequeue(out var line))
             {
                 sb.AppendLine(line);
             }

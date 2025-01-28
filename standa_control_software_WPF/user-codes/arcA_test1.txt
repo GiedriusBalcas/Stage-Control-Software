@@ -1,2 +1,0 @@
-arcA.Speed = 100;
-arcA("xy", 0,0, 200);

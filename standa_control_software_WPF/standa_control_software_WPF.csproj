@@ -79,16 +79,27 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="view_models\system_control\properties\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Compile Update="views\system_control\information\ShutterGraphControl.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Examples\arc_example.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Examples\hatched rectangle function call script.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Examples\hatched rectangle function.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Examples\jumpA_waitUntil_example.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Examples\Virutal Axes Configuration.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="libximc.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

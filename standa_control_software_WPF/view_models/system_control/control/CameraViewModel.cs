@@ -6,22 +6,23 @@ using System.Windows.Input;
 
 namespace standa_control_software_WPF.view_models.system_control.control
 {
+    /// <summary>
+    /// ViewModel for managing and controlling the camera within the application.
+    /// Handles camera transformations, tracking of tools, and view adjustments.
+    /// </summary>
     public class CameraViewModel : ViewModelBase
     {
-        private OrbitalCamera _camera { get; }
-
+        private readonly OrbitalCamera _camera;
         private readonly PainterManagerViewModel _painterManager;
         private readonly ControllerManager _controllerManager;
         private float _yaw;
         private float _pitch;
         private float _distance;
         private float _fovy;
-        private OpenTK.Mathematics.Vector3 _referencePosition;
-        // let's try to translate using this?.
-        private OpenTK.Mathematics.Vector3 _referencePosition_reference;
-
         private bool _isTrackingTool = false;
         private bool _isOrthographicView = false;
+        private Vector2 _referencePositionXYDifference = new(0, 0);
+        private float _aspectRatio = 1;
 
         public bool IsTrackingTool
         {
@@ -45,14 +46,6 @@ namespace standa_control_software_WPF.view_models.system_control.control
                 }
             }
         }
-
-        private void ToolInformation_PositionChanged(System.Numerics.Vector3 obj)
-        {
-            var toolPos = obj;
-            var pos = new OpenTK.Mathematics.Vector3(toolPos.X, toolPos.Z, toolPos.Y);
-            _camera.ReferencePosition = pos;
-        }
-
         public bool IsOrthographicView
         {
             get => _isOrthographicView;
@@ -66,7 +59,6 @@ namespace standa_control_software_WPF.view_models.system_control.control
                 }
             }
         }
-
         public float Yaw 
         { 
             get => _yaw; 
@@ -110,11 +102,7 @@ namespace standa_control_software_WPF.view_models.system_control.control
                 }
             }
         }
-
-
         public float Fovy { get => _fovy; set => _fovy = value; }
-
-        private Vector2 _referencePositionXYDifference = new Vector2(0,0);
         public Vector2 ReferencePositionXY 
         {
             get => _referencePositionXYDifference;
@@ -132,8 +120,6 @@ namespace standa_control_software_WPF.view_models.system_control.control
                 }
             } 
         }
-
-        private float _aspectRatio = 1;
         public float AspectRatio 
         {
             get => _aspectRatio;
@@ -146,7 +132,6 @@ namespace standa_control_software_WPF.view_models.system_control.control
                 }
             } 
         }
-
         public float WindowWidth = 100f;
         public float WindowHeight = 100f;
 
@@ -170,6 +155,16 @@ namespace standa_control_software_WPF.view_models.system_control.control
             CameraFitObjectCommand = new RelayCommand(ExecuteFitCameraCommand);
         }
 
+        private void ToolInformation_PositionChanged(System.Numerics.Vector3 obj)
+        {
+            var toolPos = obj;
+            var pos = new OpenTK.Mathematics.Vector3(toolPos.X, toolPos.Z, toolPos.Y);
+            _camera.ReferencePosition = pos;
+        }
+        /// <summary>
+        /// Executes the command to fit the camera view to encompass all objects.
+        /// Adjusts the camera's distance based on the fitted view.
+        /// </summary>
         private void ExecuteFitCameraCommand()
         {
             var verticesData = _painterManager.CommandLayer.GetCollectionsVerteces();
@@ -178,24 +173,40 @@ namespace standa_control_software_WPF.view_models.system_control.control
 
             _distance = ScaleValueInverse(_camera.Distance);
         }
-
+        /// <summary>
+        /// Executes the command to set the camera view to the XY plane.
+        /// Adjusts the pitch and yaw angles accordingly.
+        /// </summary>
         private void ExecuteCameraViewXYCommand()
         {
             Pitch = 90;
             Yaw = 90;
         }
+        /// <summary>
+        /// Executes the command to set the camera view to the XZ plane.
+        /// Adjusts the pitch and yaw angles accordingly.
+        /// </summary>
         private void ExecuteCameraViewXZCommand()
         {
             Pitch = 0;
             Yaw = 90;
         }
+        /// <summary>
+        /// Executes the command to set the camera view to the YZ plane.
+        /// Adjusts the pitch and yaw angles accordingly.
+        /// </summary>
         private void ExecuteCameraViewYZCommand()
         {
             Pitch = 0;
             Yaw = 0;
         }
-        
-        private float ScaleValue(int intValue)
+        /// <summary>
+        /// Scales an integer value to a float based on its order of magnitude.
+        /// This method is used to calculate the camera's distance.
+        /// </summary>
+        /// <param name="intValue">The integer value to scale.</param>
+        /// <returns>The scaled float value.</returns>
+        private static float ScaleValue(int intValue)
         {
             var order = Math.Floor((float)intValue / 10);
             var power = Math.Pow(10, order);
@@ -205,8 +216,13 @@ namespace standa_control_software_WPF.view_models.system_control.control
 
             return (float)result;
         }
-        // Enhanced Inverse method with closest value logic
-        public int ScaleValueInverse(float inputResult)
+        /// <summary>
+        /// Inversely scales a float value back to an integer based on predefined scaling logic.
+        /// </summary>
+        /// <param name="inputResult">The scaled float value.</param>
+        /// <returns>The original integer value before scaling.</returns>
+        /// <exception cref="ArgumentException">Thrown when the input result is not a positive number.</exception>
+        public static int ScaleValueInverse(float inputResult)
         {
             if (inputResult <= 0)
                 throw new ArgumentException("Result must be a positive number.");
@@ -219,17 +235,15 @@ namespace standa_control_software_WPF.view_models.system_control.control
 
             return intValue;
         }
-
         /// <summary>
         /// Finds the closest valid result generated by ScaleValueInverse.
         /// Outputs the corresponding order (n) and k values.
         /// </summary>
-        private float FindClosestValidResult(float input, out int order, out int k)
+        private static float FindClosestValidResult(float input, out int order, out int k)
         {
             // Initialize variables
             order = 0;
             k = 1;
-            float power = 1;
             float closest = 0;
             float minDifference = float.MaxValue;
 
@@ -238,20 +252,12 @@ namespace standa_control_software_WPF.view_models.system_control.control
 
             for (int currentOrder = 0; currentOrder <= maxOrder; currentOrder++)
             {
-                power = (float)Math.Pow(10, currentOrder);
+                var power = (float)Math.Pow(10, currentOrder);
 
                 // Iterate k from 1 to 10
                 for (int currentK = 1; currentK <= 10; currentK++)
                 {
-                    float currentResult = (currentK * power) + power;
-
-                    // Adjust currentResult based on the original ScaleValueInverse logic
-                    // Note: In the original method, result = mult + power
-                    // where mult = mod * power, and mod = k -1 (since intValue = n*10 + (k-1))
-                    // Therefore, result = (k -1)*power + power = k*power
-
-                    // Correct calculation based on original method
-                    currentResult = (currentK - 1) * power + power; // Simplifies to k * power
+                    var currentResult = (currentK - 1) * power + power; // Simplifies to k * power
 
                     float difference = Math.Abs(currentResult - input);
 
@@ -271,6 +277,9 @@ namespace standa_control_software_WPF.view_models.system_control.control
 
             return closest;
         }
+        /// <summary>
+        /// Computes the mathematical modulo of two integers.
+        /// </summary>
         static int MathMod(int a, int b)
         {
             return (Math.Abs(a * b) + a) % b;

@@ -1,35 +1,37 @@
-﻿using OxyPlot;
+﻿using Microsoft.Extensions.Logging;
+using OxyPlot;
 using OxyPlot.Series;
 using standa_control_software_WPF.view_models.commands;
-using standa_controller_software.command_manager.command_parameter_library;
 using standa_controller_software.command_manager;
-using standa_controller_software.device_manager;
-using standa_controller_software.device_manager.controller_interfaces.shutter;
-using standa_controller_software.device_manager.devices;
-using System;
-using System.Timers;
-using System.Windows.Automation;
-using System.Windows.Input;
-using standa_controller_software.device_manager.controller_interfaces.positioning;
 using standa_controller_software.custom_functions;
-using standa_controller_software.custom_functions.definitions;
-using System.Runtime.CompilerServices;
-using Microsoft.Extensions.Logging;
+using standa_controller_software.device_manager;
+using standa_controller_software.device_manager.controller_interfaces.positioning;
+using standa_controller_software.device_manager.devices;
+using System.Timers;
+using System.Windows.Input;
 
 namespace standa_control_software_WPF.view_models.system_control.information
 {
+    /// <summary>
+    /// View model responsible for managing a positioner device, including data acquisition,
+    /// plotting of position and speed, and executing device-specific commands.
+    /// </summary>
     public class PositionerDeviceViewModel : DeviceViewModel, IDisposable
     {
         private readonly BasePositionerDevice _positioner;
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly LineSeries _positionSeries;
+        private readonly LineSeries _speedSeries;
         private float _position;
         private float _speed;
-        private bool _needsToBeTracked;
         private bool _isAcquiring;
         private DateTime _acquisitionStartTime;
         private double _timeElapsed;
-        private LineSeries _positionSeries;
-        private LineSeries _speedSeries;
-        private System.Timers.Timer _plotUpdateTimer;
+        private System.Timers.Timer? _plotUpdateTimer;
+        // PlotModel for OxyPlot
+        private PlotModel _plotModel;
+        private float _targetMoveAbsoluteValue;
+        private float _targetMoveRelativeValue;
 
         public float Position
         {
@@ -55,13 +57,6 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 }
             }
         }
-        
-        // PlotModel for OxyPlot
-        private PlotModel _plotModel;
-        private float _targetMoveAbsoluteValue;
-        private float _targetMoveRelativeValue;
-        private ILoggerFactory _loggerFactory;
-
         public PlotModel PlotModel
         {
             get => _plotModel;
@@ -71,8 +66,6 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 OnPropertyChanged(nameof(PlotModel));
             }
         }
-
-
         public float TargetMoveAbsoluteValue
         {
             get => _targetMoveAbsoluteValue;
@@ -117,8 +110,27 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 IsConnected = _positioner.IsConnected;
                 TargetMoveAbsoluteValue = _positioner.CurrentPosition;
                 TargetMoveRelativeValue = 0f;
-                
-                InitializePlotModel();
+
+                _plotModel = new PlotModel { Title = $"{Name} Position and Speed" };
+
+                _positionSeries = new LineSeries
+                {
+                    Title = "Position",
+                    Color = OxyColors.Blue,
+                    MarkerType = MarkerType.Circle,
+                    MarkerSize = 2
+                };
+
+                _speedSeries = new LineSeries
+                {
+                    Title = "Speed",
+                    Color = OxyColors.Red,
+                    MarkerType = MarkerType.Circle,
+                    MarkerSize = 2
+                };
+
+                PlotModel.Series.Add(_positionSeries);
+                PlotModel.Series.Add(_speedSeries);
 
                 // Initialize commands
                 StopCommand = new RelayCommand(async() => await ExecuteStop());
@@ -132,34 +144,9 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 throw new ArgumentException("Device must be a BasePositionerDevice", nameof(device));
             }
         }
-
-
-        // Methods
-
-        private void InitializePlotModel()
-        {
-            PlotModel = new PlotModel { Title = $"{Name} Position and Speed" };
-
-            _positionSeries = new LineSeries
-            {
-                Title = "Position",
-                Color = OxyColors.Blue,
-                MarkerType = MarkerType.Circle,
-                MarkerSize = 2
-            };
-            
-            _speedSeries = new LineSeries
-            {
-                Title = "Speed",
-                Color = OxyColors.Red,
-                MarkerType = MarkerType.Circle,
-                MarkerSize = 2
-            };
-
-            PlotModel.Series.Add(_positionSeries);
-            PlotModel.Series.Add(_speedSeries);
-        }
-
+        /// <summary>
+        /// Starts continuous data acquisition, enabling periodic plotting of position and speed.
+        /// </summary>
         public override void StartAcquisition()
         {
             _isAcquiring = true;
@@ -175,14 +162,21 @@ namespace standa_control_software_WPF.view_models.system_control.information
             }
             _plotUpdateTimer.Start();
         }
-
+        /// <summary>
+        /// Stops continuous data acquisition and halts plotting.
+        /// </summary>
         public override void StopAcquisition()
         {
             _isAcquiring = false;
             _plotUpdateTimer?.Stop();
         }
-
-        private void OnPlotUpdateTimerElapsed(object sender, ElapsedEventArgs e)
+        /// <summary>
+        /// Event handler for the plot update timer's elapsed event.
+        /// Invalidates the plot to refresh the UI.
+        /// </summary>
+        /// <param name="sender">The timer that triggered the event.</param>
+        /// <param name="e">Event data.</param>
+        private void OnPlotUpdateTimerElapsed(object? sender, ElapsedEventArgs e)
         {
             // Refresh the plot on the UI thread
             App.Current.Dispatcher.Invoke(() =>
@@ -190,8 +184,13 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 PlotModel.InvalidatePlot(true);
             });
         }
-
-        private void OnPositionChanged(object sender, EventArgs e)
+        /// <summary>
+        /// Event handler for changes in the device's position.
+        /// Updates the position and speed properties and appends data points to the plot if acquisition is active.
+        /// </summary>
+        /// <param name="sender">The device that triggered the event.</param>
+        /// <param name="e">Event data.</param>
+        private void OnPositionChanged(object? sender, EventArgs e)
         {
             Position = _positioner.CurrentPosition;
             Speed = _positioner.CurrentSpeed;
@@ -204,8 +203,13 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 _speedSeries.Points.Add(new DataPoint(_timeElapsed, Speed));
             }
         }
-
-        private void OnConnectionStateChanged(object sender, EventArgs e)
+        /// <summary>
+        /// Event handler for changes in the device's connection state.
+        /// Updates the <see cref="IsConnected"/> property accordingly.
+        /// </summary>
+        /// <param name="sender">The device that triggered the event.</param>
+        /// <param name="e">Event data.</param>
+        private void OnConnectionStateChanged(object? sender, EventArgs e)
         {
             IsConnected = _positioner.IsConnected;
         }
@@ -218,8 +222,10 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 Speed = positionerDevice.CurrentSpeed;
             }
         }
-
-        // Command execution methods
+        /// <summary>
+        /// Executes the stop command, forcefully stopping the device's current operation.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
         private async Task ExecuteStop()
         {
             var controller = _controllerManager.GetDeviceController<BasePositionerController>(_positioner.Name);
@@ -227,6 +233,10 @@ namespace standa_control_software_WPF.view_models.system_control.information
             await controller.ForceStop();
 
         }
+        /// <summary>
+        /// Executes the home command, returning the device to its predefined home position.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
         private async Task ExecuteHome()
         {
             if (_positioner.IsConnected)
@@ -237,16 +247,21 @@ namespace standa_control_software_WPF.view_models.system_control.information
                     TargetController = controller.Name,
                     TargetDevices = [_positioner.Name],
                     Action = CommandDefinitions.Home,
+                    Parameters = _positioner.Name
                 };
 
                 await _commandManager.TryExecuteCommand(command);
             }
         }
+        /// <summary>
+        /// Executes the move command, moving the device to the specified absolute position.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
         private async Task ExecuteMove()
         {
             if (_positioner.IsConnected)
             {
-                var functionDefinitionLibrary = new FunctionManager(_controllerManager, _commandManager, _loggerFactory);
+                var functionDefinitionLibrary = new FunctionManager(_controllerManager, _loggerFactory);
                 functionDefinitionLibrary.ClearCommandQueue();
                 functionDefinitionLibrary.InitializeDefinitions();
 
@@ -260,12 +275,15 @@ namespace standa_control_software_WPF.view_models.system_control.information
 
             }
         }
-
+        /// <summary>
+        /// Executes the shift command, shifting the device by the specified relative value.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
         private async Task ExecuteShift()
         {
             if (_positioner.IsConnected)
             {
-                var functionDefinitionLibrary = new FunctionManager(_controllerManager, _commandManager, _loggerFactory);
+                var functionDefinitionLibrary = new FunctionManager(_controllerManager, _loggerFactory);
                 functionDefinitionLibrary.ClearCommandQueue();
                 functionDefinitionLibrary.InitializeDefinitions();
 
@@ -280,9 +298,8 @@ namespace standa_control_software_WPF.view_models.system_control.information
 
             }
         }
-
         // IDisposable implementation
-        public void Dispose()
+        public override void Dispose()
         {
             if (_plotUpdateTimer != null)
             {
@@ -298,6 +315,7 @@ namespace standa_control_software_WPF.view_models.system_control.information
                 _positioner.PositionChanged -= OnPositionChanged;
                 _positioner.ConnectionStateChanged -= OnConnectionStateChanged;
             }
+            base.Dispose();
         }
     }
 }

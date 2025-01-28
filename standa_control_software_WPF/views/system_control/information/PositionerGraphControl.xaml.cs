@@ -19,7 +19,7 @@ namespace standa_control_software_WPF.views.system_control.information
     {
         public PositionerGraphControl()
         {
-            InitializeComponent(); InitializeComponent();
+            InitializeComponent();
             this.Unloaded += PositionTrackerView_Unloaded;
             this.Loaded += PositionTrackerView_Loaded;
         }

@@ -18,7 +18,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
 {
     public abstract class BaseShutterController : BaseController
     {
-        private ConcurrentDictionary<char, CancellationTokenSource> _deviceCancellationTokens = new ConcurrentDictionary<char, CancellationTokenSource>();
         protected Dictionary<char, BaseShutterDevice> Devices { get; }
 
         protected BaseShutterController(string name, ILoggerFactory loggerFactory) : base(name, loggerFactory)
@@ -34,7 +33,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
                 MethodHandle = ChangeStateOnInterval,
             };
 
-            Devices = new Dictionary<char, BaseShutterDevice>();
+            Devices = [];
         }
         public override void AddDevice(BaseDevice device)
         {
@@ -51,7 +50,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
             {
                 MasterController = this.MasterController,
             };
-            foreach (var (deviceName, device) in Devices)
+            foreach (var (_, device) in Devices)
             {
                 virtualCopy.AddDevice(device.GetCopy());
             }
@@ -64,16 +63,16 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
 
         protected override Task UpdateDeviceProperty(Command command, SemaphoreSlim slim)
         {
-            if (command.Parameters is UpdateDevicePropertyParameters parameters && Devices.TryGetValue(parameters.DeviceName, out BaseShutterDevice device))
+            if (command.Parameters is UpdateDevicePropertyParameters parameters && Devices.TryGetValue(parameters.DeviceName, out var device))
             {
-                PropertyInfo propertyInfo = device.GetType().GetProperty(parameters.PropertyName, BindingFlags.Public | BindingFlags.Instance);
+                PropertyInfo? propertyInfo = device.GetType().GetProperty(parameters.PropertyName, BindingFlags.Public | BindingFlags.Instance);
                 if (propertyInfo == null)
                 {
                     throw new Exception($"Property {parameters.PropertyName} not found on device {device.GetType().Name}.");
                 }
 
                 Type propertyType = propertyInfo.PropertyType;
-                object convertedValue = null;
+                object? convertedValue = null;
                 var propertyValue = parameters.PropertyValue;
 
                 // Handle known type conversions manually
@@ -100,6 +99,10 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
                 if (convertedValue != null)
                 {
                     propertyInfo.SetValue(device, convertedValue);
+                }
+                else
+                {
+                    _logger.LogError($"Unable to perform device property update.");
                 }
             }
             else
@@ -156,7 +159,7 @@ namespace standa_controller_software.device_manager.controller_interfaces.shutte
         }
         protected override async Task Stop(Command command, SemaphoreSlim semaphore)
         {
-            foreach(var (deviceName, device) in Devices)
+            foreach (var (_, device) in Devices)
             {
                 await ChangeState_implementation(device, false);
             }

@@ -8,12 +8,15 @@ namespace text_parser_library
     {
         private Definitions _definitionsLibrary;
         private string _currentFileName;
+        private string _currentFilePath;
+
         public ParserState State { get;}
         public event Action<int, string> LineVisited;
-        public InputVisitor(ParserState state, Definitions definitionsLibrary, string fileName)
+        public InputVisitor(ParserState state, Definitions definitionsLibrary, string fileName, string filePath)
         {
             _definitionsLibrary = definitionsLibrary;
             _currentFileName = fileName;
+            _currentFilePath = filePath;
             State = state;
         }
 
@@ -29,31 +32,144 @@ namespace text_parser_library
 
         public override object VisitReadFile([NotNull] GrammarSyntaxParser.ReadFileContext context)
         {
-            var filePath = Visit(context.expression())?.ToString();
+            var filePathObj = Visit(context.expression());
+            var filePath = filePathObj?.ToString();
+
             if (filePath is null)
             {
                 State.AddMessage($"File Path is undefined.");
                 State.SetState(ParserState.States.Error);
-                throw new Exception();
-            }
-            string fileName = Path.GetFileName(filePath);
-            string content;
-            using (StreamReader sr = new StreamReader(filePath))
-            {
-                content = sr.ReadToEnd();
+                throw new Exception("File Path is undefined.");
             }
 
-            var inputStream = new AntlrInputStream(content);
-            var lexer = new GrammarSyntaxLexer(inputStream);
-            var tokenStream = new CommonTokenStream(lexer);
-            var parser = new GrammarSyntaxParser(tokenStream);
-            var _tree = parser.program();
-            var visitor = new InputVisitor(State, _definitionsLibrary, fileName);
-            visitor.Visit(_tree);
-            _definitionsLibrary = visitor.GetCurrentLibrary();
+            // Check if the filePath is just a file name (no directory information)
+            if (!Path.IsPathRooted(filePath) && string.IsNullOrWhiteSpace(Path.GetDirectoryName(filePath)))
+            {
+                // Ensure _currentFilePath is defined
+                if (string.IsNullOrEmpty(_currentFilePath))
+                {
+                    State.AddMessage("Current file path is undefined, cannot resolve relative file path.");
+                    State.SetState(ParserState.States.Error);
+                    throw new Exception("Current file path is undefined.");
+                }
+
+                // Get the directory of the current file
+                string currentDirectory = Path.GetDirectoryName(_currentFilePath);
+                if (currentDirectory == null)
+                {
+                    State.AddMessage("Unable to determine the directory of the current file.");
+                    State.SetState(ParserState.States.Error);
+                    throw new Exception("Unable to determine the directory of the current file.");
+                }
+
+                // Combine the current directory with the provided file name
+                filePath = Path.Combine(currentDirectory, filePath);
+            }
+
+            // Handle missing file extension
+            if (!Path.HasExtension(filePath))
+            {
+                // Define the default extension(s) to try
+                string[] possibleExtensions = { ".txt" }; // You can add more extensions if needed
+
+                bool fileFound = false;
+                string originalFilePath = filePath; // Keep the original for error messages
+                foreach (var ext in possibleExtensions)
+                {
+                    string tempPath = filePath + ext;
+                    if (File.Exists(tempPath))
+                    {
+                        filePath = tempPath;
+                        fileFound = true;
+                        break;
+                    }
+                }
+
+                if (!fileFound)
+                {
+                    // Optionally, you can inform the user about the assumed extension
+                    State.AddMessage($"File '{originalFilePath}' does not exist. Tried adding extensions: {string.Join(", ", possibleExtensions)}.");
+                    State.SetState(ParserState.States.Error);
+                    throw new FileNotFoundException($"File '{originalFilePath}' not found with extensions: {string.Join(", ", possibleExtensions)}.");
+                }
+            }
+            else
+            {
+                // Verify that the file exists
+                if (!File.Exists(filePath))
+                {
+                    State.AddMessage($"File '{filePath}' does not exist.");
+                    State.SetState(ParserState.States.Error);
+                    throw new FileNotFoundException($"File '{filePath}' does not exist.");
+                }
+            }
+
+            string fileName = Path.GetFileName(filePath);
+            string content;
+            try
+            {
+                using (StreamReader sr = new StreamReader(filePath))
+                {
+                    content = sr.ReadToEnd();
+                }
+
+                var inputStream = new AntlrInputStream(content);
+                var lexer = new GrammarSyntaxLexer(inputStream);
+                var tokenStream = new CommonTokenStream(lexer);
+                var parser = new GrammarSyntaxParser(tokenStream);
+                var _tree = parser.program();
+                var visitor = new InputVisitor(State, _definitionsLibrary, fileName, filePath);
+                visitor.Visit(_tree);
+                _definitionsLibrary = visitor.GetCurrentLibrary();
+            }
+            catch (Exception ex)
+            {
+                State.AddMessage($"Error encountered in file: {fileName}. Message: {ex.Message}");
+                State.SetState(ParserState.States.Error);
+                throw new Exception($"Error reading file '{fileName}': {ex.Message}", ex);
+            }
 
             return base.VisitReadFile(context);
         }
+
+        //public override object VisitReadFile([NotNull] GrammarSyntaxParser.ReadFileContext context)
+        //{
+        //    var filePath = Visit(context.expression())?.ToString();
+        //    if (filePath is null)
+        //    {
+        //        State.AddMessage($"File Path is undefined.");
+        //        State.SetState(ParserState.States.Error);
+        //        throw new Exception();
+        //    }
+        //    string fileName = Path.GetFileName(filePath);
+        //    string content;
+        //    try
+        //    {
+        //        using (StreamReader sr = new StreamReader(filePath))
+        //        {
+        //            content = sr.ReadToEnd();
+        //        }
+
+        //        var inputStream = new AntlrInputStream(content);
+        //        var lexer = new GrammarSyntaxLexer(inputStream);
+        //        var tokenStream = new CommonTokenStream(lexer);
+        //        var parser = new GrammarSyntaxParser(tokenStream);
+        //        var _tree = parser.program();
+        //        var visitor = new InputVisitor(State, _definitionsLibrary, fileName, filePath);
+        //        visitor.Visit(_tree);
+        //        _definitionsLibrary = visitor.GetCurrentLibrary();
+        //    }
+        //    catch(Exception ex)
+        //    {
+        //        State.AddMessage($"Error encountered in file: {fileName}. Message: {ex.Message}");
+        //        State.SetState(ParserState.States.Error);
+        //        throw new Exception();
+        //    }
+
+
+
+        //    return base.VisitReadFile(context);
+        //}
         private void CheckState()
         {
             if (State.CurrentState == ParserState.States.Error)
@@ -338,7 +454,7 @@ namespace text_parser_library
             var block = context.block();
             var parameters = new List<string>();
 
-            var userFunction = new UserCommand(parameters, block,argNames,State, _definitionsLibrary, functionName);
+            var userFunction = new UserCommand(parameters, block,argNames,State, _definitionsLibrary, functionName, _currentFilePath);
             _definitionsLibrary.AddFunction(functionName, userFunction);
             
 
@@ -349,7 +465,11 @@ namespace text_parser_library
         {
             var name = context.IDENTIFIER().GetText();
             if (!_definitionsLibrary.FunctionExists(name))
-                throw new Exception($"Function {name} is not defined.");
+            {
+                State.AddMessage($"Function {name} is not defined.");
+                State.SetState(ParserState.States.Error);
+                throw new Exception();
+            }
 
 
             var args = context.expression().Select(e => Visit(e)).ToArray();

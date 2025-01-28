@@ -1,0 +1,35 @@
+set("s","DelayOn",0);
+set("s","DelayOff",0);
+set("xy","MaxAcceleration",10000);
+set("xy","MaxDeceleration",10000);
+set("xy","DefaultSpeed",2000);
+
+radius = 100.5;
+speed = 100;
+centerX = 0;
+centerY = 0;
+startAngle = 0;
+endAngle = 2*PI *3/4
+arcCount = 2;
+
+arcA.Speed = speed;
+arcA.TimeAccuracy = 0.5;
+arcA.Shutter = true;
+
+isCCW = true;
+for(index = 1; index<=arcCount;index++)
+{
+	
+	if(isCCW)
+	{
+		direction = 1;
+	}
+	else
+	{
+		direction = -1;
+	}
+
+	arcA("xy",radius*index, centerX, centerY, startAngle, direction * endAngle, isCCW);
+	
+	isCCW = !isCCW
+}

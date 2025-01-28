@@ -1,50 +1,47 @@
-﻿using System.Collections.ObjectModel;
-using System.IO;
-using System.Windows.Input;
+﻿using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using System.Windows;
-using standa_controller_software.device_manager;
 using standa_control_software_WPF.view_models.commands;
-using standa_controller_software.device_manager.devices;
-using ToolDependancyBuilder;
-using standa_control_software_WPF.view_models.config_creation.serialization_helpers;
 using standa_control_software_WPF.view_models.config_creation;
-using standa_controller_software.device_manager.devices.shutter;
+using standa_control_software_WPF.view_models.config_creation.serialization_helpers;
+using standa_controller_software.device_manager;
 using standa_controller_software.device_manager.controller_interfaces.master_controller;
-using System.Collections.Concurrent;
-using System.Linq;
-using System.Text;
-using standa_controller_software.command_manager;
-using standa_control_software_WPF.view_models.stores;
-using Microsoft.Extensions.Logging;
+using standa_controller_software.device_manager.devices;
+using standa_controller_software.device_manager.devices.shutter;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Windows;
+using System.Windows.Input;
+using ToolDependancyBuilder;
 
 namespace standa_control_software_WPF.view_models
 {
+    /// <summary>
+    /// View model responsible for creating and managing system configurations.
+    /// Handles loading, saving, and instantiating configurations for device controllers and tools.
+    /// </summary>
     public class ConfigurationCreationViewModel : ViewModelBase
     {
         private ConfigurationData _configurationData;
-        private ViewModelBase _currentViewModel;
-        private object _selectedItem;
-
+        private ViewModelBase? _currentViewModel;
+        private object? _selectedItem;
         private readonly SerializationHelper _serializationHelper;
         private readonly ControllerManager _controllerManager;
-        private readonly standa_controller_software.command_manager.CommandManager _commandManager;
         private readonly ILogger<ConfigurationCreationViewModel> _logger;
         private readonly ILoggerFactory _loggerFactory;
-        private readonly NavigationStore _navigationStore;
-
         // This is our new no-arg callback for when the wizard finishes
         private readonly Action _onWizardComplete;
-
+        
         public ObservableCollection<ConfigurationViewModel> Configurations { get; set; }
-
-        public ConfigurationViewModel Configuration
+        public ConfigurationViewModel? Configuration
         {
             get => Configurations.FirstOrDefault();
-            set => Configurations[0] = value;
+            set 
+            {
+                if(value is not null) 
+                    Configurations [0] = value;
+            } 
         }
-
-        public ViewModelBase CurrentViewModel
+        public ViewModelBase? CurrentViewModel
         {
             get => _currentViewModel;
             set
@@ -53,8 +50,7 @@ namespace standa_control_software_WPF.view_models
                 OnPropertyChanged(nameof(CurrentViewModel));
             }
         }
-
-        public object SelectedItem
+        public object? SelectedItem
         {
             get => _selectedItem;
             set
@@ -77,21 +73,19 @@ namespace standa_control_software_WPF.view_models
             ControllerManager controllerManager,
             ILogger<ConfigurationCreationViewModel> logger,
             ILoggerFactory loggerFactory,
-            NavigationStore navigationStore,
             Action onWizardComplete
         )
         {
             _controllerManager = controllerManager;
             _logger = logger;
             _loggerFactory = loggerFactory;
-            _navigationStore = navigationStore;
             _onWizardComplete = onWizardComplete;
 
             _serializationHelper = new SerializationHelper(loggerFactory.CreateLogger<SerializationHelper>(), _loggerFactory);
-            Configurations = new ObservableCollection<ConfigurationViewModel>
-            {
+            Configurations =
+            [
                 new ConfigurationViewModel(this, loggerFactory.CreateLogger<ConfigurationViewModel>(), _loggerFactory)
-            };
+            ];
 
             _configurationData = new ConfigurationData();
 
@@ -105,9 +99,12 @@ namespace standa_control_software_WPF.view_models
             );
         }
 
+        /// <summary>
+        /// Determines whether a new configuration instance can be created based on the current state.
+        /// </summary>
         private bool CanCreateConfigurationInstance()
         {
-            if (Configuration.Controllers.Count < 1)
+            if( Configuration is null || Configuration.Controllers.Count < 1)
                 return false;
 
             if (string.IsNullOrWhiteSpace(Configuration.XToolDependancy) ||
@@ -117,11 +114,16 @@ namespace standa_control_software_WPF.view_models
 
             return true;
         }
-
+        /// <summary>
+        /// Executes the creation of a new configuration instance based on the current configuration data.
+        /// Sets up controllers, devices, and tool information accordingly.
+        /// </summary>
         private void ExecuteCreateConfigsInstance()
         {
             try
             {
+                if (Configuration is null)
+                    return;
                 // 1) Clear & set manager name (since user might re-run wizard)
                 _controllerManager.ClearControllers();
                 _controllerManager.Name = Configuration.Name;
@@ -215,7 +217,10 @@ namespace standa_control_software_WPF.view_models
                 MessageBox.Show(ex.Message);
             }
         }
-
+        /// <summary>
+        /// Saves the current configurations to the associated file path.
+        /// If no file path is set, it triggers the "Save As" functionality.
+        /// </summary>
         private void SaveConfigurationsExecute()
         {
             if (!string.IsNullOrEmpty(_configurationData.Filepath) && Configurations.Any())
@@ -230,9 +235,15 @@ namespace standa_control_software_WPF.view_models
                 SaveAsConfigurationsExecute();
             }
         }
-
+        /// <summary>
+        /// Opens a dialog to save the current configurations to a new file path.
+        /// Updates the configuration data with the new file path and name upon successful save.
+        /// </summary>
         private void SaveAsConfigurationsExecute()
         {
+            if (Configuration is null)
+                return;
+
             var saveFileDialog = new Microsoft.Win32.SaveFileDialog
             {
                 Filter = "Configuration file (*.json)|*.json",
@@ -253,7 +264,10 @@ namespace standa_control_software_WPF.view_models
                 Configuration.Name = fileName;
             }
         }
-
+        /// <summary>
+        /// Loads configurations from an existing JSON file.
+        /// Deserializes the configuration and updates the current configuration view model.
+        /// </summary>
         private void LoadConfigurations()
         {
             var openFileDialog = new Microsoft.Win32.OpenFileDialog
@@ -270,6 +284,10 @@ namespace standa_control_software_WPF.view_models
                 string configName = Path.GetFileNameWithoutExtension(pathToConfig);
                 var json = File.ReadAllText(pathToConfig);
                 var configurationSer = JsonConvert.DeserializeObject<ConfigurationSer>(json);
+
+                if (configurationSer is null)
+                    return;
+
                 var configuration = _serializationHelper.DeserializeObject(configurationSer, this);
 
                 Configuration = configuration;
@@ -278,7 +296,9 @@ namespace standa_control_software_WPF.view_models
                 Configuration.Name = configName;
             }
         }
-
+        /// <summary>
+        /// Clears all existing configurations and initializes a new default configuration.
+        /// </summary>
         internal void ClearConfiguration()
         {
             Configurations.Clear();

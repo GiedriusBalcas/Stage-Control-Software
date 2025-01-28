@@ -1,44 +1,56 @@
-﻿using standa_control_software_WPF.view_models.commands;
+﻿using Microsoft.Extensions.Logging;
+using standa_control_software_WPF.view_models.commands;
 using standa_control_software_WPF.view_models.system_control.control;
 using standa_controller_software.command_manager;
 using standa_controller_software.custom_functions;
 using standa_controller_software.device_manager;
-using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Windows.Input;
 using text_parser_library;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using standa_control_software_WPF.view_models.logging;
-using System.Diagnostics;
 
 namespace standa_control_software_WPF.view_models.system_control
 {
     public class SystemControlViewModel : ViewModelBase
     {
+        /// <summary>
+        /// Represents the main view model for system control in the Standa Control Software WPF application.
+        /// Manages documents, command queues, parsing operations, and command queue rendering container.
+        /// </summary>
+
         private readonly ILogger<SystemControlViewModel> _logger;
         private readonly ILoggerFactory _loggerFactory;
         private readonly standa_controller_software.command_manager.CommandManager _commandManager;
         private readonly ControllerManager _controllerManager;
         private readonly FunctionManager _functionDefinitionLibrary;
         private readonly TextInterpreterWrapper _textInterpreter;
-        private string _inputText = "";
+
+        private DocumentViewModel? _selectedDocument;
+        private CancellationTokenSource? _parsingCts;
+        private Stopwatch? _executionStopwatch;
+        private TimeSpan _allocatedTime = new();
         private string _outputMessage;
-        private DocumentViewModel _selectedDocument;
+        private bool _updateLoopRunning;
+        private bool _isParsing;
+        private string _parsingStatusMessage = string.Empty;
+        private bool _isOutOfBounds;
+        private string _currentStateMessage = "Idle";
+        private bool _isExecingCommandQueue;
+        private bool _isAllowedOutOfBounds;
 
         public PainterManagerViewModel PainterManager { get; private set; }
-        public string InputText
+        public ObservableCollection<DocumentViewModel> Documents { get; } = [];
+        public DocumentViewModel? SelectedDocument
         {
-            get { return _inputText; }
+            get => _selectedDocument;
             set
             {
-                _inputText = value;
-                OnPropertyChanged(nameof(InputText));
+                _selectedDocument = value;
+                OnPropertyChanged(nameof(SelectedDocument));
             }
         }
-
+       
         public string OutputMessage
         {
             get
@@ -51,48 +63,6 @@ namespace standa_control_software_WPF.view_models.system_control
                 OnPropertyChanged(nameof(OutputMessage));
             }
         }
-
-        private float _gridScale = 100;
-        public float GridScale
-        {
-            get
-            {
-                return _gridScale;
-            }
-            set
-            {
-                _gridScale = value;
-                OnPropertyChanged(nameof(GridScale));
-            }
-        }
-        public ObservableCollection<DocumentViewModel> Documents { get; } = new ObservableCollection<DocumentViewModel>();
-
-        public DocumentViewModel SelectedDocument
-        {
-            get => _selectedDocument;
-            set
-            {
-                InputText = _selectedDocument?.InputText;
-                _selectedDocument = value;
-                OnPropertyChanged(nameof(SelectedDocument));
-            }
-        }
-        public ICommand AddNewDocumentCommand { get; set; }
-        public ICommand OpenDocumentCommand { get; set; }
-        public event Action OnExecutionStart;
-
-
-
-        public ICommand CreateCommandQueueFromInput { get; set; }
-        public ICommand CancelCommandQueueParsing { get; set; }
-        public ICommand ExecuteCommandQueueCommand { get; set; }
-        public ICommand ForceStopCommand { get; set; }
-        public ICommand ClearOutputMessageCommand { get; set; }
-
-        private Stopwatch _executionStopwatch;
-        private bool _updateLoopRunning;
-
-        private bool _isParsing;
         public bool IsParsing
         {
             get => _isParsing;
@@ -102,10 +72,7 @@ namespace standa_control_software_WPF.view_models.system_control
                 OnPropertyChanged(nameof(IsParsing));
             }
         }
-
-        public bool IsParsingStatusMessageNotEmty => ParsingStatusMessage == "" ? false : true;
-
-        private string _parsingStatusMessage = string.Empty;
+        public bool IsParsingStatusMessageNotEmty => ParsingStatusMessage != "";
         public string ParsingStatusMessage
         {
             get => _parsingStatusMessage;
@@ -116,19 +83,6 @@ namespace standa_control_software_WPF.view_models.system_control
                 OnPropertyChanged(nameof(IsParsingStatusMessageNotEmty));
             }
         }
-
-        private CancellationTokenSource _parsingCts;
-
-        private int? _highlightedLineNumber;// _debugger.CurrentLine
-        private TimeSpan _allocatedTime = new TimeSpan();
-
-        public int? HighlightedLineNumber
-        {
-            get { return _highlightedLineNumber; }
-            private set { _highlightedLineNumber = value; }
-        }
-
-        private bool _isOutOfBounds;
         public bool IsOutOfBounds
         {
             get => _isOutOfBounds;
@@ -138,10 +92,6 @@ namespace standa_control_software_WPF.view_models.system_control
                 OnPropertyChanged(nameof(IsOutOfBounds));
             }
         }
-
-        private string _currentStateMessage = "Idle";
-        private bool _isExecingCommandQueue;
-
         public string CurrentStateMessage
         {
             get => _currentStateMessage;
@@ -154,9 +104,6 @@ namespace standa_control_software_WPF.view_models.system_control
                 }
             }
         }
-
-
-        private bool _isAllowedOutOfBounds;
         public bool IsAllowedOutOfBounds
         {
             get => _isAllowedOutOfBounds;
@@ -167,7 +114,13 @@ namespace standa_control_software_WPF.view_models.system_control
             }
         }
 
-
+        public ICommand AddNewDocumentCommand { get; set; }
+        public ICommand OpenDocumentCommand { get; set; }
+        public ICommand CreateCommandQueueFromInput { get; set; }
+        public ICommand CancelCommandQueueParsing { get; set; }
+        public ICommand ExecuteCommandQueueCommand { get; set; }
+        public ICommand ForceStopCommand { get; set; }
+        public ICommand ClearOutputMessageCommand { get; set; }
 
         public SystemControlViewModel(ControllerManager controllerManager, standa_controller_software.command_manager.CommandManager commandManager, ILogger<SystemControlViewModel> logger, ILoggerFactory loggerFactory)
         {
@@ -175,11 +128,12 @@ namespace standa_control_software_WPF.view_models.system_control
             _loggerFactory = loggerFactory;
             _commandManager = commandManager;
             _controllerManager = controllerManager;
+            _outputMessage = "";
 
 
-            _functionDefinitionLibrary = new FunctionManager(_controllerManager, _commandManager, _loggerFactory);
+            _functionDefinitionLibrary = new FunctionManager(_controllerManager, _loggerFactory);
             _textInterpreter = new TextInterpreterWrapper() { DefinitionLibrary = _functionDefinitionLibrary.Definitions };
-            PainterManager = new PainterManagerViewModel(_controllerManager, _commandManager, _loggerFactory);
+            PainterManager = new PainterManagerViewModel(_controllerManager, _loggerFactory);
 
             AddNewDocumentCommand = new RelayCommand(() => AddNewDocument());
             OpenDocumentCommand = new RelayCommand(() => OpenDocument());
@@ -224,9 +178,9 @@ namespace standa_control_software_WPF.view_models.system_control
 
 
         }
-
         private void CommandManager_OnStateChanged(CommandManagerState newState)
         {
+            // Used to track the duration of command queue execution.
             if (newState == CommandManagerState.Processing)
             {
                 ParsingStatusMessage = $"Executing movement";
@@ -244,7 +198,6 @@ namespace standa_control_software_WPF.view_models.system_control
             }
             else if (newState == CommandManagerState.Waiting)
             {
-                // Stop the stopwatch
                 _executionStopwatch?.Stop();
                 ParsingStatusMessage = "";
 
@@ -270,7 +223,6 @@ namespace standa_control_software_WPF.view_models.system_control
             }
             finally
             {
-                // When we exit the loop, we reset so we can start again next time
                 _updateLoopRunning = false;
             }
         }
@@ -279,7 +231,6 @@ namespace standa_control_software_WPF.view_models.system_control
             _parsingCts?.Cancel();
             _functionDefinitionLibrary.ClearCommandQueue();
         }
-
         private bool CanExecuteCommandQueue()
         {
             if (IsParsing)
@@ -288,12 +239,11 @@ namespace standa_control_software_WPF.view_models.system_control
             if (_commandManager.CurrentState != CommandManagerState.Waiting)
                 return false;
 
-            if (_functionDefinitionLibrary.ExtractCommands().Count() <= 0)
+            if (!_functionDefinitionLibrary.ExtractCommands().Any())
                 return false;
 
             return true;
         }
-
         private bool CanParseText()
         {
             if (SelectedDocument is null)
@@ -309,9 +259,6 @@ namespace standa_control_software_WPF.view_models.system_control
 
             return true;
         }
-
-
-
         private async Task ForceStop()
         {
             await _commandManager.Stop();
@@ -323,8 +270,6 @@ namespace standa_control_software_WPF.view_models.system_control
             CurrentStateMessage = "Idle";
 
         }
-
-
         private void SaveCommandLog()
         {
             var content = string.Join("\n", _commandManager.GetCommandQueueAsString());
@@ -337,7 +282,6 @@ namespace standa_control_software_WPF.view_models.system_control
             File.WriteAllText(filePath, content);
 
         }
-
         private async Task ExecuteCommandsQueueAsync()
         {
 
@@ -360,12 +304,12 @@ namespace standa_control_software_WPF.view_models.system_control
             }
 
         }
-
-
         private async Task CreateCommandQueueFromInputAsync()
         {
             try
             {
+                if (SelectedDocument is null)
+                    return;
                 CurrentStateMessage = "Parsing Text";
                 // Prepare for parse
                 _parsingCts = new CancellationTokenSource();
@@ -373,8 +317,13 @@ namespace standa_control_software_WPF.view_models.system_control
 
                 var inputText = SelectedDocument.InputText;
                 var fileName = SelectedDocument.Name;
+
+                // Further operation requires that the document would hava a filepath.
+                if(SelectedDocument.FilePath is null)
+                    SelectedDocument.SaveAsFileCommand.Execute(null);
+
+                var filePatch = SelectedDocument.FilePath?? ""; 
                 // Clear any prior state
-                HighlightedLineNumber = null;
                 _functionDefinitionLibrary.ClearCommandQueue();
                 _functionDefinitionLibrary.InitializeDefinitions();
                 _textInterpreter.DefinitionLibrary = _functionDefinitionLibrary.Definitions;
@@ -383,7 +332,7 @@ namespace standa_control_software_WPF.view_models.system_control
                 {
                     // Provide a callback for status updates
                     _textInterpreter.ReadInput(
-                        inputText, fileName,
+                        inputText, fileName, filePatch,
                         _parsingCts.Token,
                         statusUpdate => { ParsingStatusMessage = statusUpdate; }
                     );
@@ -410,8 +359,8 @@ namespace standa_control_software_WPF.view_models.system_control
                 _logger.LogError(ex.Message);
                 if (_textInterpreter.State.CurrentState == ParserState.States.Error)
                 {
-                    //OutputMessage += $"\n{_textInterpreter.State.Message}";
-                    HighlightedLineNumber = _textInterpreter.State.LineNumber;
+                    if(SelectedDocument is not null && _textInterpreter.State.LineNumber is int lineNumberValue)
+                        SelectedDocument.HighlightedLineNumber = lineNumberValue;
                     ParsingStatusMessage = "Fault Encountered While Parsing.";
                     OutputMessage += $"\nFault Encountered While Parsing. Line: {_textInterpreter.State.LineNumber}. Message: {_textInterpreter.State.Message}.";
 
@@ -426,28 +375,18 @@ namespace standa_control_software_WPF.view_models.system_control
                 ((RelayCommand)ExecuteCommandQueueCommand).RaiseCanExecuteChanged();
             }
         }
-
-
         private void AddNewDocument(string content = "")
         {
-            var newDoc = new DocumentViewModel
-            {
-                Name = $"Document {Documents.Count + 1}",
-                InputText = content,
-            };
+            var newDoc = new DocumentViewModel($"Document {Documents.Count + 1}", content);
+            
             Documents.Add(newDoc);
             newDoc.CloseDocumentRequested += RemoveDocument;
             SelectedDocument = newDoc;
         }
-
         private void RemoveDocument(DocumentViewModel document)
         {
-            if (Documents.Contains(document))
-            {
-                Documents.Remove(document);
-            }
+            Documents.Remove(document);
         }
-
         private void OpenDocument()
         {
             var openFileDialog = new Microsoft.Win32.OpenFileDialog
@@ -459,43 +398,29 @@ namespace standa_control_software_WPF.view_models.system_control
             if (openFileDialog.ShowDialog() == true)
             {
                 var filePath = openFileDialog.FileName;
-                // Extract the file name without extension as the document name
                 string documentName = Path.GetFileNameWithoutExtension(filePath);
 
-                // Check if a document with the same name is already open
                 int count = Documents.Count(d => d.Name.StartsWith(documentName));
-
-                // If a document with the same name exists, append a number to the new document's name
                 if (count > 0)
                 {
                     documentName += $" ({count})";
                 }
 
-                // Load the file content
                 string content;
-                using (StreamReader sr = new StreamReader(filePath))
+                using (StreamReader sr = new(filePath))
                 {
                     content = sr.ReadToEnd();
                 }
 
-                // Create a new DocumentViewModel instance with the loaded content and adjusted name
-                DocumentViewModel newDocument = new DocumentViewModel
+                DocumentViewModel newDocument = new(documentName, content)
                 {
-                    Name = documentName,
-                    InputText = content, // Assuming CommandText is where you store the document's content
                     FilePath = filePath,
                 };
 
-                // Add the new document to the Documents collection
                 Documents.Add(newDocument);
                 newDocument.CloseDocumentRequested += RemoveDocument;
-                // Optionally, set the new document as the currently selected document
                 SelectedDocument = newDocument;
-                // If you're managing multiple documents, instead of setting CommandText,
-                // you might want to create a new DocumentViewModel with the loaded text and add it to your documents collection.
             }
         }
-
-
     }
 }

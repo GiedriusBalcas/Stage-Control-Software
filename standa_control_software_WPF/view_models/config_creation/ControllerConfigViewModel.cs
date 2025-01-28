@@ -70,11 +70,16 @@ namespace standa_control_software_WPF.view_models.config_creation
             })
             .Select(controllerInfo => controllerInfo.Name)
             .Where(controllerName => controllerName != this.Name)
-            .ToList() ?? new List<string>()
+            .ToList().Append("") ?? new List<string>().Append("")
         );
         public string SelectedMasterControllerName
         {
-            get => _selectedMasterControllerName; 
+            get
+            {
+                if (!ConfigurationControllerNames.Contains(_selectedMasterControllerName))
+                    return "";
+                return _selectedMasterControllerName;
+            }
             set 
             {
                 if(value != null)

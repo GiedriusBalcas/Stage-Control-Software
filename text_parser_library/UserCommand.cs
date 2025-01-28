@@ -14,8 +14,9 @@ namespace text_parser_library
         private ParserState _state;
         private Definitions _definitionsLibrary;
         private string _commandName;
+        private string _filePath;
 
-        public UserCommand(List<string> parameters, GrammarSyntaxParser.BlockContext body, List<string> variableList, ParserState state, Definitions definitionsLibrary, string functionName)
+        public UserCommand(List<string> parameters, GrammarSyntaxParser.BlockContext body, List<string> variableList, ParserState state, Definitions definitionsLibrary, string functionName, string filePath)
         {
             _parameters = parameters;
             _body = body;
@@ -23,6 +24,7 @@ namespace text_parser_library
             _state = state;
             _definitionsLibrary = definitionsLibrary;
             _commandName = functionName;
+            _filePath = filePath;
         }
 
         public override object? Execute(params object[] args)
@@ -32,7 +34,7 @@ namespace text_parser_library
                 _definitionsLibrary.AddVariable(_variableList[i], args[i]);
             }
 
-            var visitor = new InputVisitor(_state, _definitionsLibrary, _commandName);
+            var visitor = new InputVisitor(_state, _definitionsLibrary, _commandName, _filePath);
             try
             {
                 visitor.Visit(_body);

@@ -9,29 +9,29 @@ using System.Collections.Concurrent;
 
 namespace standa_control_software_WPF.view_models.system_control.control
 {
+    /// <summary>
+    /// ViewModel responsible for managing painting operations, rendering layers, and camera controls.
+    /// It orchestrates various render layers, handles rendering states, and processes command queues for painting.
+    /// </summary>
     public class PainterManagerViewModel : ViewModelBase
     {
         private readonly ControllerManager _controllerManager;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<PainterManagerViewModel> _logger;
-        
         private readonly OrbitalCamera _camera;
-        
         private double _gridSpacing = 0;
+        private bool _isRendering = true;
+        
         public CameraViewModel CameraViewModel { get; private set; }
         public double GridSpacing 
         { 
             get => _gridSpacing; 
             private set { _gridSpacing = value; OnPropertyChanged(nameof(GridSpacing));} 
         }
-
-        public List<BaseRenderLayer> RenderLayers = new List<BaseRenderLayer>();
+        public List<BaseRenderLayer> RenderLayers = [];
         public CommandLayerViewModel CommandLayer;
         public GridLayerViewModel GridLayer { get; private set; }
         public OrientationArrowsLayerViewModel OrientationLayer { get; private set; }
-
-        private bool _isRendering = true;
-
         public bool IsRendering
         {
             get { return _isRendering; }
@@ -42,24 +42,15 @@ namespace standa_control_software_WPF.view_models.system_control.control
             }
         }
 
-
-        public PainterManagerViewModel(ControllerManager controllerManager, CommandManager commandManager, ILoggerFactory loggerFactory)
+        public PainterManagerViewModel(ControllerManager controllerManager, ILoggerFactory loggerFactory)
         {
-            //CameraViewModel = new CameraViewModel(_painterManager, _controllerManager);
             _controllerManager = controllerManager;
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger<PainterManagerViewModel>();
 
-            //_painterManager = new PainterManager(commandManager, _controllerManager, _log);
-
             _camera = new OrbitalCamera(1, 45);
             CameraViewModel = new CameraViewModel(this,_controllerManager, _camera);
 
-            CreateRenderLayers();
-        }
-
-        private void CreateRenderLayers()
-        {
             CommandLayer = new CommandLayerViewModel(_controllerManager, _loggerFactory.CreateLogger<CommandLayerViewModel>(), _loggerFactory, _camera);
             RenderLayers.Add(CommandLayer);
 
@@ -69,19 +60,26 @@ namespace standa_control_software_WPF.view_models.system_control.control
             GridLayer = new GridLayerViewModel(_camera, _controllerManager.ToolInformation);
             RenderLayers.Add(GridLayer);
 
-            //var orientationLayer = CreateOrientationArrowsLayer();
             OrientationLayer = new OrientationArrowsLayerViewModel(_camera);
             RenderLayers.Add(OrientationLayer);
-
-            //var gridLayer = CreateGridLayer();
-
         }
 
+
+        /// <summary>
+        /// Asynchronously processes and paints a queue of command lines.
+        /// Each command array in the queue is handled by the CommandLayer.
+        /// </summary>
+        /// <param name="commandLines">An enumerable of command arrays to be painted.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
         public async Task PaintCommandQueue(IEnumerable<Command[]> commandLines)
         {
             await CommandLayer.PaintCommandQueue(commandLines);
         }
 
+        /// <summary>
+        /// Initializes all render layers by setting them as initialized,
+        /// and invoking their respective initialization methods for collections, shaders, and layer-specific setups.
+        /// </summary>
         public void InitializeLayers()
         {
             foreach (var layer in RenderLayers)
@@ -93,6 +91,10 @@ namespace standa_control_software_WPF.view_models.system_control.control
             }
         }
 
+        /// <summary>
+        /// Deinitializes all render layers by disposing of their buffers and shader programs,
+        /// and marking them as not initialized.
+        /// </summary>
         public void DeinitializeLayers()
         {
             foreach (var layer in RenderLayers)
@@ -103,6 +105,10 @@ namespace standa_control_software_WPF.view_models.system_control.control
             }
         }
 
+        /// <summary>
+        /// Draws a single frame by updating uniforms and rendering each layer,
+        /// provided that rendering is currently enabled.
+        /// </summary>
         public void DrawFrame()
         {
             if (IsRendering)

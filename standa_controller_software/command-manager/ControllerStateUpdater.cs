@@ -52,6 +52,8 @@ namespace standa_controller_software.command_manager
                         var updateCommand = new Command
                         {
                             TargetController = controller.Name,
+                            TargetDevices = controller.GetDevices().Select(device => device.Name).ToArray(),
+                            Parameters = controller.Name,
                             Action = CommandDefinitions.UpdateState,
                         };
 
@@ -123,7 +125,7 @@ namespace standa_controller_software.command_manager
                     //_logger.LogInformation("End of loop iteration.");
 
                     // Introduce a small delay to avoid overwhelming the system
-                    await Task.Delay(20);
+                    await Task.Delay(40);
                 }
             }
             catch (Exception ex)

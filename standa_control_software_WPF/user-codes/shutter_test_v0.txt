@@ -1,8 +1,0 @@
-set("xy","Speed",100);
-
-shutter("s",false);
-jumpA("xy",100,100);
-shutter("s",true);
-jumpA("xy",50,10);
-shutter("s",false);
-jumpA("xy",0,0);

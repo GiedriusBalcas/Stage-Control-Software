@@ -70,12 +70,12 @@ namespace standa_control_software_WPF
                         };
 
                         // This VM configures the manager, then calls onWizardComplete
-                        return new ConfigurationCreationViewModel(manager, logger, loggerFactory, mainNav, onWizardComplete);
+                        return new ConfigurationCreationViewModel(manager, logger, loggerFactory, onWizardComplete);
                     });
 
                     // 3) Register child-level VMs
                     services.AddSingleton<SystemPropertiesViewModel>();
-                    services.AddSingleton<SystemInformtaionViewModel>();
+                    services.AddSingleton<SystemInformationViewModel>();
                     services.AddSingleton<SystemControlViewModel>();
 
                     // 4) SystemControlMainViewModel uses LSCNavigationStore for its "CurrentViewModel"
@@ -87,13 +87,12 @@ namespace standa_control_software_WPF
 
                         Func<SystemPropertiesViewModel> getConfigVm =
                             () => sp.GetRequiredService<SystemPropertiesViewModel>();
-                        Func<SystemInformtaionViewModel> getInfoVm =
-                            () => sp.GetRequiredService<SystemInformtaionViewModel>();
+                        Func<SystemInformationViewModel> getInfoVm =
+                            () => sp.GetRequiredService<SystemInformationViewModel>();
                         Func<SystemControlViewModel> getControlVm =
                             () => sp.GetRequiredService<SystemControlViewModel>();
 
                         return new SystemControlMainViewModel(
-                            cmdManager,
                             lscNav,  // NOTICE we use LSC store
                             getConfigVm,
                             getInfoVm,
