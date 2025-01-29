@@ -41,12 +41,12 @@ namespace ToolDependancyBuilder
             // Assuming the Math methods are correctly referenced (note: there's no Math.Ctan or Math.Acos method in .NET)
             return trigFunc switch
             {
-                "sin" => Expression.Call(typeof(Math).GetMethod("Sin"), argument),
-                "cos" => Expression.Call(typeof(Math).GetMethod("Cos"), argument),
-                "tan" => Expression.Call(typeof(Math).GetMethod("Tan"), argument),
+                "sin" => Expression.Call(typeof(Math).GetMethod("Sin")!, argument),
+                "cos" => Expression.Call(typeof(Math).GetMethod("Cos")!, argument),
+                "tan" => Expression.Call(typeof(Math).GetMethod("Tan")!, argument),
                 // "ctan" is not a standard .NET Math method. You might need to implement this yourself.
-                "asin" => Expression.Call(typeof(Math).GetMethod("Asin"), argument),
-                "acos" => Expression.Call(typeof(Math).GetMethod("Acos"), argument),
+                "asin" => Expression.Call(typeof(Math).GetMethod("Asin")!, argument),
+                "acos" => Expression.Call(typeof(Math).GetMethod("Acos")!, argument),
                 // Add other cases as needed.
                 _ => throw new NotImplementedException($"Trigonometric function '{trigFunc}' is not implemented.")
             };
@@ -148,7 +148,7 @@ namespace ToolDependancyBuilder
             }
 
             // Call Math.Pow, which returns double
-            var powerExpr = Expression.Call(typeof(Math).GetMethod("Pow"), left, right);
+            var powerExpr = Expression.Call(typeof(Math).GetMethod("Pow")!, left, right);
 
             // Convert result back to float if necessary
             return Expression.Convert(powerExpr, typeof(float));

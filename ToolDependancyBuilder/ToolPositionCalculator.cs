@@ -6,7 +6,7 @@ namespace ToolDependancyBuilder
 {
     public class ToolPositionCalculator
     {
-        private Func<Dictionary<char, float>, float> _CoordinateFunc;
+        private Func<Dictionary<char, float>, float>? _CoordinateFunc;
         private readonly ILogger<ToolPositionCalculator> _logger;
 
         public ToolPositionCalculator(ILogger<ToolPositionCalculator> logger)
@@ -48,16 +48,12 @@ namespace ToolDependancyBuilder
             }
         }
 
-        public float CalculateXPosition(Dictionary<char, float> devicePositions)
-        {
-            if (_CoordinateFunc is not null)
-                return _CoordinateFunc(devicePositions);
-            return 0f;
-        }
-
         public Func<Dictionary<char, float>, float> GetFunction() 
         {
-            return _CoordinateFunc;
+            if (_CoordinateFunc is not null)
+                return _CoordinateFunc;
+            else
+                throw new Exception("Coordinate function has not been initialized.");
         }
     }
 }

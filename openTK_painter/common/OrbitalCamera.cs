@@ -150,7 +150,7 @@ namespace opentk_painter_library.common
         public Matrix4 GetProjectionMatrix()
         {
             if (IsOrthographic)
-                return Matrix4.CreateOrthographic(Distance * (float)Math.Tan(_fovy) * AspectRatio, Distance * (float)Math.Tan(_fovy), 0.001f, 10000000.0f);
+                return Matrix4.CreateOrthographic(Distance * (float)Math.Tan(_fovy) * AspectRatio, Distance * (float)Math.Tan(_fovy),-10000f, 10000000.0f);
 
             return Matrix4.CreatePerspectiveFieldOfView(_fovy, AspectRatio, 0.01f, 10000000.0f);
         }

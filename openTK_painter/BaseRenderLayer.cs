@@ -8,10 +8,10 @@ namespace opentk_painter_library
 {
     public abstract class BaseRenderLayer
     {
-        protected Shader _shader;
+        protected Shader? _shader;
         public List<IRenderCollection> RenderCollections;
-        protected string _fragmentShader;
-        protected string _vertexShader;
+        protected string? _fragmentShader;
+        protected string? _vertexShader;
         protected List<IUniform> _uniforms;
         private List<IRenderCollection> InitializedRenderCollections;
 
@@ -52,11 +52,15 @@ namespace opentk_painter_library
 
         public void InitializeShader()
         {
+            if (_shader is null)
+                throw new Exception("Trying to use shader without initialization.");
             _shader.CreateShaderProgram();
         }
 
         public void DisposeShaderProgram()
         {
+            if (_shader is null)
+                throw new Exception("Trying to use shader without initialization.");
             _shader.DisposeShaders();
         }
 
@@ -83,6 +87,9 @@ namespace opentk_painter_library
             {
                 GL.Enable(EnableCap.DepthTest);
                 OnRenderFrameStart();
+
+                if (_shader is null)
+                    throw new Exception("Trying to use shader without initialization.");
 
                 _shader.Use();
                 _shader.UpdateUniformValues();

@@ -11,7 +11,7 @@ namespace text_parser_library
         private string _currentFilePath;
 
         public ParserState State { get;}
-        public event Action<int, string> LineVisited;
+        public event Action<int, string>? LineVisited;
         public InputVisitor(ParserState state, Definitions definitionsLibrary, string fileName, string filePath)
         {
             _definitionsLibrary = definitionsLibrary;
@@ -30,7 +30,7 @@ namespace text_parser_library
             _definitionsLibrary = definitionLibrary;
         }
 
-        public override object VisitReadFile([NotNull] GrammarSyntaxParser.ReadFileContext context)
+        public override object? VisitReadFile([NotNull] GrammarSyntaxParser.ReadFileContext context)
         {
             var filePathObj = Visit(context.expression());
             var filePath = filePathObj?.ToString();
@@ -54,7 +54,7 @@ namespace text_parser_library
                 }
 
                 // Get the directory of the current file
-                string currentDirectory = Path.GetDirectoryName(_currentFilePath);
+                string? currentDirectory = Path.GetDirectoryName(_currentFilePath);
                 if (currentDirectory == null)
                 {
                     State.AddMessage("Unable to determine the directory of the current file.");
@@ -204,18 +204,12 @@ namespace text_parser_library
         }
 
 
-        public override object VisitFunctionPropertyAssignment([Antlr4.Runtime.Misc.NotNull] GrammarSyntaxParser.FunctionPropertyAssignmentContext context)
+        public override object? VisitFunctionPropertyAssignment([Antlr4.Runtime.Misc.NotNull] GrammarSyntaxParser.FunctionPropertyAssignmentContext context)
         {
             var functionName = context.IDENTIFIER(0).GetText();
             var propertyName = context.IDENTIFIER(1).GetText();
             var value = Visit(context.expression());
 
-            //if(value is null)
-            //{
-            //    State.AddMessage($"Error encountered on when trying to assign null value to {functionName}.{propertyName}.");
-            //    State.SetState(ParserState.States.Error);
-            //    throw new Exception();
-            //}
 
             try
             {
@@ -414,7 +408,7 @@ namespace text_parser_library
             if (left is float lFloat && right is int rInt)
                 return (float)Math.Pow(lFloat, rInt);
 
-            State.AddMessage($"Cannot multiply values of types {left.GetType()} and {right.GetType()}");
+            State.AddMessage($"Cannot multiply values of types {left?.GetType()} and {right?.GetType()}");
             State.SetState(ParserState.States.Error);
             throw new Exception();
         }
@@ -461,7 +455,7 @@ namespace text_parser_library
             return userFunction;
         }
 
-        public override object VisitFunctionCall([NotNull] GrammarSyntaxParser.FunctionCallContext context)
+        public override object? VisitFunctionCall([NotNull] GrammarSyntaxParser.FunctionCallContext context)
         {
             var name = context.IDENTIFIER().GetText();
             if (!_definitionsLibrary.FunctionExists(name))
@@ -473,12 +467,13 @@ namespace text_parser_library
 
 
             var args = context.expression().Select(e => Visit(e)).ToArray();
-
+            if (args is null || args.Any(val => val is null))
+                throw new Exception("Arguments were null.");
             object? result = null;
 
             try
             {
-                result = _definitionsLibrary.ExecuteFunction(name, args);
+                result = _definitionsLibrary.ExecuteFunction(name, args!);
 
             }catch (Exception ex)
             {
@@ -503,7 +498,7 @@ namespace text_parser_library
                 return !val;
             else
             {
-                State.AddMessage($"Cant perform NOT operation on variable of type{value.GetType()}.");
+                State.AddMessage($"Cant perform NOT operation on variable of type{value?.GetType()}.");
                 State.SetState(ParserState.States.Error);
                 throw new Exception();
             }
@@ -566,7 +561,7 @@ namespace text_parser_library
                 return l ^ r;
             else
             {
-                State.AddMessage($"Unable to perform XOR operation on variables of types {left.GetType()} and {right.GetType()}.");
+                State.AddMessage($"Unable to perform XOR operation on variables of types {left?.GetType()} and {right?.GetType()}.");
                 State.SetState(ParserState.States.Error);
                 throw new Exception();
             }
@@ -578,7 +573,7 @@ namespace text_parser_library
                 return l | r;
             else
             {
-                State.AddMessage($"Unable to perform OR operation on variables of types {left.GetType()} and {right.GetType()}.");
+                State.AddMessage($"Unable to perform OR operation on variables of types {left?.GetType()} and {right?.GetType()}.");
                 State.SetState(ParserState.States.Error);
                 throw new Exception();
             }
@@ -590,7 +585,7 @@ namespace text_parser_library
                 return l & r;
             else
             {
-                State.AddMessage($"Unable to perform AND operation on variables of types {left.GetType()} and {right.GetType()}.");
+                State.AddMessage($"Unable to perform AND operation on variables of types {left?.GetType()} and {right?.GetType()}.");
                 State.SetState(ParserState.States.Error);
                 throw new Exception();
             }
@@ -607,7 +602,7 @@ namespace text_parser_library
             if (left is float lFloat && right is int rInt)
                 return lFloat % rInt;
 
-            State.AddMessage($"Cannot perform modulo operation on values of types {left.GetType()} and {right.GetType()}");
+            State.AddMessage($"Cannot perform modulo operation on values of types {left?.GetType()} and {right?.GetType()}");
             State.SetState(ParserState.States.Error);
             throw new Exception();
         }
@@ -623,7 +618,7 @@ namespace text_parser_library
             if (left is float lFloat && right is int rInt)
                 return lFloat / rInt;
 
-            State.AddMessage($"Cannot divide values of types {left.GetType()} and {right.GetType()}");
+            State.AddMessage($"Cannot divide values of types {left?.GetType()} and {right?.GetType()}");
             State.SetState(ParserState.States.Error);
             throw new Exception();
         }
@@ -640,7 +635,7 @@ namespace text_parser_library
                 return lFloat * rInt;
             
 
-            State.AddMessage($"Cannot multiply values of types {left.GetType()} and {right.GetType()}");
+            State.AddMessage($"Cannot multiply values of types {left?.GetType()} and {right?.GetType()}");
             State.SetState(ParserState.States.Error);
             throw new Exception();
         }
@@ -656,7 +651,7 @@ namespace text_parser_library
             if (left is float lFloat && right is int rInt)
                 return lFloat - rInt;
 
-            State.AddMessage($"Cannot subtract values of types {left.GetType()} and {right.GetType()}");
+            State.AddMessage($"Cannot subtract values of types {left?.GetType()} and {right?.GetType()}");
             State.SetState(ParserState.States.Error);
             throw new Exception();
         }
@@ -674,7 +669,7 @@ namespace text_parser_library
             if (left is string || right is string)
                 return $"{left}{right}";
 
-            State.AddMessage($"Cannot add values of types {left.GetType()} and {right.GetType()}");
+            State.AddMessage($"Cannot add values of types {left?.GetType()} and {right?.GetType()}");
             State.SetState(ParserState.States.Error);
             throw new Exception();
         }
@@ -746,7 +741,7 @@ namespace text_parser_library
             if (left is float fll && right is int ir)
                 return fll <= ir;
 
-            State.AddMessage($"Cannot compare values of types {left.GetType()} and {right.GetType()}.");
+            State.AddMessage($"Cannot compare values of types {left?.GetType()} and {right?.GetType()}.");
             State.SetState(ParserState.States.Error);
             throw new Exception();
         }
@@ -765,7 +760,7 @@ namespace text_parser_library
             if (left is float fll && right is int ir)
                 return fll >= ir;
 
-            State.AddMessage($"Cannot compare values of types {left.GetType()} and {right.GetType()}.");
+            State.AddMessage($"Cannot compare values of types {left?.GetType()} and {right?.GetType()}.");
             State.SetState(ParserState.States.Error);
             throw new Exception();
         }
@@ -784,7 +779,7 @@ namespace text_parser_library
             if (left is float fll && right is int ir)
                 return fll < ir;
 
-            State.AddMessage($"Cannot compare values of types {left.GetType()} and {right.GetType()}.");
+            State.AddMessage($"Cannot compare values of types {left?.GetType()} and {right?.GetType()}.");
             State.SetState(ParserState.States.Error);
             throw new Exception();
         }
@@ -803,7 +798,7 @@ namespace text_parser_library
             if (left is float fll && right is int ir)
                 return fll > ir;
 
-            State.AddMessage($"Cannot compare values of types {left.GetType()} and {right.GetType()}.");
+            State.AddMessage($"Cannot compare values of types {left?.GetType()} and {right?.GetType()}.");
             State.SetState(ParserState.States.Error);
             throw new Exception();
         }
@@ -824,7 +819,7 @@ namespace text_parser_library
             if (left is string sl && right is string sr)
                 return sl != sr;
 
-            State.AddMessage($"Cannot compare values of types {left.GetType()} and {right.GetType()}.");
+            State.AddMessage($"Cannot compare values of types {left?.GetType()} and {right?.GetType()}.");
             State.SetState(ParserState.States.Error);
             throw new Exception();
         }
@@ -845,7 +840,7 @@ namespace text_parser_library
             if (left is string sl && right is string sr)
                 return sl == sr;
 
-            State.AddMessage($"Cannot compare values of types {left.GetType()} and {right.GetType()}.");
+            State.AddMessage($"Cannot compare values of types {left?.GetType()} and {right?.GetType()}.");
             State.SetState(ParserState.States.Error);
             throw new Exception();
         }
@@ -968,9 +963,9 @@ namespace text_parser_library
     }
     public class FunctionReturnException : Exception
     {
-        public object ReturnValue { get; }
+        public object? ReturnValue { get; }
 
-        public FunctionReturnException(object returnValue)
+        public FunctionReturnException(object? returnValue)
         {
             ReturnValue = returnValue;
         }

@@ -10,7 +10,7 @@ namespace text_parser_library
     {
         private States _currentState;
         private int? _lineNumber;
-        private string _message;
+        private string _message = string.Empty;
         public enum States
         {
             Waiting,
@@ -55,9 +55,9 @@ namespace text_parser_library
             }
         }
 
-        public event EventHandler StateChanged;
-        public event EventHandler LineNumberChanged;
-        public event EventHandler MessageChanged;
+        public event EventHandler? StateChanged;
+        public event EventHandler? LineNumberChanged;
+        public event EventHandler? MessageChanged;
 
 
         public ParserState()

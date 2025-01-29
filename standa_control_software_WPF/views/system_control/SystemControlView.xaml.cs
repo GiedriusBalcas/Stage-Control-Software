@@ -5,11 +5,9 @@ using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using standa_control_software_WPF.view_models.system_control;
 using standa_control_software_WPF.view_models.system_control.control;
-using standa_control_software_WPF.views.behaviours;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Media;
-using System.Windows.Threading;
 
 namespace standa_control_software_WPF.views.system_control
 {

@@ -17,7 +17,7 @@ namespace text_parser_library
         private Dictionary<string, CustomFunction> _commands;
         public Definitions()
         {
-            _variables = new Dictionary<string, object>();
+            _variables = new Dictionary<string, object?>();
             _commands = new Dictionary<string, CustomFunction>();
         }
 
@@ -29,7 +29,9 @@ namespace text_parser_library
 
         public bool TryGetVariable(string name, out object value)
         {
+            #pragma warning disable CS8601 // Possible null reference assignment.
             return _variables.TryGetValue(name, out value);
+            #pragma warning restore CS8601 // Possible null reference assignment.
         }
 
         // Function management
@@ -43,7 +45,7 @@ namespace text_parser_library
             return _commands.ContainsKey(name);
         }
 
-        public object ExecuteFunction(string name, params object[] args)
+        public object? ExecuteFunction(string name, params object[] args)
         {
             if (_commands.TryGetValue(name, out var command))
             {
@@ -54,7 +56,7 @@ namespace text_parser_library
             throw new InvalidOperationException($"Function '{name}' not found.");
         }
 
-        public bool TrySetFunctionProperty(string functionName, string propertyName, object value)
+        public bool TrySetFunctionProperty(string functionName, string propertyName, object? value)
         {
             if (_commands.TryGetValue(functionName, out var function))
             {

@@ -15,7 +15,7 @@ namespace opentk_painter_library.common
         public readonly int VBO;
         public readonly int VAO;
         public readonly int EBO;
-        public VertexInfo VertexInfo;
+        public VertexInfo? VertexInfo;
 
         public BufferUsageHint UsageHint;
 
@@ -36,8 +36,8 @@ namespace opentk_painter_library.common
 
         public void Dispose()
         {
-            //if (_disposed)
-            //    return;
+            if (_disposed)
+                return;
 
             //GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
             //GL.DeleteBuffer(VBO);

@@ -22,7 +22,6 @@ namespace standa_controller_software.device_manager.controller_interfaces.positi
             public calibration_t calibration_t;
             public status_calb_t statusCalibrated_t;
             public engine_settings_t engineSettings_t;
-            public engine_settings_calb_t engineSettingsCalibrated_t;
             public status_t status_t;
             public device_information_t deviceInformation_t;
             public move_settings_calb_t moveSettings_t;

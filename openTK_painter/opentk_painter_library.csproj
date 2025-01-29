@@ -16,47 +16,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="default-shaders\FragmentShader.frag" />
-    <None Remove="default-shaders\VertexShader.vert" />
-    <None Remove="grid-shaders\FragmentShader.frag" />
-    <None Remove="grid-shaders\VertexShader.vert" />
-    <None Remove="grid_scale\FragmentShader.frag" />
-    <None Remove="grid_scale\VertexShader_TranlateToEdge.vert" />
-    <None Remove="reference_shaders\FragmentShader.frag" />
-    <None Remove="reference_shaders\VertexShader_TranlateToEdge.vert" />
-    <None Remove="texture-shaders\FragmentShader.frag" />
-    <None Remove="texture-shaders\VertexShader.vert" />
+    <None Remove="shader_scripts\texture-shaders\FragmentShader.frag" />
+    <None Remove="shader_scripts\texture-shaders\VertexShader.vert" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="default-shaders\FragmentShader.frag">
+    <Content Include="shader_scripts\texture-shaders\FragmentShader.frag">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Content>
-    <Content Include="default-shaders\VertexShader.vert">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Content>
-    <Content Include="grid-shaders\FragmentShader.frag">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Content>
-    <Content Include="grid-shaders\VertexShader.vert">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Content>
-    <Content Include="grid_scale\FragmentShader.frag">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Content>
-    <Content Include="grid_scale\VertexShader_TranlateToEdge.vert">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Content>
-    <Content Include="reference_shaders\FragmentShader.frag">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Content>
-    <Content Include="reference_shaders\VertexShader_TranlateToEdge.vert">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Content>
-    <Content Include="texture-shaders\FragmentShader.frag">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Content>
-    <Content Include="texture-shaders\VertexShader.vert">
+    <Content Include="shader_scripts\texture-shaders\VertexShader.vert">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
