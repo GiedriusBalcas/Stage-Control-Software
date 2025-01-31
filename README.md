@@ -1,4 +1,3 @@
-# standa_controller_software
 ## Overview
 
 This application is designed to provide precise motion control for "Standa" stages used in laser micro-fabrication. By integrating simple motion planning, scripting, and real-time visualization, it allows users to configure and execute complex movement sequences with high accuracy. The system is built to manage direct and master-controller-based stage control, ensuring efficient and seamless operation.
