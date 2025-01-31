@@ -1,5 +1,4 @@
 # standa_controller_software
-
 ## Overview
 
 This application is designed to provide precise motion control for "Standa" stages used in laser micro-fabrication. By integrating simple motion planning, scripting, and real-time visualization, it allows users to configure and execute complex movement sequences with high accuracy. The system is built to manage direct and master-controller-based stage control, ensuring efficient and seamless operation.
@@ -43,7 +42,7 @@ Key capabilities of this application include:
   - Graphical visualization of movement data.
 
 ## Configuration Creation Window
-
+<img src="images/Config6.PNG" width="66%">
 The Configuration window allows users to create and modify system configurations, including controllers and device assembly.
 
 - Configurations are displayed in a tree list with hierarchy: **Configuration Parameters → Controllers → Devices**.
@@ -52,7 +51,7 @@ The Configuration window allows users to create and modify system configurations
 - Configurations can be saved, loaded, or modified via JSON files.
 
 ## Device Properties Window
-
+<img src="images/propView.PNG" width="66%">
 After initializing a configuration, a new window allows users to:
 
 - View device properties, both static and dynamically changeable.
@@ -60,7 +59,7 @@ After initializing a configuration, a new window allows users to:
 - Enable real-time tracking of device states such as position and speed.
 
 ## Information Window
-
+<img src="images/InfoView0.PNG" width="66%">
 This window provides real-time monitoring of positioner and shutter devices.
 
 - **Device Control Blocks**: Each device is listed with key control actions like **Stop**, **Home**, **Move**, and **Shift**.
@@ -68,6 +67,8 @@ This window provides real-time monitoring of positioner and shutter devices.
 - **Graph Visualization**: Plots of position, speed, and shutter states are generated dynamically.
 
 ## Command Window
+<img src="images/ControlView2.PNG" width="66%">
+
 
 The Command Window facilitates the creation and execution of motion control commands.
 
