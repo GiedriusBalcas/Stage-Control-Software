@@ -1,1 +1,0 @@
-﻿moveA.WaitUntil = [ "xyz", 10, 20, 10 ];
