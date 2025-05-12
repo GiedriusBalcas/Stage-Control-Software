@@ -159,21 +159,15 @@ namespace standa_control_software_WPF
             {
                 if (_host is not null && _lscNavigationStore is not null && _mainNavigationStore is not null)
                 {
-                    // The manager is now fully configured by the wizard
-                    var kaka = _host.Services.GetRequiredService<ControllerManager>();
+                    var controllerManagerInstance = _host.Services.GetRequiredService<ControllerManager>();
 
                     var controllerStateUpdater = _host.Services.GetRequiredService<ControllerStateUpdater>();
                     var systemControlMainVM = _host.Services.GetRequiredService<SystemControlMainViewModel>();
 
-                    // 1) The child store (lsc) can show one of the child viewmodels, e.g. SystemPropertiesVM:
-                    // _lscNavigationStore.CurrentViewModel = _host.Services.GetRequiredService<SystemPropertiesViewModel>();
-                    // or whichever child you want to show first:
                     _lscNavigationStore.CurrentViewModel = _host.Services.GetRequiredService<SystemPropertiesViewModel>();
 
-                    // 2) Now switch the top-level store from the wizard to SystemControlMainViewModel
                     _mainNavigationStore.CurrentViewModel = systemControlMainVM;
 
-                    // 3) Start background updates
                     _ = controllerStateUpdater.UpdateStatesAsync();
                 }
             }

@@ -54,8 +54,6 @@ namespace ToolDependancyBuilder
 
         public override Expression VisitConstant([NotNull] ToolExpressionParser.ConstantContext context)
         {
-            var akaka = context.STRING();
-
             if (context.INTEGER() is { } i)
             {
                 return Expression.Constant((int.Parse(i.GetText())));
@@ -66,7 +64,6 @@ namespace ToolDependancyBuilder
 
             if (context.STRING() is { } s) 
             {
-                var akakakak = s.GetText();
                 if (s.GetText().Equals("pi") || s.GetText().Equals("Pi"))
                     return Expression.Constant(3.14159f);
             }

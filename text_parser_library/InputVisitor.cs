@@ -678,8 +678,6 @@ namespace text_parser_library
         {
             var condition = Visit(context.expression());
 
-            var kaka1 = context.block();
-            var kaka2 = context.elseIfBlock();
             if (condition is bool b)
             {
                 if (b && context.block() is { } bl)
