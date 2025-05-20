@@ -1,6 +1,6 @@
 ## Overview
 
-This application is designed to provide precise motion control for "Standa" stages used in laser micro-fabrication. By integrating simple motion planning, scripting, and real-time visualization, it allows users to configure and execute complex movement sequences with high accuracy. The system is built to manage direct and master-controller-based stage control, ensuring efficient and seamless operation.
+This application is specifically designed to provide precise motion control for laser micromachining setups utilizing the Standa 8SMC4-USB series controllers. It supports both master-slave controller configurations and integrates a custom Pico 2 microcontroller to synchronize multi-axis movements via TTL signals. The software enables seamless execution of complex motion sequences, offering advanced features such as motion planning, scripting, and real-time visualization to ensure high accuracy and efficient operation.
 
 
 <img src="./images/command_execution_gif.gif" alt="Demo animation" width="66%"/>
